@@ -182,7 +182,7 @@ describe('alert lead + Thanksgiving window: no photo in the lead, the photo on t
     const week = weekInfoForInstant(now, tzOf(town));
     const city = pickWeekImage({ town, isoYearWeek: week.slug, monday: week.monday, sunday: week.sunday, seasonPool: thisWeekImagesFor(town), history: [], now }).image!;
     expect(city.id).toMatch(/^broomfield_co-thanksgiving-/);
-    const html = await (await AstroContainer.create()).renderToString(FrontPageLead, { props: { page: fp, cityImage: city, holidayThumb: null } });
+    const html = await (await AstroContainer.create()).renderToString(FrontPageLead, { props: { page: fp, cityImage: city, thumbs: fp.secondaries.map((_, i) => (i === 0 && cityImageSlot(fp) === 'secondary' ? city : null)) } });
     const lead = html.slice(html.indexOf('<article class="lead'), html.indexOf('</article>') + 10);
     expect(lead).not.toContain('<img');
     const second = html.slice(html.indexOf('data-type="holiday"'));
@@ -199,7 +199,7 @@ describe('alert lead + Thanksgiving window: no photo in the lead, the photo on t
     }, now);
     expect(fp.lead.type).toBe('holiday');
     const city = thisWeekImagesFor(town)[0];
-    const html = await (await AstroContainer.create()).renderToString(FrontPageLead, { props: { page: fp, cityImage: city, holidayThumb: null } });
+    const html = await (await AstroContainer.create()).renderToString(FrontPageLead, { props: { page: fp, cityImage: city, thumbs: fp.secondaries.map(() => null) } });
     const lead = html.slice(html.indexOf('<article class="lead'), html.indexOf('</article>') + 10);
     expect(lead).toMatch(/<img[^>]+fetchpriority="high"/);
     expect(lead).toMatch(/city-photo__scrim[\s\S]*Thanksgiving · in 2 days[\s\S]*<h2/);

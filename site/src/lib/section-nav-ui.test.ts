@@ -67,16 +67,35 @@ describe.each(NAVS)('SectionNav $town', ({ town, nav }: { town: string; nav: Res
     expect(html()).toContain('aria-haspopup="dialog"');
     expect(html()).toContain('aria-current="page"');
   });
-  it('the swipe row has exactly the configured tabs and nothing else', () => {
+  it('the swipe row has exactly the configured tabs on a phone; the other active sections are desktop-only links (Fas 2)', () => {
     const row = html().slice(html().indexOf('data-snav-row'), html().indexOf('data-snav-fallback'));
-    expect(count(row)).toBe(nav.tabs.length);
+    const desk = (row.match(/<a [^>]*class="snav__desk"/g) ?? []).length;
+    expect(count(row) - desk).toBe(nav.tabs.length);
+    expect(count(row)).toBe(nav.desktop.length);
+    expect(nav.desktop.slice(0, nav.tabs.length).map((t) => t.id)).toEqual(nav.tabs.map((t) => t.id));
+  });
+  it('exactly one All control takes space before and after the script runs (QA nav.single-all-control)', async () => {
+    if (!browser) return;
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    const doc = `<!doctype html><html><head><style>${CSS}</style></head><body>${htmlOf.get(town)}</body></html>`;
+    await page.route('http://qa.test/**', (r) => r.fulfill({ contentType: 'text/html', body: doc }));
+    await page.goto('http://qa.test/city-hall/');
+    const boxes = () => page.evaluate(() => ['.snav__fallback', '[data-snav-open]'].map((s) => (document.querySelector(s) as HTMLElement).getClientRects().length));
+    expect(await boxes()).toEqual([1, 0]);
+    const wrapBefore = await page.evaluate(() => (document.querySelector('.snav__rowwrap') as HTMLElement).getBoundingClientRect().width);
+    await page.addScriptTag({ content: bundle });
+    await page.evaluate(() => (window as any).SNAV.initSectionNav(document.querySelector('[data-snav]')));
+    expect(await boxes()).toEqual([0, 1]);
+    expect(await page.evaluate(() => (document.querySelector('.snav__rowwrap') as HTMLElement).getBoundingClientRect().width)).toBeCloseTo(wrapBefore, 0);
+    await page.close();
   });
   it('at 360 px: one row, no page sideways scroll, All visible and fully inside the viewport', async () => {
     if (!browser) return;
     const page = await open(town);
     const m = await page.evaluate(() => {
       const row = document.querySelector('[data-snav-row]') as HTMLElement;
-      const tops = new Set([...row.querySelectorAll('a')].map((a) => Math.round(a.getBoundingClientRect().top)));
+      // Desktop-only links are display:none on a phone (no box): only the visible tabs count.
+      const tops = new Set([...row.querySelectorAll('a')].filter((a) => a.getClientRects().length > 0).map((a) => Math.round(a.getBoundingClientRect().top)));
       const all = document.querySelector('[data-snav-open]') as HTMLElement;
       const r = all.getBoundingClientRect();
       return {

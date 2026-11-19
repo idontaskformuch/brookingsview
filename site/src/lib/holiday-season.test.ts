@@ -250,9 +250,10 @@ describe('front page: "Hogmanay and New Year" from 27 Dec to the last bank holid
     expect(postVisible(dn('2027-01-05'), hog, w)).toBe(false);
   });
 
-  it('Christmas keeps its own window: 18 to 25 Dec', () => {
+  it('Christmas keeps its own window: 11 to 25 Dec (14 days before, owner 2026-11-19)', () => {
     const c = posts.find((p) => p.label === 'Christmas' && p.day === dn('2026-12-25'))!;
-    expect(postVisible(dn('2026-12-17'), c, w)).toBe(false);
+    expect(postVisible(dn('2026-12-10'), c, w)).toBe(false);
+    expect(postVisible(dn('2026-12-11'), c, w)).toBe(true);
     expect(postVisible(dn('2026-12-25'), c, w)).toBe(true);
     expect(postVisible(dn('2026-12-26'), c, w)).toBe(false);
   });

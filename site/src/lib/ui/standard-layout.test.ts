@@ -11,7 +11,9 @@ const LAYOUT_FILES = ['components/SectionNav.astro', 'components/HolidayPage.ast
   // Fas 1a (2026-11-18): the front page and the town's photo.
   'pages/index.astro', 'components/FrontPageLead.astro', 'components/CityPhoto.astro', 'components/MarqueeCard.astro', 'lib/city-face.ts',
   // Fas 2 (2026-11-19): the rail.
-  'components/RailLayout.astro', 'lib/rail.ts', 'config/home-rail.ts'];
+  'components/RailLayout.astro', 'lib/rail.ts', 'config/home-rail.ts',
+  // Fas 2 hub (2026-11-19).
+  'lib/home-blocks.ts', 'config/home-sections.ts', 'lib/front-page.ts'];
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((f) => {

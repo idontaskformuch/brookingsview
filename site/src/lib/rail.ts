@@ -8,7 +8,7 @@ import type { RailConfig, RailModuleKind } from '../config/home-rail';
 import type { MeetingView } from './meetings-view';
 import { daysBetween } from './meetings-view';
 import type { FrontPageHoliday } from './front-page';
-import { OFF_SEASON_DAYS } from './sports-season';
+import { OFF_SEASON_DAYS, ymd } from './sports-season';
 
 export const RAIL_HEIGHT_REM: Record<RailModuleKind | 'status', number> = {
   status: 16, meeting: 8, holiday: 10, sport: 9, numbers: 14, weather: 9, traffic: 9, workplace: 7, markets: 10, play: 5, burro_bonanza: 5,
@@ -66,7 +66,8 @@ export function nextRailHoliday(holidays: FrontPageHoliday[], today: number, exc
 export function latestFinal<T extends { status: string; game_date: string | Date | null; team_score: number | null; opponent_score: number | null }>(
   games: T[], todayYmd: string, maxDays = OFF_SEASON_DAYS,
 ): T | null {
-  const t = (g: T) => new Date(g.game_date as string | Date).getTime();
+  // DATE column: a string or a local-midnight Date from the driver; ymd() reads either without a zone shift.
+  const t = (g: T) => Date.parse(`${ymd(g.game_date as string | Date)}T00:00:00Z`);
   const today = Date.parse(`${todayYmd}T00:00:00Z`);
   return games
     .filter((g) => g.status === 'final' && g.team_score !== null && g.opponent_score !== null && g.game_date && !Number.isNaN(t(g)))

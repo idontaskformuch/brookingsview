@@ -1,63 +1,42 @@
 ---
 /**
- * Förstasidan, byggd som en tidningsförstasida.
- *
- * Strukturen är TID, inte ämne: I dag -> Den här veckan -> Framöver. Frågan
- * sajten svarar på ("what's happening in Brookings?") handlar om när, inte om
- * vad -- de flesta lokalsajter sorterar efter kategori och blir svårare att
- * skanna för det.
- *
- * Hierarkin är avsiktlig: en etta som dominerar, ett högerfält med siffror
- * (väder, nästa match, råvarupriser -- tidningens väderruta och börstabell),
- * och därunder en spaltström avdelad med hårfina linjer.
+ * The front page as a hub (Fas 2, owner 2026-11-19; specs/full-pages-no-ai-prose.md "Ny Fas 2"). The pattern of established local sites:
+ *   status line (alert · next game · next meeting; the weather is the band right above it)
+ *   lead (the town's photo, kicker, headline, 1-2 data lines) + 3-4 secondaries with 3:2 thumbnails
+ *   section blocks (SectionBlock: cards or list, 3-4 items, "See all"), their order per town in config/home-sections.ts:
+ *     `upper` full width, `beside` next to the rail (RailLayout, from 62rem), `lower` full width.
+ * A block without data is not shown. Every card has an image (own -> venue -> category pool), and no two visible images are the same.
+ * Only the lead photo loads with priority. Data and template strings only; no model text. Mobile: the same order in one column.
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
-import SectionRule from '../components/SectionRule.astro';
-import StoryCard from '../components/StoryCard.astro';
 import FrontPageLead from '../components/FrontPageLead.astro';
-import GameCard from '../components/GameCard.astro';
 import SchoolAlertBanner from '../components/SchoolAlertBanner.astro';
-import Tile from '../components/Tile.astro';
-import CityStatus from '../components/CityStatus.astro';
 import ResultsBanner from '../components/ResultsBanner.astro';
 import { ELECTION_BY_TOWN } from '../config/election';
 import SafetyNotices from '../components/SafetyNotices.astro';
-import MarqueeCard from '../components/MarqueeCard.astro';
 import TopEventCard from '../components/TopEventCard.astro';
 import { selectTopEvent } from '../lib/top-event';
 import OrientationHeader from '../components/OrientationHeader.astro';
-import QuickLinks from '../components/QuickLinks.astro';
 import RailLayout from '../components/RailLayout.astro';
 import RailModules from '../components/rail/RailModules.astro';
+import SectionBlock from '../components/ui/SectionBlock.astro';
 import { railMeetings } from '../lib/rail';
 import {
-  getUpcomingStories, getActiveAlerts, getUpcomingGames,
-  getActiveSchoolAlerts, getUpcomingArtsEvents, getRecentJobs, getNextMeeting,
-  getRecentProjectUpdates, PROJECT_PENDING_OUTCOME_LABEL, formatDate,
-  getFacilities,
+  getUpcomingStories, getActiveAlerts, getSeasonGames, getActiveSchoolAlerts, getUpcomingArtsEvents, getRecentProjectUpdates,
+  PROJECT_PENDING_OUTCOME_LABEL, getFacilities, getRegionalSports, getActiveTrafficIncidents, type RegionalGame, type TrafficIncident,
 } from '../lib/db';
-import { selectFrontPage } from '../lib/front-page';
+import { selectFrontPage, type FrontPageBigEvent, type FrontPageItem } from '../lib/front-page';
 import { FRONT_PAGE_BY_TOWN } from '../config/front-page';
 import { frontPageAlerts } from '../lib/front-page-alerts';
 import { frontPageHolidays } from '../lib/front-page-holidays';
 import { loadEveningForFrontPage } from '../lib/front-page-load';
 import { localDayNumber } from '../lib/local-day';
-import {
-  todayUtcMidnight, buildEventFeed, isToday, isThisWeekend, isFreeEvent, isLibraryEvent, isKidsEvent, dayIndex,
-  weekendAnchorOffset, itemLink,
-} from '../lib/events';
-import SectionHeader from '../components/ui/SectionHeader.astro';
-import EventsGlance from '../components/events/EventsGlance.astro';
-import PopEventList from '../components/pop/PopEventList.astro';
-import { groupRowsByDay } from '../lib/pop-days';
-import MeetingLine from '../components/meetings/MeetingLine.astro';
+import { todayUtcMidnight, buildEventFeed, dayIndex, weekendAnchorOffset, itemLink } from '../lib/events';
 import { buildTownEventsView } from '../lib/events-town-view';
-import { homeBlocks, takeRows } from '../lib/event-day-view';
+import { homeBlocks, type DayRow } from '../lib/event-day-view';
 import { loadUpcomingMeetings } from '../lib/meetings-data';
-import { selectWorthKnowingMeetings } from '../lib/meetings-view';
-import { resolveQuickLinks, type QuickLinkContext } from '../lib/quick-links';
 import { siteConfig } from '../lib/site-config';
-import { isSectionBuilt } from '../lib/sections';
+import { isSectionBuilt, linksToBuiltSection } from '../lib/sections';
 import { isWordCut, metaDescription } from '../lib/meta-description';
 import { placeAbbr, countryProfile } from '../lib/country-profile';
 import { resolveThisWeekImage } from '../lib/db';
@@ -66,389 +45,241 @@ import { seasonForMonth } from '../lib/this-week-images';
 import { thisWeekImagesFor } from '../config/this-week-images';
 import { holidayBandImage, cityImageSlot, responsiveSrc, CITY_PHOTO_SIZES } from '../lib/city-face';
 import { holidayPageDef } from '../config/holiday-pages/calendar';
-import { homeLayoutFor } from '../config/home-layout';
-import { resolveImage } from '../lib/images';
+import { townHasHolidayPages } from '../config/holiday-pages/registry';
+import { resolveImage, type ImageCategory } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
-import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
-import { rankTicketmasterEvents, collapseMarqueeRuns, ticketmasterResolvableImage, type MarqueeEntry } from '../lib/whats-on';
+import { getTicketmasterEventsForTown, IN_TOWN_THRESHOLD_MILES } from '../lib/ticketmaster';
+import { rankTicketmasterEvents, collapseMarqueeRuns, ticketmasterResolvableImage, ticketmasterHref } from '../lib/whats-on';
+import { homeSectionsFor, type HomeBlockId } from '../config/home-sections';
+import { pickFromPools, dateBox, distinctBy, sportsItems, cityHallItems, gettingAroundItems, type BlockItem, type BlockImage } from '../lib/home-blocks';
+import type { RailModuleKind } from '../config/home-rail';
+import { ymd } from '../lib/sports-season';
 
-const homeLayout = homeLayoutFor(siteConfig.townId);
+const tz = siteConfig.timezone;
+const profile = countryProfile(siteConfig.country);
+const locale = profile.locale as 'en-US' | 'en-GB';
+const sections = homeSectionsFor(siteConfig.townId);
+const wants = new Set<HomeBlockId>([...sections.upper, ...sections.beside, ...sections.lower]);
+const sportsBuilt = isSectionBuilt('jackrabbits', siteConfig) || isSectionBuilt('sports', siteConfig);
 
-const [alerts, schoolAlerts, games, facilities, quickLinkEvents, quickLinkArtsEvents, quickLinkJobs, quickLinkNextMeeting] = await Promise.all([
+const [alerts, schoolAlerts, seasonGames, facilities, quickLinkEvents, quickLinkArtsEvents, regional, traffic] = await Promise.all([
   getActiveAlerts(),
   getActiveSchoolAlerts(),
-  getUpcomingGames(3),
+  isSectionBuilt('jackrabbits', siteConfig) ? getSeasonGames() : Promise.resolve([]),
   getFacilities(),
-  // Front-page orientation pass, Phase 2 ("Looking for something?" quick
-  // links) -- deliberately its OWN fetch:
-  // a 40-item cap across FOUR mixed source_types would
-  // would give an inaccurate (likely false-negative) content check against
-  // the real /events/today|this-weekend|free|kids|library facet pages.
-  // Mirrors events.astro's own exact fetch shape so the quick-link check
-  // agrees with what the linked-to page will actually show.
+  // The same fetch shape as /events/, so a count here and a count there agree.
   getUpcomingStories(['event'], 120),
   getUpcomingArtsEvents(40),
-  getRecentJobs(1),
-  getNextMeeting(),
+  isSectionBuilt('sports', siteConfig) ? getRegionalSports() : Promise.resolve([] as RegionalGame[]),
+  wants.has('getting_around') && isSectionBuilt('traffic', siteConfig) ? getActiveTrafficIncidents() : Promise.resolve([] as TrafficIncident[]),
 ]);
 
-// Front-page orientation pass, Phase 2: resolve "Looking for something?"
-// against the SAME predicates the real facet pages use (see the fetch
-// comment above for why this is its own fetch).
-const quickLinkDate = todayUtcMidnight(siteConfig.timezone);
-const { items: quickLinkFeed } = buildEventFeed(quickLinkEvents, quickLinkArtsEvents, siteConfig.timezone);
-const quickLinkContext: QuickLinkContext = {
-  hasToday: quickLinkFeed.some((i) => isToday(i, quickLinkDate, siteConfig.timezone)),
-  hasWeekend: quickLinkFeed.some((i) => isThisWeekend(i, quickLinkDate, siteConfig.timezone)),
-  hasFree: quickLinkFeed.some((i) => isFreeEvent(i, facilities))
-    || facilities.some((f) => f.category === 'library' || f.category === 'park' || f.category === 'community_center'),
-  hasKids: quickLinkFeed.some((i) => isKidsEvent(i)),
-  hasLibrary: quickLinkFeed.some((i) => isLibraryEvent(i, facilities)),
-  // "Has a real season/schedule to show" -- games already fetched above
-  // for the rail's own game-card tile, reused here rather than re-queried.
-  hasJackrabbits: games.length > 0 && isSectionBuilt('jackrabbits', siteConfig),
-  hasMeetings: quickLinkNextMeeting !== null,
-  // Evergreen reference pages (traffic, closures, facilities): gated on
-  // the town actually having the underlying capability/data, not on a
-  // live item count -- an empty /traffic page still correctly says "no
-  // incidents right now," which is real content, not a broken page (see
-  // the handoff's own "Evergreen reference pages ... pass the check if
-  // the page exists and has current data").
-  hasClosures: !!siteConfig.hasClosureWatch,
-  hasJobs: quickLinkJobs.length > 0 && isSectionBuilt('jobs', siteConfig),
-  hasTraffic: isSectionBuilt('traffic', siteConfig),
-  hasWhatsOn: !!siteConfig.hasWhatsOn,
-  hasFacilities: facilities.length > 0 && isSectionBuilt('facilities', siteConfig),
-};
-const { shown: quickLinks, omitted: omittedQuickLinks } = resolveQuickLinks(siteConfig.townId, quickLinkContext);
-
-
-// The daily front page (lib/front-page.ts): one lead and 1-3 secondaries chosen by rule from alerts, holidays, the weekend, game day, meetings,
-// tonight and the evergreen guides. Titles come from the stories' own titles (built by build_title) and the source fields; alert headlines come from the
-// source's event title, never from stories.body. Text-only: no model text and no photo, so there is nothing to dedupe.
 // FRONT_PAGE_NOW (an ISO instant) is only for checking the layout on a chosen day in a local build; CI never sets it.
 const now = process.env.FRONT_PAGE_NOW ? new Date(process.env.FRONT_PAGE_NOW) : new Date();
-const frontPageEvents = buildEventFeed(quickLinkEvents, quickLinkArtsEvents, siteConfig.timezone).items;
+const todayYmd = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+const quickLinkDate = todayUtcMidnight(tz);
+const frontPageEvents = buildEventFeed(quickLinkEvents, quickLinkArtsEvents, tz).items;
 const meetingsData = await loadUpcomingMeetings();
+
+// Ticketmaster near the town (the What's On marquee rank). The front page promises "here": 25 miles.
+const HOMEPAGE_MARQUEE_RADIUS_MILES = 25;
+const nearbyWhatsOnItems = (siteConfig.hasWhatsOn ? await getTicketmasterEventsForTown(siteConfig) : [])
+  .filter((item) => { const miles = item.ticketmasterEvent.venueDistanceMiles; return miles == null || miles <= HOMEPAGE_MARQUEE_RADIUS_MILES; });
+const whatsOnEntries = collapseMarqueeRuns(rankTicketmasterEvents(nearbyWhatsOnItems, siteConfig.townId));
+const pools = categoryImagesFor(siteConfig.townId);
+const imageOpts = { town: siteConfig.townId, cityName: siteConfig.cityName, facilities, categoryImages: pools };
+
+// Big in-town events for the lead rule (lib/front-page.ts): a configured top event (Hobo Day) and in-town marquee shows.
+const topEvent = siteConfig.topEvents ? selectTopEvent(await getUpcomingStories(['event'], 200), siteConfig.topEvents, now, tz) : null;
+const bigEvents: FrontPageBigEvent[] = [
+  ...(topEvent?.occurs_at ? [{ title: topEvent.title.split(': ').pop()!, startsAt: new Date(topEvent.occurs_at).toISOString(), url: itemLink({ sourceKind: 'story', occurs_at: topEvent.occurs_at, story: topEvent }) ?? '/events/', venue: null }] : []),
+  // Only the marquee itself (the top-ranked show near the town), and only when it is in town: not every in-town show is big.
+  ...whatsOnEntries.slice(0, 1).filter((e) => e.primary.occurs_at && e.primary.ticketmasterEvent.venueDistanceMiles != null && e.primary.ticketmasterEvent.venueDistanceMiles < IN_TOWN_THRESHOLD_MILES)
+    .map((e) => ({ title: e.primary.ticketmasterEvent.title, startsAt: e.primary.occurs_at!, url: ticketmasterHref(e.primary.ticketmasterEvent) ?? '/whats-on/', venue: e.primary.ticketmasterEvent.venueName })),
+];
+
 const frontPage = selectFrontPage({
   cityName: siteConfig.cityName,
-  timezone: siteConfig.timezone,
-  locale: countryProfile(siteConfig.country).locale as 'en-US' | 'en-GB',
+  timezone: tz,
+  locale,
   config: FRONT_PAGE_BY_TOWN[siteConfig.townId],
   alerts: frontPageAlerts(alerts),
-  holidays: frontPageHolidays(siteConfig.townId, new Date(localDayNumber(now, siteConfig.timezone) * 86_400_000).getUTCFullYear()),
+  holidays: frontPageHolidays(siteConfig.townId, new Date(localDayNumber(now, tz) * 86_400_000).getUTCFullYear()),
   evening: await loadEveningForFrontPage(frontPageEvents, facilities, now),
-  // Home games only: an away game does not change anyone's day here.
-  games: games.filter((g) => g.starts_at && g.home_away === 'home').map((g) => ({
-    team: 'Jackrabbits', opponent: g.opponent, startsAt: g.starts_at!, home: true, url: '/jackrabbits/',
+  // Home games of the town's own program; the config decides which sport is "big" (Brookings: football).
+  games: seasonGames.filter((g) => g.starts_at && g.home_away === 'home' && (g.phase === 'upcoming' || g.phase === 'inProgress')).map((g) => ({
+    team: 'Jackrabbits', opponent: g.opponent, startsAt: g.starts_at!, home: true, url: '/jackrabbits/', sport: g.sport,
   })),
   meetings: meetingsData?.meetings ?? [],
+  bigEvents,
 }, now);
-// The town's photo of the week (lib/city-face.ts, Fas 1a): the same pick SectionHero excludes, for the week of `now` (FRONT_PAGE_NOW
-// included: a week with no recorded row is computed in memory, nothing is written outside a production build). A pre-launch town with no
-// pool yet has none. On an alert day it goes to the first secondary (holiday/weekend) or is not shown (cityImageSlot).
-const photoWeek = weekInfoForInstant(now, siteConfig.timezone);
+
+// The town's photo of the week (Fas 1a): the lead's surface; on an alert day the first secondary's thumbnail or nowhere (cityImageSlot).
+const photoWeek = weekInfoForInstant(now, tz);
 const photoPool = thisWeekImagesFor(siteConfig.townId);
 const cityImage = siteConfig.noindexSite && photoPool.length === 0
   ? null
   : await resolveThisWeekImage(photoWeek.slug, seasonForMonth(photoWeek.monday.m), photoPool, photoWeek.monday, photoWeek.sunday);
 const photoSlot = cityImage ? cityImageSlot(frontPage) : null;
 const leadPhoto = photoSlot === 'lead' && cityImage ? responsiveSrc(cityImage.path) : null;
-// The holiday card's thumbnail is the linked holiday page's own band photo (never the front page's photo).
-const holidayItem = frontPage.secondaries.find((s) => s.type === 'holiday' && s.pageSlug);
-const holidayDef = holidayItem ? holidayPageDef(holidayItem.pageSlug!) : undefined;
-const todayParts = new Date(localDayNumber(now, siteConfig.timezone) * 86_400_000);
-const holidayThumb = holidayDef
-  ? holidayBandImage(siteConfig.townId, holidayDef.holidayId, { y: todayParts.getUTCFullYear(), m: todayParts.getUTCMonth() + 1, d: todayParts.getUTCDate() }, photoWeek.slug, cityImage?.id ?? null)
-  : null;
+const todayParts = new Date(localDayNumber(now, tz) * 86_400_000);
+const todayDate = { y: todayParts.getUTCFullYear(), m: todayParts.getUTCMonth() + 1, d: todayParts.getUTCDate() };
 
-// A meeting featured on the front page is not repeated as a Worth knowing row.
+// Images already on the page: a later pick avoids them (no two identical images visible at once).
+const used = new Set<string>(cityImage ? [cityImage.path] : []);
+const asBlock = (img: { path: string; alt: string; width: number; height: number } | null): BlockImage | null =>
+  img ? { path: img.path, alt: img.alt, width: img.width, height: img.height } : null;
+// The category's own pool first, then the town's season photos (town and nature, fit any subject), then its other category pools; null
+// rather than a repeat.
+const FALLBACK_ORDER: ImageCategory[] = ['events', 'city_hall', 'university', 'sports', 'weather_alert', 'traffic', 'jobs', 'home_sales', 'workplace_watch', 'school_alerts'];
+const seasonPool = photoPool.map((p) => ({ path: p.path, alt: p.alt, width: p.width, height: p.height }));
+const categoryImage = (cat: ImageCategory, seed: string): BlockImage | null =>
+  asBlock(pickFromPools([pools[cat], seasonPool, ...FALLBACK_ORDER.filter((c) => c !== cat).map((c) => pools[c])], `${seed}-${photoWeek.slug}`, used));
+
+// Secondary thumbnails: the holiday page's own band photo; the week's photo on an alert day; else a category photo.
+const SECONDARY_CATEGORY: Record<FrontPageItem['type'], ImageCategory> = {
+  alert: 'weather_alert', holiday: 'city_hall', game_day: 'sports', big_event: 'events', tonight: 'events', weekend: 'events', meeting: 'city_hall', guide: 'city_hall',
+};
+const guideCategory = (url: string): ImageCategory => (url.startsWith('/traffic') ? 'traffic' : url.startsWith('/events') ? 'events' : 'city_hall');
+const thumbs: (BlockImage | null)[] = frontPage.secondaries.map((s, idx) => {
+  if (photoSlot === 'secondary' && idx === 0 && cityImage) return asBlock(cityImage);
+  if (s.type === 'holiday' && s.pageSlug) {
+    const def = holidayPageDef(s.pageSlug);
+    const band = def ? holidayBandImage(siteConfig.townId, def.holidayId, todayDate, photoWeek.slug, cityImage?.id ?? null) : null;
+    if (band && !used.has(band.path)) { used.add(band.path); return asBlock(band); }
+  }
+  return categoryImage(s.type === 'guide' ? guideCategory(s.url) : SECONDARY_CATEGORY[s.type], `secondary-${s.url}`);
+});
+
 const featuredMeetingIds = new Set([frontPage.lead, ...frontPage.secondaries].flatMap((it) => (/^\/city-hall\/#meeting-(.+)$/.exec(it.url)?.[1] ?? [])));
-
-// One pipeline for "what's on": the same one /events/ uses (lib/events-town-view.ts), so a count here and a count there agree. Each event is in
-// exactly one block below (today / this weekend / this week / coming up). Meetings are not in these blocks; they are the "Worth knowing" rows.
-const dayOffsetOf = (iso: string | null) => (iso === null ? null : dayIndex(iso, quickLinkDate, siteConfig.timezone));
-const townEvents = buildTownEventsView(quickLinkEvents, quickLinkArtsEvents, facilities);
-const blocks = homeBlocks(townEvents.view, weekendAnchorOffset(quickLinkDate));
-const todayBlock = takeRows(blocks.today, 5);
-const weekendBlock = takeRows(blocks.weekend, 6);
-const weekBlock = takeRows(blocks.week, 6);
-const comingUp = blocks.later.slice(0, 5);
-// The rail's next meeting (Fas 2) is not repeated as a Worth knowing row either.
-const railNextMeeting = meetingsData ? railMeetings(meetingsData.meetings, meetingsData.todayYmd, featuredMeetingIds).next : null;
-const worthMeetings = meetingsData
-  ? selectWorthKnowingMeetings(meetingsData.meetings.filter((m) => !featuredMeetingIds.has(String(m.id)) && m.id !== railNextMeeting?.id), meetingsData.todayYmd)
-  : [];
-// Holiday pages the lead or a secondary already links: the rail's holiday module skips them.
 const featuredHolidaySlugs = new Set([frontPage.lead, ...frontPage.secondaries].flatMap((it) => (it.type === 'holiday' && it.pageSlug ? [it.pageSlug] : [])));
 
-const nextGame = games[0] ?? null;
+// ---- Tonight & this weekend (cards): today's events and the coming weekend's, own events and Ticketmaster shows near the town.
+const townEvents = buildTownEventsView(quickLinkEvents, quickLinkArtsEvents, facilities);
+const weekendAnchor = weekendAnchorOffset(quickLinkDate);
+const evBlocks = homeBlocks(townEvents.view, weekendAnchor);
+const inWindow = (iso: string) => { const d = dayIndex(iso, quickLinkDate, tz); return d === 0 || (d !== null && d >= weekendAnchor && d <= weekendAnchor + 2); };
+const notOver = (iso: string) => new Date(iso).getTime() > now.getTime() - 60 * 60_000;
+type Cand = { start: string; title: string; build: () => BlockItem };
+const fmtWhen = (iso: string) => `${new Date(iso).toLocaleDateString(locale, { weekday: 'short', timeZone: tz })} · ${new Date(iso).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit', timeZone: tz })}`;
+const rowCands: Cand[] = [...evBlocks.today, ...evBlocks.weekend].flatMap((d) => d.rows).filter((r: DayRow) => notOver(r.end ?? r.start)).map((r: DayRow) => ({
+  start: r.start, title: r.title,
+  build: () => {
+    const found = r.item.sourceKind === 'story' ? resolveImage(r.item.story, { ...imageOpts, usedImagePaths: used }) : null;
+    const own = found && !used.has(found.path) ? found : null; // never a photo already on the page
+    if (own) used.add(own.path);
+    return { href: itemLink(r.item) ?? '/events/', title: r.title, kicker: r.allDay ? r.dateLabel : fmtWhen(r.start), meta: r.venue ?? undefined, image: asBlock(own) ?? categoryImage(r.item.sourceKind === 'arts' ? 'university' : 'events', r.title) };
+  },
+}));
+const tmCands: Cand[] = whatsOnEntries.filter((e) => e.primary.occurs_at && inWindow(e.primary.occurs_at) && notOver(e.primary.occurs_at)).map((e) => ({
+  start: e.primary.occurs_at!, title: e.primary.ticketmasterEvent.title,
+  build: () => {
+    const found = resolveImage(ticketmasterResolvableImage(e.primary), { ...imageOpts, usedImagePaths: used });
+    const img = found && !used.has(found.path) ? found : null;
+    if (img) used.add(img.path);
+    return { href: ticketmasterHref(e.primary.ticketmasterEvent) ?? '/whats-on/', title: e.primary.ticketmasterEvent.title, kicker: fmtWhen(e.primary.occurs_at!), meta: e.primary.ticketmasterEvent.venueName ?? undefined, image: asBlock(img) ?? categoryImage('events', e.primary.ticketmasterEvent.title) };
+  },
+}));
+// The lead's own event is not repeated as a card.
+const leadTitle = frontPage.lead.headline.trim().toLowerCase();
+const tonightItems: BlockItem[] = wants.has('tonight_weekend')
+  ? distinctBy([...rowCands, ...tmCands].filter((c) => c.title.trim().toLowerCase() !== leadTitle).sort((a, b) => a.start.localeCompare(b.start)), (c) => c.title, 4).map((c) => c.build())
+  : [];
+const tonightSeeAll = siteConfig.nav.tabs.includes('tonight') ? '/tonight/' : '/events/';
 
-// City Hall project milestones (see NEEDS-HUMAN-REVIEW.md, "Week 3 -- City
-// Hall Project Pages") -- real, sourced updates from the last 14 days,
-// never a hand-picked/AI-selected slot. A separate block from Worth
-// Knowing rather than folded into that Story-based pipeline: projects are
-// a different entity (projects/project_updates, not stories), and this
-// keeps that pipeline's selection rules untouched.
-const recentProjectUpdates = await getRecentProjectUpdates(3);
+// ---- Sports (list)
+const sportsBlock: BlockItem[] = wants.has('sports') && sportsBuilt
+  ? sportsItems({ games: seasonGames, regional, todayYmd, tz, locale, teamName: siteConfig.cityName, drawLetter: profile.spelling === 'british' ? 'D' : 'T' })
+  : [];
 
-// Homepage teaser into the Week 2 event landing pages (see
-// NEEDS-HUMAN-REVIEW.md "Week 2 -- Event Landing Pages") -- picks whichever
-// of Today/This-weekend is the more relevant search intent for the site's
-// own local "today" (not the visitor's, not the build machine's), same
-// timezone-correct primitive events.astro and the landing pages themselves
-// use. Free/Kids stay evergreen regardless of the day.
-const eventTeaserWeekday = todayUtcMidnight(siteConfig.timezone).getUTCDay(); // 0=Sun..6=Sat
-const isEventTeaserWeekend = eventTeaserWeekday === 5 || eventTeaserWeekday === 6 || eventTeaserWeekday === 0;
-const timelyEventTeaser = isEventTeaserWeekend
-  ? { href: '/events/this-weekend/', label: 'This weekend' }
-  : { href: '/events/today/', label: 'Today' };
+// ---- City Hall (list): the next three meetings and the latest decision.
+const recentProjectUpdates = wants.has('cityhall') ? await getRecentProjectUpdates(1) : [];
+const rm = meetingsData ? railMeetings(meetingsData.meetings, meetingsData.todayYmd, featuredMeetingIds) : null;
+const decision = recentProjectUpdates[0];
+const cityHallBlock: BlockItem[] = wants.has('cityhall') && meetingsData
+  ? cityHallItems({
+      meetings: [...(rm?.next ? [rm.next] : []), ...(rm?.more ?? [])], todayYmd: meetingsData.todayYmd, locale,
+      decision: decision ? {
+        href: `/city-hall/projects/${decision.project_slug}/`, title: decision.project_title, ymd: ymd(decision.meeting_date as string | Date),
+        meta: `${decision.body}: ${decision.outcome_override ?? (decision.outcome === 'pending' ? PROJECT_PENDING_OUTCOME_LABEL : decision.outcome.toLowerCase())}`,
+      } : null,
+    })
+  : [];
 
-// Cross-link a Jackrabbits HOME game happening today into the same "Today"
-// river as events/meetings (see NEEDS-HUMAN-REVIEW.md "University Coverage
-// Rebuild", A.1 -- a game day is exactly the kind of "what's happening
-// today" fact this section exists for, and previously only surfaced in the
-// separate rail widget, never in the main content stream). Home only --
-// an away game doesn't affect anyone's day in Brookings the way a home game
-// does (traffic, parking, foot draw), and the rail widget already covers
-// "next game" regardless of home/away.
-const todayHomeGame = isSectionBuilt('jackrabbits', siteConfig) && nextGame && nextGame.home_away === 'home'
-  && dayOffsetOf(nextGame.starts_at) === 0 ? nextGame : null;
+// ---- Getting around (list): traffic incidents and road closures. School closures have their own banner at the top.
+const gettingAroundBlock: BlockItem[] = wants.has('getting_around') ? gettingAroundItems({ traffic, schoolClosures: [], tz, locale }) : [];
 
-// Sitewide presentation-layer pass -- the marquee module. Same
-// rank/collapse pipeline lib/cityStatus.ts's buildWhatsOnStatus() already
-// uses for the status-line mention, but that one only ever needs TEXT
-// (title + distance); this needs an actual resolvable IMAGE, since the
-// whole point of the marquee module is Ticketmaster being the one feed
-// with licensed photography. Promotes the highest-ranked entry that
-// actually resolves to a real image -- skipping (not just deprioritizing)
-// any higher-ranked entry that doesn't, per the handoff's own "do not
-// render a 16:9 placeholder" rule. Skipped/lower-ranked entries can still
-// appear in the "also on" rail below, but ONLY if they too have a real
-// image (the front-page module is exclusively for imaged items -- a
-// text-only "also on" row belongs to /whats-on's own dense list, not
-// here). Omitted entirely (both consts stay null/empty) when hasWhatsOn is
-// off or nothing in the whole ranked list has an image -- no placeholder,
-// no module.
-// Item E5: the homepage marquee is presented as "what's happening" for THIS
-// town -- a real, verified Sioux Falls venue ~53mi away reads as local there
-// in a way it never would on /whats-on, whose own lede explicitly discloses
-// the full town radius (75mi Brookings/35mi Moreno Valley/20mi Broomfield,
-// see that page's own radiusMiles copy) before showing a single card. Capped
-// here, not in getTicketmasterEventsForTown()/rankTicketmasterEvents()
-// themselves -- /whats-on/index.astro calls those same functions and must
-// keep showing the full town radius unchanged; only the homepage's own
-// prominent placement needs the tighter promise. `venueDistanceMiles ==
-// null` (Discovery API had no venue geo data at all) is kept rather than
-// dropped -- an unknown distance is not a confirmed "too far," and this cap
-// exists to stop a KNOWN-far venue from reading as local, not to penalize a
-// missing field.
-// Top-event marquee (configs/<town>.json features.top_events): a configured event
-// such as Hobo Day gets its own card ahead of the Ticketmaster marquee, found in
-// the event stories we already hold, and gone once the day has passed.
-const topEvent = siteConfig.topEvents
-  ? selectTopEvent(await getUpcomingStories(['event'], 200), siteConfig.topEvents, new Date(), siteConfig.timezone)
-  : null;
+// ---- Guides (cards): the town's evergreen pages that are built.
+const guideBuilt = (href: string) => (href === '/holidays/' ? townHasHolidayPages(siteConfig.townId) : linksToBuiltSection(href, siteConfig));
+const guidesBlock: BlockItem[] = wants.has('guides')
+  ? sections.guides.filter((g) => guideBuilt(g.href)).map((g) => ({ href: g.href, title: g.title, meta: g.meta, image: categoryImage(g.image, `guide-${g.href}`) }))
+  : [];
 
-const HOMEPAGE_MARQUEE_RADIUS_MILES = 25;
-const nearbyWhatsOnItems = (siteConfig.hasWhatsOn ? await getTicketmasterEventsForTown(siteConfig) : [])
-  .filter((item) => {
-    const miles = item.ticketmasterEvent.venueDistanceMiles;
-    return miles == null || miles <= HOMEPAGE_MARQUEE_RADIUS_MILES;
-  });
-const whatsOnEntries = collapseMarqueeRuns(rankTicketmasterEvents(nearbyWhatsOnItems, siteConfig.townId));
-let marqueeHero: { entry: MarqueeEntry; image: NonNullable<ReturnType<typeof resolveImage>> } | null = null;
-const marqueeAlsoOn: { entry: MarqueeEntry; image: NonNullable<ReturnType<typeof resolveImage>> }[] = [];
-for (const entry of whatsOnEntries) {
-  const image = resolveImage(ticketmasterResolvableImage(entry.primary), {
-    town: siteConfig.townId,
-    cityName: siteConfig.cityName,
-    facilities,
-    categoryImages: categoryImagesFor(siteConfig.townId),
-  });
-  if (!image) continue;
-  if (!marqueeHero) {
-    marqueeHero = { entry, image };
-  } else if (marqueeAlsoOn.length < 2) {
-    marqueeAlsoOn.push({ entry, image });
-  } else {
-    break;
-  }
-}
-// The rail's own tiles (next game, Workplace Watch, traffic, markets, promos) load in components/rail/RailModules.astro (Fas 2).
+// ---- Places (cards): facilities with an approved photo of their own.
+const placesBlock: BlockItem[] = wants.has('places')
+  ? facilities.filter((f) => f.image_path && !f.image_needs_review).map((f) => ({ href: `/facilities/${f.slug}/`, title: f.name, meta: f.address ?? undefined, image: { path: f.image_path!, alt: f.image_alt ?? f.name, width: 1200, height: 800 } }))
+  : [];
+
+const BLOCKS: Record<HomeBlockId, { kicker?: string; title: string; seeAllHref?: string; seeAllLabel?: string; variant: 'cards' | 'list'; items: BlockItem[] }> = {
+  tonight_weekend: { kicker: 'Out and about', title: 'Tonight & this weekend', seeAllHref: tonightSeeAll, variant: 'cards', items: tonightItems },
+  sports: { kicker: 'Sports', title: 'Next games and results', seeAllHref: isSectionBuilt('jackrabbits', siteConfig) ? '/jackrabbits/' : '/sports/', variant: 'list', items: sportsBlock },
+  cityhall: { kicker: 'City Hall', title: 'Meetings and decisions', seeAllHref: '/city-hall/', seeAllLabel: 'All meetings', variant: 'list', items: cityHallBlock },
+  guides: { kicker: 'Guides', title: `Living in ${siteConfig.cityName}`, variant: 'cards', items: guidesBlock },
+  places: { kicker: 'Places', title: 'Places to go', seeAllHref: '/facilities/', variant: 'cards', items: placesBlock },
+  getting_around: { kicker: 'Getting around', title: 'Traffic and road closures', seeAllHref: '/traffic/', variant: 'list', items: gettingAroundBlock },
+};
+// A block is shown with 3+ cards, or 1+ list rows (SectionBlock `min`); the rail leaves out what a shown block already covers.
+const shown = (id: HomeBlockId) => BLOCKS[id].items.length >= (BLOCKS[id].variant === 'cards' ? 3 : 1);
+const railOmit: RailModuleKind[] = [
+  ...(shown('cityhall') ? (['meeting', 'meetings_more'] as const) : []),
+  ...(shown('sports') ? (['sport'] as const) : []),
+  ...(shown('getting_around') ? (['traffic'] as const) : []),
+];
+
+// ---- Status line: an active alert, the next game, the next meeting (the weather is the band right above it, site-wide).
+const nextGame = seasonGames.find((g) => g.starts_at && (g.phase === 'upcoming' || g.phase === 'inProgress'));
+const regionalDay = (g: RegionalGame) => (g.game_date ? ymd(g.game_date as string | Date) : '');
+const nextRegional = regional.filter((g) => g.relevance_tier === 'primary' && g.status !== 'final' && regionalDay(g) >= todayYmd)
+  .sort((a, b) => regionalDay(a).localeCompare(regionalDay(b)))[0];
+const nextMeeting = meetingsData ? railMeetings(meetingsData.meetings, meetingsData.todayYmd).next : null;
+const regionalWhen = (g: RegionalGame) => { const b = dateBox(`${regionalDay(g)}T12:00:00Z`, 'UTC', locale); return `${b.top} ${b.day}`; };
+const statusItems: { label: string; text: string; href: string }[] = [
+  ...(alerts[0] ? [{ label: 'Alert', text: alerts[0].title, href: '/weather/' }] : []),
+  ...(nextGame ? [{ label: 'Next game', text: `${nextGame.home_away === 'away' ? 'at' : 'vs'} ${nextGame.opponent}, ${fmtWhen(nextGame.starts_at!)}`, href: '/jackrabbits/' }]
+    : nextRegional ? [{ label: 'Next game', text: `${nextRegional.team_name} ${nextRegional.home_away === 'home' ? 'vs' : 'at'} ${nextRegional.opponent_name}, ${regionalWhen(nextRegional)}`, href: '/sports/' }] : []),
+  ...(nextMeeting ? [{ label: 'Next meeting', text: `${nextMeeting.bodyLabel}, ${nextMeeting.dateLabel}${nextMeeting.time ? ` ${nextMeeting.time}` : ''}`, href: `/city-hall/#meeting-${nextMeeting.id}` }] : []),
+];
 ---
 
 <BaseLayout title={`${siteConfig.siteName} — what's happening in ${placeAbbr(siteConfig)}`} wide description={isWordCut(frontPage.meta_description) ? metaDescription('home', siteConfig) : frontPage.meta_description}>
-
-  {/* CityStatus: the front-page condensed status strip (lib/cityStatus.ts),
-      mounted here at the top of the front page, above the Phase F original-
-      content block below (that ordering is an AdSense remediation fix and
-      must hold). Replaces the old TodayBlock mount that used to sit here --
-      TodayBlock covered nearly identical ground (weather/alerts/closures/
-      traffic/tonight) in a fuller, sectioned style; CityStatus is now the
-      purpose-built condensed surface the handoff describes, and /today
-      (pages/today.astro) keeps its own TodayBlock mount UNCHANGED as the
-      expanded view. The two don't yet share one resolver layer (a real,
-      deliberately deferred follow-up -- see cityStatus.ts's own module
-      docstring), so `alerts`/`schoolAlerts` are still fetched independently
-      above for the front-page selector/SchoolAlertBanner below, unrelated to
-      CityStatus's own alerts module. */}
   {leadPhoto && (
     <link slot="head" rel="preload" as="image" href={leadPhoto.src} imagesrcset={leadPhoto.srcset} imagesizes={leadPhoto.srcset ? CITY_PHOTO_SIZES.lead : undefined} fetchpriority="high" />
   )}
-  {/* Fas 1a (owner 2026-11-18): the lead first, under the page header and any active warning banner; Right Now straight under it (it
-      moves to the rail in Fas 2); the What's On marquee is a compact card after those. At most one photo above the fold at 390 px. */}
   <OrientationHeader now={now} />
-  {ELECTION_BY_TOWN[siteConfig.townId] && <ResultsBanner />}
-  {siteConfig.safetyNotices && <SafetyNotices townId={siteConfig.townId} timezone={siteConfig.timezone} variant="compact" onlyWhenActive />}
-  {/* Fas 2 (RailLayout): from 62rem the lead and the main column on the left, Right Now and the rail on the right, starting level with the
-      lead. Below 62rem the source order is the page order, unchanged: lead, Right Now, the main column, the rail, the rest. */}
-  <RailLayout>
-  <FrontPageLead slot="lead" page={frontPage} cityImage={cityImage} holidayThumb={holidayThumb} />
-  <CityStatus slot="now" />
-
-
-  {/* Marquee module (sitewide presentation-layer pass): the single
-      top-ranked What's On item with a real image, full-width, plus up to
-      two "also on" rows -- see the const block above for the promotion
-      logic. Sits between the status line and the page's original content,
-      per the handoff's own page-order table. Omitted entirely (not a
-      placeholder) when marqueeHero is null. */}
-  {topEvent && <TopEventCard story={topEvent} timezone={siteConfig.timezone} />}
-
-  {marqueeHero && (
-    <section class="marquee-module" aria-label="What's On this week">
-      <MarqueeCard
-        item={marqueeHero.entry.primary}
-        image={marqueeHero.image}
-        cityName={siteConfig.cityName}
-        timezone={siteConfig.timezone}
-        variant="card"
-        runSize={marqueeHero.entry.members.length}
-        lastOccursAt={marqueeHero.entry.members[marqueeHero.entry.members.length - 1].occurs_at}
-      />
-      {marqueeAlsoOn.length > 0 && (
-        <div class="marquee-module__also-on">
-          {marqueeAlsoOn.map(({ entry, image }) => (
-            <MarqueeCard
-              item={entry.primary}
-              image={image}
-              cityName={siteConfig.cityName}
-              timezone={siteConfig.timezone}
-              variant="row"
-              runSize={entry.members.length}
-              lastOccursAt={entry.members[entry.members.length - 1].occurs_at}
-            />
-          ))}
-        </div>
-      )}
-      <a class="marquee-module__link" href="/whats-on/">See everything on this week &rarr;</a>
-    </section>
+  {statusItems.length > 0 && (
+    <ul class="statusline" aria-label="At a glance">
+      {statusItems.map((s) => <li><span class="statusline__label">{s.label}</span> <a href={s.href}>{s.text}</a></li>)}
+    </ul>
   )}
-
-  {/* The answer first: how many things are on today and the days as counts, straight after the status strip. The day lists are further down. */}
-  {(townEvents.view.todayCount > 0 || townEvents.view.nextDay) && <section class="home-glance"><EventsGlance view={townEvents.view} base="/events/" /></section>}
-
-  <QuickLinks links={quickLinks} omitted={omittedQuickLinks} />
-
+  {ELECTION_BY_TOWN[siteConfig.townId] && <ResultsBanner />}
+  {siteConfig.safetyNotices && <SafetyNotices townId={siteConfig.townId} timezone={tz} variant="compact" onlyWhenActive />}
   <SchoolAlertBanner alerts={schoolAlerts} />
 
+  <FrontPageLead page={frontPage} cityImage={cityImage} thumbs={thumbs} />
 
-  {/* AdSense "low value content" remediation, Phase 0: the "Today's read"
-      feature slot and the "Latest from <site>" grid both only ever showed
-      the generic AI content track (editorials/columns/reviews/recipes),
-      which stopped generating -- both sections removed outright rather
-      than left to render an empty/frozen state. The freed slot is now the
-      Events weekend module (Phase 2, item 2b) -- omitted entirely (not a
-      placeholder) when weekendSummary is null, same rule as every other
-      conditional module above. */}
-  <section class="home-events" aria-label="What's on">
+  {topEvent && frontPage.lead.type !== 'big_event' && <TopEventCard story={topEvent} timezone={tz} />}
 
-    {(todayBlock.days.length > 0 || todayHomeGame) && (
-      <div class="home-events__block">
-        {todayHomeGame && <div class="river"><GameCard game={todayHomeGame} feature /></div>}
-        <PopEventList days={todayBlock.days} idPrefix="home-today" />
-      </div>
-    )}
-    {weekendBlock.days.length > 0 && (
-      <div class="home-events__block">
-        <SectionHeader title="This weekend" seeAllHref="/events/this-weekend/" seeAllLabel="All weekend events" />
-        <PopEventList days={weekendBlock.days} idPrefix="home-weekend" />
-      </div>
-    )}
-    {weekBlock.days.length > 0 && (
-      <div class="home-events__block">
-        <SectionHeader title="This week" seeAllHref="/events/" seeAllLabel="All events" />
-        <PopEventList days={weekBlock.days} idPrefix="home-week" />
-      </div>
-    )}
-  </section>
+  {sections.upper.map((id) => <SectionBlock id={id} {...BLOCKS[id]} />)}
 
-
-  <RailModules slot="rail" now={now} excludeMeetingIds={featuredMeetingIds} excludeHolidaySlugs={featuredHolidaySlugs} frontImageId={cityImage?.id ?? null} meetingsData={meetingsData} />
-
-  <div slot="after">
-
-  {worthMeetings.length > 0 && (
-    // Data rows from the meetings view (organ, kind, date and time, agenda items, agenda link), picked by rule: real meetings with an agenda in the
-    // next three weeks. No prose; a meeting featured as the lead above is not repeated.
-    <section aria-label="Worth knowing" class="worth-knowing">
-      <SectionHeader title="Worth knowing" seeAllHref="/city-hall/" seeAllLabel="All meetings" />
-      <ul class="plain-list">
-        {worthMeetings.map((m) => <MeetingLine m={m} todayYmd={meetingsData!.todayYmd} />)}
-      </ul>
-    </section>
-  )}
-
-  {recentProjectUpdates.length > 0 && (
-    <section aria-label="Project updates" class="project-updates">
-      <SectionRule label="City hall project updates" href="/city-hall/projects/" />
-      <ul class="project-updates__list">
-        {recentProjectUpdates.map((u) => (
-          <li>
-            <a href={`/city-hall/projects/${u.project_slug}/`}>{u.project_title}</a>
-            <span class="project-updates__meta">
-              {' '}— {u.body}, {formatDate(u.meeting_date)}:
-              {' '}{u.outcome_override ?? (u.outcome === 'pending' ? PROJECT_PENDING_OUTCOME_LABEL : u.outcome.toLowerCase())}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </section>
-  )}
-
-  {comingUp.length > 0 && (
-    <section aria-label="Coming up">
-      <SectionHeader title="Coming up" seeAllHref="/events/" seeAllLabel="All events" />
-      <PopEventList days={groupRowsByDay(comingUp)} idPrefix="coming" />
-    </section>
-  )}
-
-  {/* AdSense "low value content" remediation, Phase 0: "More to read"
-      existed only to surface the shared/town-agnostic content-track items
-      (recipe, review, science column), which stopped generating -- removed
-      outright along with "Today's read" and "Latest from" above. */}
-
-  </div>
+  <RailLayout>
+    {sections.beside.map((id) => <SectionBlock id={id} {...BLOCKS[id]} />)}
+    <RailModules slot="rail" now={now} withStatus omit={railOmit} excludeMeetingIds={featuredMeetingIds} excludeHolidaySlugs={featuredHolidaySlugs} frontImageId={cityImage?.id ?? null} meetingsData={meetingsData} />
   </RailLayout>
 
-  <section aria-label="Sections">
-    <SectionRule label={`More from ${siteConfig.cityName}`} />
-    <div class="panels">
-      {homeLayout.panels.map((p) => (
-        <a class="panel" href={p.href}>
-          <h3>{p.title}</h3>
-          <p>{p.text}</p>
-        </a>
-      ))}
-    </div>
-  </section>
+  {sections.lower.map((id) => <SectionBlock id={id} {...BLOCKS[id]} />)}
 
-  {/* SEO Fas 4 -- WebSite, homepage-only (NewsMediaOrganization already
-      renders site-wide via BaseLayout.astro, a distinct @type from this).
-      No potentialAction/SearchAction: the site has no internal search
-      feature, and claiming one would be exactly the kind of unverified
-      capability this project's structured data never asserts. */}
+  {/* SEO Fas 4 -- WebSite, homepage-only (NewsMediaOrganization already renders site-wide via BaseLayout.astro). No SearchAction: the site
+      has no internal search. */}
   <script type="application/ld+json" is:inline set:html={JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'WebSite',
@@ -458,69 +289,11 @@ for (const entry of whatsOnEntries) {
 </BaseLayout>
 
 <style>
-
-/* Marquee module (sitewide presentation-layer pass). */
-.marquee-module { margin-bottom: 1.75rem; }
-.marquee-module__also-on { margin-bottom: 0.75rem; }
-.marquee-module__link {
-  display: inline-block;
-  font-family: var(--font-ui);
-  font-size: 0.8125rem;
-  font-weight: 600;
+.statusline {
+  list-style: none; margin: 0 0 1rem; padding: 0.5rem 0; display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem;
+  border-bottom: 1px solid var(--rule); font-family: var(--font-ui); font-size: 0.8125rem; font-variant-numeric: tabular-nums;
 }
-
-
-/* Spaltström: hårfina vertikala linjer mellan spalterna, som i en tidning. */
-.river { display: grid; gap: 0 1.5rem; }
-@media (min-width: 40rem) {
-  .river { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .river > :global(*) { border-left: 1px solid var(--rule); padding-left: 1.5rem; }
-  .river > :global(*:nth-child(2n + 1)) { border-left: 0; padding-left: 0; }
-}
-@media (min-width: 62rem) {
-  .river { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .river > :global(*:nth-child(2n + 1)) { border-left: 1px solid var(--rule); padding-left: 1.5rem; }
-  .river > :global(*:nth-child(3n + 1)) { border-left: 0; padding-left: 0; }
-}
-
-.empty { color: var(--ink-soft); margin: 0; padding: 1rem 0; }
-
-.event-teasers {
-  font-family: var(--font-ui);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--navy);
-  margin: -0.25rem 0 0.75rem;
-}
-.event-teasers a { color: inherit; }
-
-.project-updates__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
-.project-updates__list li { padding: 0.5rem 0; border-bottom: 1px solid var(--rule); }
-.project-updates__list a { font-weight: 600; }
-.project-updates__meta { color: var(--ink-soft); font-size: 0.9375rem; }
-
-.panels { display: grid; gap: 0 1.5rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
-.panel {
-  display: block;
-  border-top: 1px solid var(--rule);
-  padding: 0.875rem 0 1rem;
-  text-decoration: none;
-  color: inherit;
-}
-.panel h3 { margin: 0 0 0.25rem; color: var(--navy); }
-.panel:hover h3 { text-decoration: underline; }
-.panel p { margin: 0; font-size: 0.9375rem; color: var(--ink-soft); line-height: 1.45; }
-
-/* Worth knowing: same StoryCard as the event rivers, with a left-border
-   accent so a reader can tell these were curated, not just next in line. */
-.worth-knowing { margin-top: var(--ui-5); }
-.plain-list { list-style: none; margin: 0; padding: 0; }
-.home-glance { margin: var(--ui-4) 0; }
-.home-events { margin: var(--ui-4) 0; }
-.home-events__block { margin-top: var(--ui-5); }
-
-/* The .latest-from and .more-to-read rules were removed, AdSense "low value
-   content" remediation Phase 0 -- both sections only ever rendered the
-   generic AI content track, which stopped generating (see the two removed
-   sections' own comment further up this file). */
+.statusline li { min-height: 24px; display: inline-flex; align-items: baseline; gap: 0.375rem; }
+.statusline__label { font-size: 0.625rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); }
+.statusline a { color: var(--ink); }
 </style>

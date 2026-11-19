@@ -19,16 +19,25 @@ export interface FrontPageAlertRules {
 
 export interface FrontPageConfig {
   /** A holiday is a candidate from `daysBefore` days ahead, on the day itself when `showOnDay`, and `daysAfter` days past it (all in city time).
-   *  It leads over the weekend only when it is at most `leadWithinDays` days away or falls inside the coming weekend; otherwise the weekend leads and it is secondary. */
+   *  It ranks high (right after an alert) when at most `leadWithinDays` days away; further out it ranks after the weekend (lib/front-page.ts). */
   holiday: { daysBefore: number; showOnDay: boolean; daysAfter: number; leadWithinDays: number };
   /** Which alerts may take the lead slot. Anything not listed here is never a front-page alert. */
   alerts: FrontPageAlertRules;
-  /** A meeting is a candidate when it starts within this many city-time days (today included). */
-  meetingWithinDays: number;
+  /** A meeting is a candidate when it starts within `withinDays` city-time days (today included). Only the main organ (`leadBodies`, body
+   *  keys of config/meetings.ts) may lead; other organs are secondaries at most (owner 2026-11-19). */
+  meeting: { withinDays: number; leadBodies: string[] };
+  /** A big game (the home game of one of `sports`) or a big in-town event leads when it is at most `withinDays` days away. */
+  big: { sports: string[]; withinDays: number };
+  /** Tonight and the weekend need at least this many events to be shown at all ("1 event" never appears). */
+  minEvents: number;
   guides: FrontPageGuide[];
 }
 
-const HOLIDAY_WINDOW = { daysBefore: 7, showOnDay: true, daysAfter: 0, leadWithinDays: 3 } as const;
+// Visible from 14 days before; leads when at most 7 days away, and further out only after the other lead candidates (owner 2026-11-19).
+export const HOLIDAY_WINDOW = { daysBefore: 14, showOnDay: true, daysAfter: 0, leadWithinDays: 7 } as const;
+export const BIG_WITHIN_DAYS = 3;
+export const MIN_EVENTS = 3;
+const US_MEETING = { withinDays: 2, leadBodies: ['city-council'] };
 
 const US_SEVERE_WEATHER = [
   'Tornado Warning', 'Blizzard Warning', 'Winter Storm Warning', 'Flash Flood Warning', 'Severe Thunderstorm Warning',
@@ -44,15 +53,17 @@ const TRAFFIC_GUIDE: FrontPageGuide = { title: 'Traffic and road closures', url:
 
 export const FRONT_PAGE_BY_TOWN: Record<string, FrontPageConfig> = {
   broomfield_co: {
-    holiday: { ...HOLIDAY_WINDOW }, alerts: US_ALERTS, meetingWithinDays: 2,
+    holiday: { ...HOLIDAY_WINDOW }, alerts: US_ALERTS, meeting: US_MEETING, minEvents: MIN_EVENTS, big: { sports: [], withinDays: BIG_WITHIN_DAYS },
     guides: [FACILITIES_GUIDE, CITY_HALL_GUIDE, HOLIDAYS_GUIDE, TRAFFIC_GUIDE, EVENTS_GUIDE],
   },
   brookings_sd: {
-    holiday: { ...HOLIDAY_WINDOW }, alerts: US_ALERTS, meetingWithinDays: 2,
+    holiday: { ...HOLIDAY_WINDOW }, alerts: US_ALERTS, meeting: US_MEETING, minEvents: MIN_EVENTS,
+    // SDSU football is the town's big game (owner 2026-11-19: Brookings 18 Nov leads with the football, not that night's basketball).
+    big: { sports: ['football'], withinDays: BIG_WITHIN_DAYS },
     guides: [FACILITIES_GUIDE, CITY_HALL_GUIDE, HOLIDAYS_GUIDE, EVENTS_GUIDE],
   },
   moreno_valley_ca: {
-    holiday: { ...HOLIDAY_WINDOW }, alerts: US_ALERTS, meetingWithinDays: 2,
+    holiday: { ...HOLIDAY_WINDOW }, alerts: US_ALERTS, meeting: US_MEETING, minEvents: MIN_EVENTS, big: { sports: [], withinDays: BIG_WITHIN_DAYS },
     guides: [FACILITIES_GUIDE, CITY_HALL_GUIDE, HOLIDAYS_GUIDE, TRAFFIC_GUIDE, EVENTS_GUIDE],
   },
   glasgow: GLASGOW_FRONT_PAGE,

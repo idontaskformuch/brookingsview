@@ -234,9 +234,9 @@ describe('events never show a big card or a full-size FallbackTile', () => {
   it('the old per-day list and row components are gone and no page uses them', () => {
     for (const f of ['../pages/index.astro', '../pages/events.astro']) expect(readFileSync(new URL(f, import.meta.url), 'utf8'), f).not.toMatch(/EventDayList|events\/EventRow/);
   });
-  it('events.astro, the front page and /university/ print their lists with the date-tile components', () => {
+  it('events.astro and /university/ print their lists with the date-tile components; the front page shows section blocks (Fas 2 hub, owner 2026-11-19)', () => {
     expect(readFileSync(new URL('../pages/events.astro', import.meta.url), 'utf8')).toMatch(/<PopEventList days=\{busyDays\}/);
-    expect(readFileSync(new URL('../pages/index.astro', import.meta.url), 'utf8')).toMatch(/<PopEventList days=\{todayBlock\.days\}/);
+    expect(readFileSync(new URL('../pages/index.astro', import.meta.url), 'utf8')).toMatch(/<SectionBlock id=\{id\}/);
     expect(readFileSync(new URL('../pages/university.astro', import.meta.url), 'utf8')).toMatch(/<PopAcademicList dates=\{academicDates\}/);
   });
 });

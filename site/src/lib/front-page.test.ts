@@ -26,7 +26,7 @@ const entry = (id: string, title: string, start: string, venue: string | null = 
   distanceMiles: null, driveMinutes: null, checked: '2026-11-06',
 });
 const meeting = (o: Partial<MeetingView>): MeetingView => ({
-  id: 1, source: 'legistar', bodyKey: 'council', bodyLabel: 'City Council', tone: 'civic' as any, typeLabel: null, closed: false, unknownOrgan: false,
+  id: 1, source: 'legistar', bodyKey: 'city-council', bodyLabel: 'City Council', tone: 'civic' as any, typeLabel: null, closed: false, unknownOrgan: false,
   chipLabel: 'City Council', collapsedGroup: null, ymd: '2026-11-10', dateLabel: 'Tue, Nov 10', time: '6:00 PM', startMs: null, location: null,
   agendaUrl: null, minutesUrl: null, videoUrl: null, detailUrl: null, storySlug: null, items: ['Water rate study', 'Budget amendment'], topics: [],
   jointWith: null, quorumNotice: false, cancelled: false, postponed: false, firstSeen: null, agendaPublished: null, ...o,
@@ -56,14 +56,14 @@ describe('holidayVisible (window from config: 7 before, the day, 0 after)', () =
   });
 });
 
-describe('Veterans Day (Wed 11 Nov 2026): visible 4-11 Nov, gone 12 Nov', () => {
+describe('Veterans Day (Wed 11 Nov 2026): visible 28 Oct-11 Nov (14 days before), gone 12 Nov', () => {
   for (const t of [BF]) { // the only town with a Veterans Day page
     it(`${t.city}`, () => {
-      const at = (d: string) => new Date(`2026-11-${d}T18:00:00Z`);
+      const at = (d: string) => new Date(`2026-${d}T18:00:00Z`);
       const labels = (d: string) => all(selectFrontPage(input(t, {}, at(d)), at(d))).filter((x) => x.type === 'holiday').map((x) => x.headline);
-      expect(labels('03')).not.toContain('Veterans Day');
-      for (const d of ['04', '07', '10', '11']) expect(labels(d)).toContain('Veterans Day');
-      expect(labels('12')).not.toContain('Veterans Day');
+      expect(labels('10-27')).not.toContain('Veterans Day');
+      for (const d of ['10-28', '11-04', '11-07', '11-10', '11-11']) expect(labels(d)).toContain('Veterans Day');
+      expect(labels('11-12')).not.toContain('Veterans Day');
     });
   }
   it('the day itself is decided in city time, not UTC (Broomfield 11 Nov 20:00 local = 12 Nov 03:00Z still shows it)', () => {
@@ -74,23 +74,23 @@ describe('Veterans Day (Wed 11 Nov 2026): visible 4-11 Nov, gone 12 Nov', () => 
   });
 });
 
-describe('Christmas (Glasgow): visible 18-25 Dec, gone 26 Dec', () => {
+describe('Christmas (Glasgow): visible 11-25 Dec, gone 26 Dec', () => {
   it('Glasgow', () => {
     const t = TOWNS[3];
     const has = (d: string) => { const at = new Date(`2026-12-${d}T12:00:00Z`); return all(selectFrontPage(input(t, {}, at), at)).some((x) => x.headline === 'Christmas'); };
-    expect(has('17')).toBe(false);
-    for (const d of ['18', '24', '25']) expect(has(d)).toBe(true);
+    expect(has('10')).toBe(false);
+    for (const d of ['11', '18', '24', '25']) expect(has(d)).toBe(true);
     expect(has('26')).toBe(false);
   });
 });
 
-describe('Thanksgiving (Thu 26 Nov 2026): visible from 19 Nov, gone 27 Nov', () => {
+describe('Thanksgiving (Thu 26 Nov 2026): visible from 12 Nov, gone 27 Nov', () => {
   for (const t of TOWNS.filter((x) => x.id !== 'glasgow')) {
     it(`${t.city}`, () => {
       const lead = (d: string) => { const at = new Date(`2026-11-${d}T${d === '27' ? '08' : '18'}:00:00Z`); return selectFrontPage(input(t, {}, at), at); };
       const has = (d: string) => all(lead(d)).some((x) => x.headline === 'Thanksgiving');
-      expect(has('18')).toBe(false);
-      for (const d of ['19', '22', '25', '26']) expect(has(d)).toBe(true);
+      expect(has('11')).toBe(false);
+      for (const d of ['12', '18', '19', '22', '25', '26']) expect(has(d)).toBe(true);
       expect(has('27')).toBe(false);
     });
   }
@@ -106,14 +106,18 @@ describe('Thanksgiving (Thu 26 Nov 2026): visible from 19 Nov, gone 27 Nov', () 
 describe('priority and fallbacks', () => {
   const alert: FrontPageAlert = { headline: 'Winter Storm Warning', url: '/weather/', kind: 'weather', event: 'Winter Storm Warning', until: '2026-11-07T20:00:00Z' };
   const fri = new Date('2026-11-06T19:00:00Z'); // Fri 12:00 Denver
-  const sat8pm = [entry('a', 'Jazz Night', '2026-11-07T02:00:00Z'), entry('b', 'Comedy Hour', '2026-11-08T02:00:00Z', 'Mamas Hall')];
+  const sat8pm = [entry('a', 'Jazz Night', '2026-11-07T02:00:00Z'), entry('b', 'Comedy Hour', '2026-11-08T02:00:00Z', 'Mamas Hall'), entry('f', 'Swing Dance', '2026-11-08T03:00:00Z', 'Elks Lodge')];
 
   it('weekend leads on Friday at 12:00, not at 11:59', () => {
     expect(inWeekendWindow(fri, BF.tz)).toBe(true);
     expect(inWeekendWindow(new Date(fri.getTime() - 60_000), BF.tz)).toBe(false);
     const fp = selectFrontPage(input(BF, { evening: sat8pm, holidays: [] }, fri), fri);
     expect(fp.lead.type).toBe('weekend');
-    expect(fp.lead.deck[0]).toBe('2 events in Broomfield this weekend, including Jazz Night at The Venue and Comedy Hour at Mamas Hall.');
+    expect(fp.lead.deck[0]).toMatch(/^3 events in Broomfield this weekend, including Jazz Night at The Venue/);
+  });
+  it('the weekend with fewer than 3 events is not shown at all ("1 event" never appears)', () => {
+    const fp = selectFrontPage(input(BF, { evening: sat8pm.slice(0, 2), holidays: [] }, fri), fri);
+    expect(all(fp).some((x) => x.type === 'weekend')).toBe(false);
   });
   it('weekend window runs through Sunday 23:59 city time and ends Monday', () => {
     const sun = new Date('2026-11-09T06:59:00Z'); // Sun 23:59 Denver
@@ -125,24 +129,24 @@ describe('priority and fallbacks', () => {
     expect(selectFrontPage(input(BF, { evening: sat8pm, alerts: [{ ...alert, event: 'Freeze Warning' }], holidays: [] }, fri), fri).lead.type).toBe('weekend');
     expect(selectFrontPage(input(BF, { evening: sat8pm, alerts: [{ ...alert, until: '2026-11-06T18:00:00Z' }], holidays: [] }, fri), fri).lead.type).toBe('weekend');
   });
-  it('Fri 6 Nov: weekend leads, Veterans Day (5 days off) is secondary', () => {
+  it('Fri 6 Nov: Veterans Day (5 days off, within 7) leads, the weekend is secondary', () => {
     const fp = selectFrontPage(input(BF, { evening: sat8pm }, fri), fri);
-    expect(fp.lead.type).toBe('weekend');
-    expect(fp.secondaries.map((s) => s.type)).toContain('holiday');
+    expect(fp.lead.headline).toBe('Veterans Day');
+    expect(fp.secondaries.map((s) => s.type)).toContain('weekend');
   });
   it('Mon 9 Nov: Veterans Day (2 days off) leads', () => {
     const mon = new Date('2026-11-09T18:00:00Z');
     expect(selectFrontPage(input(BF, { evening: sat8pm }, mon), mon).lead.headline).toBe('Veterans Day');
   });
-  it('the lead threshold is configurable per town', () => {
-    const cfg = { ...BF_CFG, holiday: { ...BF_CFG.holiday, leadWithinDays: 5 } };
-    expect(selectFrontPage(input(BF, { evening: sat8pm, config: cfg }, fri), fri).lead.headline).toBe('Veterans Day');
+  it('the lead threshold is configurable per town; beyond it the holiday ranks after the weekend', () => {
+    const at = (n: number) => selectFrontPage(input(BF, { evening: sat8pm, config: { ...BF_CFG, holiday: { ...BF_CFG.holiday, leadWithinDays: n } } }, fri), fri);
+    expect(at(5).lead.headline).toBe('Veterans Day');
+    expect(at(4).lead.type).toBe('weekend');
+    expect(at(4).secondaries.map((s) => s.headline)).toContain('Veterans Day');
   });
-  it('a holiday inside the coming weekend leads even beyond the threshold; one after it does not', () => {
-    const cfg = { ...BF_CFG, holiday: { ...BF_CFG.holiday, leadWithinDays: 0 } };
-    const h = (label: string, ymd: string) => [{ slug: label, label, day: dayOf(ymd), url: '/holidays/' }];
-    expect(selectFrontPage(input(BF, { evening: sat8pm, holidays: h('Sunday Fair', '2026-11-08'), config: cfg }, fri), fri).lead.headline).toBe('Sunday Fair');
-    expect(selectFrontPage(input(BF, { evening: sat8pm, holidays: h('Monday Fair', '2026-11-09'), config: cfg }, fri), fri).lead.type).toBe('weekend');
+  it('a holiday further out than 7 days still leads when nothing above it has data (no guide lead while a holiday is visible)', () => {
+    const now = new Date('2026-11-17T18:00:00Z'); // Tue, Thanksgiving 9 days off
+    expect(selectFrontPage(input(BF, {}, now), now).lead.headline).toBe('Thanksgiving');
   });
   it('alert allowlist: Tornado Warning leads; Freeze Warning, Wind Advisory and expired ones never do; traffic needs a full closure or a fatal', () => {
     const lead = (a: Partial<FrontPageAlert>) => selectFrontPage(input(BF, { evening: sat8pm, holidays: [], alerts: [{ ...alert, ...a }] }, fri), fri).lead.type;
@@ -208,14 +212,15 @@ describe('priority and fallbacks', () => {
       }
     }
   }, 30_000);
-  it('a game today (city time) is a candidate and ranks above a meeting', () => {
+  it('an ordinary game today is a secondary, never the lead; a council meeting outranks it', () => {
     const t = TOWNS[1];
     const tue = new Date('2026-11-10T15:00:00Z');
-    const game: FrontPageGame = { team: 'Jackrabbits', opponent: 'North Dakota', startsAt: '2026-11-11T01:00:00Z', home: true, url: '/jackrabbits/' };
+    const game: FrontPageGame = { team: 'Jackrabbits', opponent: 'North Dakota', startsAt: '2026-11-11T01:00:00Z', home: true, url: '/jackrabbits/', sport: 'mbb' };
     const fp = selectFrontPage(input(t, { games: [game], meetings: [meeting({})], holidays: [] }, tue), tue);
-    expect(fp.lead.type).toBe('game_day');
-    expect(fp.lead.deck[0]).toBe('Jackrabbits play North Dakota at home at 7:00 PM.');
-    expect(fp.secondaries[0].type).toBe('meeting');
+    expect(fp.lead.type).toBe('meeting');
+    const g = fp.secondaries.find((x) => x.type === 'game_day')!;
+    expect(g.deck[0]).toBe('Jackrabbits play North Dakota at home at 7:00 PM.');
+    expect(selectFrontPage(input(t, { games: [game], holidays: [] }, tue), tue).lead.type).toBe('guide');
   });
   it('a game on another city-time day is not a candidate', () => {
     const t = TOWNS[1];
@@ -229,6 +234,12 @@ describe('priority and fallbacks', () => {
     expect(fp.lead.type).toBe('meeting');
     expect(fp.lead.deck[0]).toBe('City Council meets Tuesday at 6:00 PM with 2 items on the agenda, including Water rate study and Budget amendment.');
   });
+  it('only the main organ leads: a Planning Commission meeting is a secondary', () => {
+    const tue = new Date('2026-11-10T15:00:00Z');
+    const fp = selectFrontPage(input(BF, { meetings: [meeting({ bodyKey: 'planning-commission', bodyLabel: 'Planning Commission' })], holidays: [] }, tue), tue);
+    expect(fp.lead.type).toBe('guide');
+    expect(fp.secondaries.map((x) => x.headline)).toContain('Planning Commission meets Tuesday');
+  });
   it('a meeting with no parsed agenda items, a cancelled one, and one three days out are not candidates', () => {
     const mon = new Date('2026-11-09T15:00:00Z');
     const ms = [meeting({ items: [] }), meeting({ id: 2, cancelled: true }), meeting({ id: 3, ymd: '2026-11-12' })];
@@ -237,11 +248,14 @@ describe('priority and fallbacks', () => {
   it('tonight on weekdays, never on the weekend window', () => {
     const wed = new Date('2026-11-11T21:00:00Z'); // Wed 14:00 Denver (Veterans Day itself is removed to test tonight)
     const one = [entry('c', 'Trivia', '2026-11-12T01:30:00Z', 'Pub 1')]; // Wed 18:30 Denver
-    const fp = selectFrontPage(input(BF, { evening: one, holidays: [] }, wed), wed);
+    expect(all(selectFrontPage(input(BF, { evening: one, holidays: [] }, wed), wed)).some((x) => x.type === 'tonight')).toBe(false); // "1 event" never
+    const three = [...one, entry('g', 'Open Mic', '2026-11-12T02:00:00Z', 'Pub 2'), entry('h', 'Karaoke', '2026-11-12T03:00:00Z', 'Pub 3')];
+    const fp = selectFrontPage(input(BF, { evening: three, holidays: [] }, wed), wed);
     expect(fp.lead.type).toBe('tonight');
-    expect(fp.lead.deck[0]).toBe('1 event in Broomfield tonight, including Trivia at Pub 1.');
+    expect(fp.lead.deck[0]).toMatch(/^3 events in Broomfield tonight, including Trivia at Pub 1/);
     const sat = new Date('2026-11-07T21:00:00Z');
-    expect(all(selectFrontPage(input(BF, { evening: [entry('d', 'X', '2026-11-08T02:00:00Z')], holidays: [] }, sat), sat)).some((x) => x.type === 'tonight')).toBe(false);
+    const satThree = ['d', 'i', 'j'].map((id, k) => entry(id, `X${k}`, `2026-11-08T0${2 + k}:00:00Z`));
+    expect(all(selectFrontPage(input(BF, { evening: satThree, holidays: [] }, sat), sat)).some((x) => x.type === 'tonight')).toBe(false);
   });
   it('falls back to a guide, rotating by day of year, and is never empty', () => {
     const a = new Date('2026-03-10T18:00:00Z');
@@ -252,14 +266,14 @@ describe('priority and fallbacks', () => {
     expect(fa.lead.url).not.toBe(fb.lead.url);
     expect(fa.secondaries.length).toBeGreaterThanOrEqual(1); // guide cap (2 incl. lead) wins over the 2-secondary floor
   });
-  it('secondaries: 2-3, one per non-guide type, never the lead, in priority order', () => {
+  it('secondaries: 3-4, one per non-guide type, never the lead, in priority order', () => {
     const now = new Date('2026-11-10T16:00:00Z'); // Tue, Veterans Day tomorrow
     const fp = selectFrontPage(input(BF, {
       alerts: [{ headline: 'Tornado Warning', url: '/weather/', kind: 'weather', event: 'Tornado Warning', until: null }],
-      meetings: [meeting({})], evening: [entry('e', 'Open Mic', '2026-11-11T01:30:00Z')],
+      meetings: [meeting({})], evening: ['e', 'k', 'l'].map((id, k) => entry(id, `Show ${k}`, `2026-11-11T0${1 + k}:30:00Z`)),
     }, now), now);
     expect(fp.lead.type).toBe('alert');
-    expect(fp.secondaries.map((s) => s.type)).toEqual(['holiday', 'meeting', 'tonight']);
+    expect(fp.secondaries.map((s) => s.type)).toEqual(['holiday', 'tonight', 'meeting', 'guide']);
     expect(fp.secondaries.every((s) => s.url !== fp.lead.url)).toBe(true);
     const order = fp.secondaries.map((s) => FRONT_PAGE_PRIORITY.indexOf(s.type));
     expect([...order].sort((x, y) => x - y)).toEqual(order);
@@ -277,7 +291,7 @@ describe('every town, every day of a year: valid, no empty state, no template de
           for (const s of [it.headline, it.url, ...it.deck]) expect(s, `${t.id} ${it.type}`).not.toMatch(BAD);
         }
         expect(fp.secondaries.length).toBeGreaterThanOrEqual(fp.lead.type === "guide" ? 1 : 2); // a guide lead leaves room for one more guide only
-        expect(fp.secondaries.length).toBeLessThanOrEqual(3);
+        expect(fp.secondaries.length).toBeLessThanOrEqual(4);
         expect(fp.meta_description.length).toBeLessThanOrEqual(160);
         expect(fp.meta_description).not.toBe('');
       }
@@ -318,8 +332,12 @@ describe('config', () => {
       if (cfg.guides.some((g) => g.url === '/traffic/')) expect(CITIES_WITH_TRAFFIC.has(id), `${id} lists /traffic/`).toBe(true);
     }
   });
-  it('the holiday window is 7 / on the day / 0 for every town', () => {
-    for (const cfg of Object.values(FRONT_PAGE_BY_TOWN)) expect(cfg.holiday).toEqual({ daysBefore: 7, showOnDay: true, daysAfter: 0, leadWithinDays: 3 });
+  it('the holiday window is 14 before / on the day / 0 after, leading within 7, for every town; tonight/weekend need 3 events; big = 3 days', () => {
+    for (const cfg of Object.values(FRONT_PAGE_BY_TOWN)) {
+      expect(cfg.holiday).toEqual({ daysBefore: 14, showOnDay: true, daysAfter: 0, leadWithinDays: 7 });
+      expect(cfg.minEvents).toBe(3);
+      expect(cfg.big.withinDays).toBe(3);
+    }
   });
 });
 
@@ -332,25 +350,62 @@ describe('"in {Town}" is said only of in-town events (owner 2026-11-07), all fou
     const run = (evening: EveningEntry[]) => selectFrontPage(input(t, { evening, holidays: [] }, now), now).lead;
     const km = t.locale === 'en-GB';
     it(`${t.city}: only regional shows -> "This weekend near ${t.city}" with each distance`, () => {
-      const lead = run([regional('r1'), regional('r2')]);
+      const lead = run([regional('r1'), regional('r2'), regional('r3')]);
       expect(lead.type).toBe('weekend');
       expect(lead.headline).toBe(`This weekend near ${t.city}`);
-      expect(lead.deck[0]).toContain(`2 events near ${t.city} this weekend`);
+      expect(lead.deck[0]).toContain(`3 events near ${t.city} this weekend`);
       expect(lead.deck[0]).toContain(km ? '(~21 km away)' : '(~13 miles away)');
       expect(lead.deck[0]).not.toContain(` in ${t.city}`);
     });
-    it(`${t.city}: an in-town event -> "This weekend in ${t.city}", counting it alone`, () => {
-      const lead = run([regional('r1'), regional('r2'), entry('loc', 'Local Jazz', '2026-11-07T20:30:00Z', 'The Venue')]);
+    it(`${t.city}: three in-town events -> "This weekend in ${t.city}", counting them alone; fewer -> "near"`, () => {
+      const loc = ['l1', 'l2', 'l3'].map((id, k) => entry(id, `Local Jazz ${k}`, `2026-11-07T2${k}:30:00Z`, 'The Venue'));
+      const lead = run([regional('r1'), regional('r2'), regional('r3'), ...loc]);
       expect(lead.headline).toBe(`This weekend in ${t.city}`);
-      expect(lead.deck[0]).toBe(`1 event in ${t.city} this weekend, including Local Jazz at The Venue.`);
+      expect(lead.deck[0]).toMatch(new RegExp(`^3 events in ${t.city} this weekend`));
+      expect(run([regional('r1'), regional('r2'), regional('r3'), loc[0]]).headline).toBe(`This weekend near ${t.city}`);
     });
   }
   it('tonight: regional only -> "Tonight near", in-town present -> "Tonight in"', () => {
     const wed = new Date('2026-11-11T21:00:00Z');
-    const far = { ...entry('t1', 'Arena Tour', '2026-11-12T02:00:00Z', 'Big Arena'), source: 'ticketmaster' as const, distanceMiles: 13 };
-    expect(selectFrontPage(input(BF, { evening: [far], holidays: [] }, wed), wed).lead.headline).toBe('Tonight near Broomfield');
-    const both = selectFrontPage(input(BF, { evening: [far, entry('t2', 'Trivia', '2026-11-12T01:30:00Z', 'Pub 1')], holidays: [] }, wed), wed).lead;
+    const far = ['t1', 't3', 't4'].map((id, k) => ({ ...entry(id, `Arena Tour ${k}`, `2026-11-12T0${2 + k}:00:00Z`, 'Big Arena'), source: 'ticketmaster' as const, distanceMiles: 13 }));
+    expect(selectFrontPage(input(BF, { evening: far, holidays: [] }, wed), wed).lead.headline).toBe('Tonight near Broomfield');
+    const loc = ['t2', 't5', 't6'].map((id, k) => entry(id, `Trivia ${k}`, `2026-11-12T0${1 + k}:30:00Z`, 'Pub 1'));
+    const both = selectFrontPage(input(BF, { evening: [...far, ...loc], holidays: [] }, wed), wed).lead;
     expect(both.headline).toBe('Tonight in Broomfield');
-    expect(both.deck[0]).toBe('1 event in Broomfield tonight, including Trivia at Pub 1.');
+    expect(both.deck[0]).toMatch(/^3 events in Broomfield tonight/);
+  });
+});
+
+describe('owner 2026-11-19: the lead on 18 Nov 2026, real rows', () => {
+  it('Brookings -> the football (sport_events id 12, Indiana State, Sat 21 Nov), not that night\'s basketball (id 49, Wyoming)', () => {
+    const t = TOWNS[1];
+    const now = new Date('2026-11-18T16:00:00Z'); // Wed 10:00 Brookings
+    const games: FrontPageGame[] = [
+      { team: 'Jackrabbits', opponent: 'Wyoming', startsAt: '2026-11-19T01:00:00Z', home: true, url: '/jackrabbits/', sport: 'wbb' },
+      { team: 'Jackrabbits', opponent: 'Indiana State', startsAt: '2026-11-21T20:00:00Z', home: true, url: '/jackrabbits/', sport: 'football' },
+    ];
+    const fp = selectFrontPage(input(t, { games }, now), now);
+    expect(fp.lead.type).toBe('game_day');
+    expect(fp.lead.headline).toBe('Jackrabbits play Indiana State');
+    expect(fp.lead.deck[0]).toBe('Jackrabbits play Indiana State at home Saturday at 2:00 PM.');
+    expect(fp.secondaries.map((x) => x.headline)).toContain('Thanksgiving');
+  });
+  it('Moreno Valley -> Thanksgiving (stories event-6199/6200/6201, the evening rows of 18 Nov, are not three evening events)', () => {
+    const t = TOWNS[2];
+    const own = (id: string, title: string, start: string, end: string, venue: string): EveningEntry => ({ ...entry(id, title, start, venue), end, group: null });
+    const evening = [
+      own('event-6199', 'The Mix', '2026-11-19T00:00:00Z', '2026-11-19T02:00:00Z', 'Moreno Valley Public Library Mall Branch'),
+      own('event-6200', 'Talk MoVal', '2026-11-19T01:00:00Z', '2026-11-19T02:00:00Z', 'Main Library'),
+      own('event-6201', 'Pijama y Cuentos ~ Pajamas & Stories', '2026-11-19T02:00:00Z', '2026-11-19T02:30:00Z', 'Main Library'),
+    ];
+    for (const at of ['2026-11-18T16:00:00Z', '2026-11-18T23:30:00Z']) {
+      const now = new Date(at);
+      expect(selectFrontPage(input(t, { evening }, now), now).lead.headline, at).toBe('Thanksgiving');
+    }
+  });
+  it('Broomfield -> Thanksgiving (no event rows on 18 Nov; the next council meeting, id 11824, is 1 Dec)', () => {
+    const now = new Date('2026-11-18T17:00:00Z');
+    const ms = [meeting({ id: 11824, bodyLabel: 'City Council', ymd: '2026-12-01' })];
+    expect(selectFrontPage(input(BF, { meetings: ms }, now), now).lead.headline).toBe('Thanksgiving');
   });
 });

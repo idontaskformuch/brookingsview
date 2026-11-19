@@ -2,10 +2,15 @@
  *  takes the town's settings and its data, and every date and time is worked out in the town's own timezone (local-day.ts), never the build
  *  machine's or the visitor's.
  *
- *  Priority, highest first: alert, holiday, weekend, game_day, meeting, tonight, guide. A holiday that is more than `leadWithinDays` away (and not
- *  inside the coming weekend) drops below the weekend, so it is secondary while the weekend window is open. A secondary is the next-best candidate, at most one per
- *  type and never the lead. `guide` is always a candidate (the evergreen pages of config/front-page.ts rotate by day of year), so the page
- *  never has an empty state. All text is a template over data fields (front-page-decks.ts); there is no model text here. */
+ *  Lead priority with thresholds (owner 2026-11-19, Fas 2 "front page as a hub"), highest first:
+ *    alert > holiday within `holiday.leadWithinDays` (7) > big game / big event within `big.withinDays` (3: a home game of a configured
+ *    sport, or an in-town marquee or configured top event; the sooner first) > tonight with at least `minEvents` (3) events > a meeting of
+ *    the main organ (`meeting.leadBodies`) > the weekend with at least `minEvents` events > a holiday further out (inside `holiday.daysBefore`)
+ *    > guide.
+ *  Other meetings and an ordinary game today never lead; they can be secondaries. Tonight and the weekend under `minEvents` are not shown at
+ *  all ("1 event" never appears). A secondary is the next-best candidate, at most one per type and never the lead, up to MAX_SECONDARIES.
+ *  `guide` is always a candidate (the evergreen pages of config/front-page.ts rotate by day of year), so the page never has an empty state.
+ *  All text is a template over data fields (front-page-decks.ts); there is no model text here. */
 import type { MeetingView } from './meetings-view';
 import type { EveningEntry } from './evening-items';
 import { buildEveningSections } from './evening-page';
@@ -16,10 +21,12 @@ import type { FrontPageConfig } from '../config/front-page';
 import { IN_TOWN_THRESHOLD_MILES } from './ticketmaster';
 import { fitDescription } from './meta-description';
 
-export type FrontPageType = 'alert' | 'holiday' | 'weekend' | 'game_day' | 'meeting' | 'tonight' | 'guide';
+export type FrontPageType = 'alert' | 'holiday' | 'game_day' | 'big_event' | 'tonight' | 'meeting' | 'weekend' | 'guide';
 
 /** Highest priority first. */
-export const FRONT_PAGE_PRIORITY: FrontPageType[] = ['alert', 'holiday', 'weekend', 'game_day', 'meeting', 'tonight', 'guide'];
+export const FRONT_PAGE_PRIORITY: FrontPageType[] = ['alert', 'holiday', 'game_day', 'big_event', 'tonight', 'meeting', 'weekend', 'guide'];
+/** Lead + 3-4 secondaries (Fas 2). */
+export const MAX_SECONDARIES = 4;
 
 export interface FrontPageItem {
   type: FrontPageType;
@@ -63,7 +70,9 @@ export interface FrontPageHoliday {
   /** The page's own insight lines for this season (lib/holiday-view.ts holidayInsights: confirmed rows that change a plan). */
   insights?: string[];
 }
-export interface FrontPageGame { team: string; opponent: string; startsAt: string; home: boolean; url: string }
+export interface FrontPageGame { team: string; opponent: string; startsAt: string; home: boolean; url: string; /** sport key ('football', 'mbb' ...) */ sport?: string }
+/** A big in-town event the caller found (an in-town Ticketmaster marquee, a configured top event such as Hobo Day). */
+export interface FrontPageBigEvent { title: string; startsAt: string; url: string; venue: string | null }
 
 export interface FrontPageInput {
   cityName: string;
@@ -75,6 +84,7 @@ export interface FrontPageInput {
   evening: EveningEntry[];
   games: FrontPageGame[];
   meetings: MeetingView[];
+  bigEvents?: FrontPageBigEvent[];
 }
 
 export const WEEKEND_FROM_HOUR = 12;
@@ -195,33 +205,66 @@ function weekendItem(i: FrontPageInput, now: Date): FrontPageItem | null {
     const sections = buildWeekendSections(entries, now, i.timezone).filter((s) => s.day >= today);
     return { n: sections.reduce((sum, s) => sum + s.count, 0), tops: showsOf(sections.flatMap((s) => s.highlights.slice(0, 1))) };
   };
+  const min = i.config.minEvents;
   const inTown = count(live.filter(isInTown));
-  if (inTown.n > 0) {
+  if (inTown.n >= min) {
     return { type: 'weekend', headline: `This weekend in ${i.cityName}`, deck: [eventsDeck({ n: inTown.n, city: i.cityName, when: 'this weekend', tops: inTown.tops })], url: '/this-weekend/' };
   }
   const regional = count(live);
-  if (regional.n === 0) return null;
+  if (regional.n < min) return null;
   return {
     type: 'weekend', headline: `This weekend near ${i.cityName}`, url: '/this-weekend/',
     deck: [eventsDeck({ n: regional.n, city: i.cityName, when: 'this weekend', tops: regional.tops, scope: 'near', unit: i.locale === 'en-GB' ? 'km' : 'miles' })],
   };
 }
 
-function gameItem(i: FrontPageInput, now: Date, today: number): FrontPageItem | null {
+/** Not over yet (a start up to three hours ago still counts). */
+const notOver = (iso: string, now: Date) => new Date(iso).getTime() > now.getTime() - 3 * 3_600_000;
+
+/** A game: `big` = the home game of a configured big sport within `big.withinDays` city-time days (today included); otherwise an ordinary
+ *  game today (never a lead). `at` = its start, for ordering against a big event. */
+function gameItem(i: FrontPageInput, now: Date, today: number, big: boolean): (FrontPageItem & { at: string }) | null {
   const g = i.games
-    .filter((x) => localDayNumber(new Date(x.startsAt), i.timezone) === today && new Date(x.startsAt).getTime() > now.getTime() - 3 * 3_600_000)
+    .filter((x) => notOver(x.startsAt, now))
+    .filter((x) => {
+      const d = localDayNumber(new Date(x.startsAt), i.timezone) - today;
+      return big ? x.home && !!x.sport && i.config.big.sports.includes(x.sport) && d >= 0 && d <= i.config.big.withinDays : d === 0;
+    })
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0];
   if (!g) return null;
+  const day = localDayNumber(new Date(g.startsAt), i.timezone);
+  const when = day === today ? '' : ` ${weekdayName(day, i.locale)}`;
   const where = g.home ? 'at home' : 'away';
-  return { type: 'game_day', headline: `${g.team} play ${g.opponent}`, deck: [`${g.team} play ${g.opponent} ${where} at ${timeLabel(g.startsAt, i.timezone, i.locale)}.`], url: g.url };
+  return {
+    type: 'game_day', headline: `${g.team} play ${g.opponent}`, url: g.url, at: g.startsAt,
+    deck: [`${g.team} play ${g.opponent} ${where}${when} at ${timeLabel(g.startsAt, i.timezone, i.locale)}.`],
+    ...(day === today ? {} : { kicker: `Game day · ${weekdayName(day, i.locale)}` }),
+  };
 }
 
-function meetingItem(i: FrontPageInput, today: number): FrontPageItem | null {
+/** The soonest big in-town event within `big.withinDays` days that has not ended. */
+function bigEventItem(i: FrontPageInput, now: Date, today: number): (FrontPageItem & { at: string }) | null {
+  const e = (i.bigEvents ?? [])
+    .filter((x) => notOver(x.startsAt, now))
+    .filter((x) => { const d = localDayNumber(new Date(x.startsAt), i.timezone) - today; return d >= 0 && d <= i.config.big.withinDays; })
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0];
+  if (!e) return null;
+  const day = localDayNumber(new Date(e.startsAt), i.timezone);
+  const when = day === today ? 'today' : weekdayName(day, i.locale);
+  return {
+    type: 'big_event', headline: e.title, url: e.url, at: e.startsAt, kicker: day === today ? 'Today' : weekdayName(day, i.locale),
+    deck: [`${e.title}${e.venue ? ` at ${e.venue}` : ''}, ${when} at ${timeLabel(e.startsAt, i.timezone, i.locale)}.`],
+  };
+}
+
+/** The next meeting within `meeting.withinDays`; `main`: only the main organ (`meeting.leadBodies`), otherwise only the other organs. */
+function meetingItem(i: FrontPageInput, today: number, main: boolean): FrontPageItem | null {
   const ymdDay = (ymd: string) => { const [y, m, d] = ymd.split('-').map(Number); return Date.UTC(y, m - 1, d) / DAY_MS; };
   const m = i.meetings
     .filter((x) => !x.quorumNotice && !x.cancelled && !x.postponed && !x.closed && !x.collapsedGroup)
     .filter((x) => x.items.length > 0)
-    .filter((x) => { const d = ymdDay(x.ymd) - today; return d >= 0 && d <= i.config.meetingWithinDays; })
+    .filter((x) => i.config.meeting.leadBodies.includes(x.bodyKey) === main)
+    .filter((x) => { const d = ymdDay(x.ymd) - today; return d >= 0 && d <= i.config.meeting.withinDays; })
     .sort((a, b) => a.ymd.localeCompare(b.ymd) || (a.startMs ?? 0) - (b.startMs ?? 0))[0];
   if (!m) return null;
   const weekday = weekdayName(ymdDay(m.ymd), i.locale);
@@ -236,11 +279,12 @@ function tonightItem(i: FrontPageInput, now: Date): FrontPageItem | null {
   if (inWeekendWindow(now, i.timezone)) return null;
   const live = i.evening.filter((e) => !hasEnded({ start: e.start, end: e.end }, now, i.timezone));
   const inTown = buildEveningSections(live.filter(isInTown), now, i.timezone)[0];
-  if (inTown && inTown.count > 0) {
+  const min = i.config.minEvents;
+  if (inTown && inTown.count >= min) {
     return { type: 'tonight', headline: `Tonight in ${i.cityName}`, deck: [eventsDeck({ n: inTown.count, city: i.cityName, when: 'tonight', tops: showsOf(inTown.highlights) })], url: '/tonight/' };
   }
   const regional = buildEveningSections(live, now, i.timezone)[0];
-  if (!regional || regional.count === 0) return null;
+  if (!regional || regional.count < min) return null;
   return {
     type: 'tonight', headline: `Tonight near ${i.cityName}`, url: '/tonight/',
     deck: [eventsDeck({ n: regional.count, city: i.cityName, when: 'tonight', tops: showsOf(regional.highlights), scope: 'near', unit: i.locale === 'en-GB' ? 'km' : 'miles' })],
@@ -263,38 +307,46 @@ export function metaDescriptionOf(lead: FrontPageItem): string {
 
 export function selectFrontPage(i: FrontPageInput, now: Date): FrontPage {
   const today = localDayNumber(now, i.timezone);
-  const byType: Partial<Record<FrontPageType, FrontPageItem>> = {};
-  const set = (it: FrontPageItem | null) => { if (it) byType[it.type] = it; };
-  set(alertItem(i, now));
-  set(holidayItem(i, today));
-  set(weekendItem(i, now));
-  set(gameItem(i, now, today));
-  set(meetingItem(i, today));
-  set(tonightItem(i, now));
+  const holiday = holidayItem(i, today);
+  const nearest = i.holidays.filter((h) => postVisible(today, h, i.config.holiday))
+    .map((h) => dayOf(h, today).day - today).sort((a, b) => Math.abs(a) - Math.abs(b))[0];
+  const holidayNear = !!holiday && nearest !== undefined && nearest <= i.config.holiday.leadWithinDays;
+  const bigGame = gameItem(i, now, today, true);
+  const bigs = [bigGame, bigEventItem(i, now, today)].filter((x): x is FrontPageItem & { at: string } => !!x).sort((a, b) => a.at.localeCompare(b.at));
+  const strip = ({ at: _at, ...it }: FrontPageItem & { at?: string }): FrontPageItem => it;
   const guides = guideItems(i, now);
-  if (guides[0]) byType.guide = guides[0];
-
-  const order = [...FRONT_PAGE_PRIORITY];
-  const hol = i.holidays.filter((h) => postVisible(today, h, i.config.holiday));
-  if (byType.holiday && byType.weekend && !hol.some((h) => holidayLeads(today, dayOf(h, today).day, i.config.holiday))) {
-    order.splice(order.indexOf('holiday'), 1);
-    order.splice(order.indexOf('weekend') + 1, 0, 'holiday');
-  }
-  const ranked = order.map((t) => byType[t]).filter((x): x is FrontPageItem => !!x);
-  if (ranked.length === 0) throw new Error(`front page: no candidate for ${i.cityName}; config/front-page.ts needs at least one guide`);
-  const [lead, ...rest] = ranked;
-  // At most MAX_GUIDES guide items on the page, the lead included.
+  // Natural order; `lead: false` = may be a secondary, never the lead (owner 2026-11-19: other meetings, an ordinary game today).
+  const ranked: { it: FrontPageItem | null; lead: boolean }[] = [
+    { it: alertItem(i, now), lead: true },
+    { it: holidayNear ? holiday : null, lead: true },
+    ...bigs.map((it) => ({ it: strip(it), lead: true })),
+    { it: tonightItem(i, now), lead: true },
+    { it: meetingItem(i, today, true), lead: true },
+    { it: bigGame ? null : (() => { const g = gameItem(i, now, today, false); return g ? strip(g) : null; })(), lead: false },
+    { it: meetingItem(i, today, false), lead: false },
+    { it: weekendItem(i, now), lead: true },
+    { it: holidayNear ? null : holiday, lead: true },
+    ...guides.slice(0, 1).map((it) => ({ it, lead: true })),
+  ];
+  const cands = ranked.filter((r): r is { it: FrontPageItem; lead: boolean } => !!r.it);
+  const leadIdx = cands.findIndex((r) => r.lead);
+  if (leadIdx < 0) throw new Error(`front page: no candidate for ${i.cityName}; config/front-page.ts needs at least one guide`);
+  const lead = cands[leadIdx].it;
+  // At most MAX_GUIDES guide items on the page, the lead included; one item per type.
   let guideCount = lead.type === 'guide' ? 1 : 0;
+  const types = new Set<FrontPageType>([lead.type]);
   const secondaries: FrontPageItem[] = [];
-  for (const it of rest) {
-    if (secondaries.length >= 3) break;
+  for (const { it } of cands.filter((_, k) => k !== leadIdx)) {
+    if (secondaries.length >= MAX_SECONDARIES) break;
+    if (it.type !== 'guide' && types.has(it.type)) continue;
     if (it.type === 'guide') { if (guideCount >= MAX_GUIDES) continue; guideCount++; }
+    types.add(it.type);
     secondaries.push(it);
   }
-  // Fewer than two secondaries: top up with further guides (distinct pages), within the guide cap.
+  // Fewer than three secondaries: top up with further guides (distinct pages), within the guide cap.
   for (const g of guides.slice(1)) {
-    if (secondaries.length >= 2 || guideCount >= MAX_GUIDES) break;
-    if (g.url !== lead.url && !secondaries.some((s) => s.url === g.url)) { secondaries.push(g); guideCount++; }
+    if (secondaries.length >= 3 || guideCount >= MAX_GUIDES) break;
+    if (g.url !== lead.url && !secondaries.some((x) => x.url === g.url)) { secondaries.push(g); guideCount++; }
   }
   return { lead, secondaries, meta_description: metaDescriptionOf(lead) };
 }

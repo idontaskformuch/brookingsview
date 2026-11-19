@@ -15,7 +15,7 @@ const count = (html: string, re: RegExp) => (html.match(re) ?? []).length;
 
 describe('FrontPageLead markup, every town, every day of 2026', () => {
   for (const t of TOWNS) {
-    it(`${t.city}: one lead, one article per secondary, a guide lead has exactly 1 secondary, no empty slot`, async () => {
+    it(`${t.city}: one lead, one row per secondary (1-4, Fas 2), a guide lead has exactly 1 secondary, no empty slot`, async () => {
       const c = await AstroContainer.create();
       let guideLeadDays = 0;
       for (let d = 0; d < 366; d++) {
@@ -24,18 +24,18 @@ describe('FrontPageLead markup, every town, every day of 2026', () => {
           cityName: t.city, timezone: t.tz, locale: t.locale, config: FRONT_PAGE_BY_TOWN[t.id],
           alerts: [], holidays: frontPageHolidays(t.id, 2026), evening: [], games: [], meetings: [],
         }, now);
-        const html = await c.renderToString(FrontPageLead, { props: { page } });
+        const html = await c.renderToString(FrontPageLead, { props: { page, cityImage: null, thumbs: page.secondaries.map(() => null) } });
         const where = `${t.id} ${now.toISOString()}`;
         expect(count(html, /<article class="lead[ "]/g), where).toBe(1);
-        const sec = count(html, /<article class="secondary[ "]/g);
+        const sec = count(html, /<li class="secondary[ "]/g);
         expect(sec, where).toBe(page.secondaries.length);
         expect(sec, where).toBeGreaterThanOrEqual(1);
-        expect(sec, where).toBeLessThanOrEqual(3);
-        expect(html, where).toContain(`front__secondary--${sec}`);
+        expect(sec, where).toBeLessThanOrEqual(4);
         expect(html, where).toContain(`data-count="${sec}"`);
         // every slot has a linked headline and a deck: nothing empty
         expect(count(html, /<h3 class="secondary__title[^"]*"[^>]*><a href="\/[^"]+"[^>]*>[^<]+<\/a><\/h3>/g), where).toBe(sec);
-        expect(count(html, /<p class="secondary__deck[^"]*"[^>]*>[^<]+<\/p>/g), where).toBe(sec);
+        // a deck line, or the holiday card's insight lines instead
+        expect(count(html, /<p class="secondary__deck[^"]*"[^>]*>[^<]+<\/p>/g) + count(html, /<ul class="secondary__insights/g), where).toBe(sec);
         expect(count(html, /<h2 class="lead__title[^"]*"[^>]*><a href="\/[^"]+"[^>]*>[^<]+<\/a><\/h2>/g), where).toBe(1);
         if (page.lead.type === 'guide') { guideLeadDays++; expect(sec, where).toBe(1); }
       }

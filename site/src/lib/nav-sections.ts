@@ -80,11 +80,16 @@ export interface NavConfig {
   tabs: string[];
   /** The All sheet: group title -> section ids. Must contain EVERY enabled section. */
   groups: Record<string, string[]>;
+  /** Desktop row priority after the tabs (Fas 2, owner 2026-11-19): every active section in one row, the ones that do not fit go under All.
+   *  Omitted: the groups' order. Ids not listed come after the listed ones, in group order. */
+  desktop?: string[];
 }
 
 export interface ResolvedSection { id: string; href: string; label: string }
 export interface ResolvedNav {
   tabs: ResolvedSection[];
+  /** Desktop row: the tabs first, then every other active section in priority order (`NavConfig.desktop`, else group order). */
+  desktop: ResolvedSection[];
   groups: { title: string; items: ResolvedSection[] }[];
 }
 
@@ -119,6 +124,7 @@ export function resolveNav(cfg: NavConfig, c: NavGate): ResolvedNav {
     if (!grouped.has(id)) problems.push(`tabs: "${id}" is missing from groups`);
   }
   for (const [title, ids] of Object.entries(cfg.groups)) for (const id of ids) known(id, `groups.${title}`);
+  if (cfg.desktop) { dup(cfg.desktop, 'desktop'); for (const id of cfg.desktop) known(id, 'desktop'); }
   for (const s of SECTIONS) {
     if (isOn(s, c) && !grouped.has(s.id)) problems.push(`groups: enabled section "${s.id}" (${hrefOf(s, c)}) is not in any group`);
   }
@@ -130,8 +136,10 @@ export function resolveNav(cfg: NavConfig, c: NavGate): ResolvedNav {
     const s = byId.get(id)!;
     return { id, href: hrefOf(s, c), label: c.navLabels?.[id] ?? s.label };
   };
+  const desktopIds = [...new Set([...cfg.tabs, ...(cfg.desktop ?? []), ...allGrouped])];
   return {
     tabs: cfg.tabs.map(resolve),
+    desktop: desktopIds.map(resolve),
     groups: Object.entries(cfg.groups)
       .map(([title, ids]) => ({ title, items: ids.map(resolve) }))
       .filter((g) => g.items.length > 0),

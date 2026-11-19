@@ -44,11 +44,15 @@ interface Props {
   excludeHolidaySlugs?: Set<string>;
   /** The front page's photo of the week, which the holiday thumbnail never repeats. */
   frontImageId?: string | null;
+  /** Modules the page already shows as a block of its own (the front page's City Hall, Sports and Getting around blocks). */
+  omit?: RailModuleKind[];
   /** Already loaded by the page (the front page), to avoid a second query. */
   meetingsData?: { meetings: MeetingView[]; todayYmd: string } | null;
 }
 const { now, withStatus = false, excludeMeetingIds = new Set(), excludeHolidaySlugs = new Set(), frontImageId = null } = Astro.props;
-const cfg = homeRailFor(siteConfig.townId);
+const omit = new Set(Astro.props.omit ?? []);
+const base = homeRailFor(siteConfig.townId);
+const cfg = { ...base, modules: base.modules.filter((m) => !omit.has(m)), reserve: base.reserve.filter((m) => !omit.has(m)) };
 const tz = siteConfig.timezone;
 const profile = countryProfile(siteConfig.country);
 const wants = new Set<RailModuleKind>([...cfg.modules, ...cfg.reserve]);

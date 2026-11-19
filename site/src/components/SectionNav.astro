@@ -11,13 +11,15 @@ import type { ResolvedNav } from '../lib/nav-sections';
 interface Props { nav: ResolvedNav; path: string }
 const { nav, path } = Astro.props;
 const isActive = (href: string) => path === href || path.startsWith(href);
+// Desktop shows every active section in priority order (nav.desktop); a phone shows only the tabs (owner 2026-11-19: mobile unchanged).
+const tabIds = new Set(nav.tabs.map((t) => t.id));
 ---
 
 <nav class="snav" aria-label="Sections" data-snav>
   <div class="snav__rowwrap">
     <div class="snav__row" data-snav-row>
-      {nav.tabs.map((t) => (
-        <a href={t.href} data-nav-id={t.id} aria-current={isActive(t.href) ? 'page' : undefined}>{t.label}</a>
+      {nav.desktop.map((t) => (
+        <a href={t.href} data-nav-id={t.id} class={tabIds.has(t.id) ? undefined : 'snav__desk'} aria-current={isActive(t.href) ? 'page' : undefined}>{t.label}</a>
       ))}
     </div>
   </div>
@@ -150,8 +152,13 @@ const isActive = (href: string) => path === href || path.startsWith(href);
   @media (prefers-reduced-motion: reduce) { .snav__sheet { animation: none; } }
   html.snav-lock { overflow: hidden; }
 
-  /* desktop: all the tabs that fit on one line, All opens an anchored panel */
+  .snav__row a.snav__desk { display: none; }
+  /* The JS All button is `hidden` until the script runs; .snav__allbtn's display must not override that (2026-11-19: without it both All
+     controls took space, and hiding the <details> one widened the row and moved every centered tab, CLS 0.015 at 1440). */
+  .snav__allbtn--js[hidden], .snav__fallback[hidden] { display: none; }
+  /* desktop: every active section that fits on one line (the rest are clipped and stay in All), All opens an anchored panel */
   @media (min-width: 56rem) {
+    .snav__row a.snav__desk { display: inline-flex; }
     .snav__row { flex-wrap: wrap; height: 44px; overflow: hidden; justify-content: center; gap: 0 1.75rem; padding-inline-end: 0; }
     .snav__rowwrap::after { display: none; }
     .snav__scrim { background: transparent; }

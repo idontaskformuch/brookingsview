@@ -450,6 +450,8 @@ const CITIES: Record<string, SiteConfig> = {
     // must be in a group; phase 2 merges them later).
     nav: {
       tabs: ['today', 'events', 'gameday'],
+      // Desktop row after the tabs (Fas 2): SDSU sports high (owner 2026-11-19).
+      desktop: ['jacks', 'university', 'cityhall', 'whatson', 'weather', 'facilities', 'closures', 'thisweek', 'holidays', 'jobs', 'farm', 'play'],
       groups: {
         Now: ['today', 'events', 'whatson', 'thisweek', 'weather'],
         Campus: ['gameday', 'university', 'jacks'],
@@ -557,6 +559,8 @@ const CITIES: Record<string, SiteConfig> = {
     // Owner-approved 2026-10-21. Tabs follow GA4 traffic (facilities, not home sales); Home sales sits in Work & Home.
     nav: {
       tabs: ['today', 'tonight', 'events'],
+      // Desktop row after the tabs (Fas 2): getting around high (owner 2026-11-19).
+      desktop: ['traffic', 'cityhall', 'whatson', 'sports', 'facilities', 'weather', 'safety', 'closures', 'thisweek', 'holidays', 'jobs', 'homesales', 'workplace', 'month', 'play'],
       groups: {
         Now: ['today', 'tonight', 'events', 'whatson', 'thisweek', 'weather', 'safety'],
         City: ['cityhall', 'traffic', 'closures', 'facilities', 'holidays'],
@@ -729,6 +733,7 @@ const CITIES: Record<string, SiteConfig> = {
     // Owner-approved 2026-10-21: six tabs for now, a seventh to be chosen (events / workplace / vail / weather).
     nav: {
       tabs: ['today', 'tonight', 'whatson'],
+      desktop: ['cityhall', 'traffic', 'facilities', 'weather', 'safety', 'thisweek', 'holidays'],
       groups: {
         Now: ['today', 'tonight', 'whatson', 'thisweek', 'weather', 'safety'],
         City: ['cityhall', 'traffic', 'facilities', 'holidays'],
@@ -834,6 +839,7 @@ const CITIES: Record<string, SiteConfig> = {
     } } },
     nav: {
       tabs: ['today', 'tonight', 'events'],
+      desktop: ['whatson', 'cityhall', 'facilities', 'weather', 'thisweek', 'holidays'],
       groups: {
         Now: ['today', 'tonight', 'thisweek', 'events', 'whatson', 'weather'],
         City: ['cityhall', 'facilities', 'holidays'],

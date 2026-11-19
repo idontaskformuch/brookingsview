@@ -1,0 +1,94 @@
+---
+/** SectionBlock (Fas 2, front page as a hub): kicker, title, "See all" and 3-4 items, as `cards` (3:2 image) or `list` (date box / compact
+ *  row). Renders nothing below `min` items (default: 3 for cards, 1 for a list), so a block without data never shows. Every card has an image
+ *  (the caller resolves it: own image -> venue -> category pool, lib/home-blocks.ts); images are lazy with width and height set (no layout
+ *  shift). Data and template strings only. */
+import { responsiveSrc } from '../../lib/city-face';
+import type { BlockItem } from '../../lib/home-blocks';
+
+interface Props {
+  id: string;
+  kicker?: string;
+  title: string;
+  seeAllHref?: string;
+  seeAllLabel?: string;
+  variant: 'cards' | 'list';
+  items: BlockItem[];
+  max?: number;
+  min?: number;
+}
+const { id, kicker, title, seeAllHref, seeAllLabel = 'See all', variant, max = 4 } = Astro.props;
+const min = Astro.props.min ?? (variant === 'cards' ? 3 : 1);
+const items = Astro.props.items.slice(0, max);
+const ext = (href: string) => /^https?:/i.test(href);
+---
+{items.length >= min && (
+  <section class:list={['sb', `sb--${variant}`]} aria-labelledby={`sb-${id}`}>
+    <header class="sb__head">
+      <div>
+        {kicker && <p class="sb__kicker">{kicker}</p>}
+        <h2 class="sb__title" id={`sb-${id}`}>{title}</h2>
+      </div>
+      {seeAllHref && <a class="sb__all" href={seeAllHref}>{seeAllLabel} &rarr;</a>}
+    </header>
+    {variant === 'cards' ? (
+      <ul class="sb__cards">
+        {items.map((it) => {
+          const r = it.image ? responsiveSrc(it.image.path) : null;
+          return (
+            <li class="sb__card">
+              <a href={it.href} rel={ext(it.href) ? 'noopener' : undefined}>
+                {it.image && r && (
+                  <img class="sb__img" src={r.src} srcset={r.srcset} sizes={r.srcset ? '(min-width: 75rem) 17rem, (min-width: 40rem) 23vw, 45vw' : undefined}
+                    alt={it.image.alt} width={it.image.width} height={it.image.height} loading="lazy" decoding="async" />
+                )}
+                {it.kicker && <span class="sb__ck">{it.kicker}</span>}
+                <span class="sb__ct">{it.title}</span>
+                {it.meta && <span class="sb__cm">{it.meta}</span>}
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    ) : (
+      <ul class="sb__list">
+        {items.map((it) => (
+          <li>
+            <a class="sb__row" href={it.href} rel={ext(it.href) ? 'noopener' : undefined}>
+              {it.date && <span class="sb__date"><span class="sb__date-top">{it.date.top}</span><span class="sb__date-day">{it.date.day}</span></span>}
+              <span class="sb__rowtext">
+                {it.kicker && <span class="sb__ck">{it.kicker}</span>}
+                <span class="sb__rt">{it.title}</span>
+                {it.meta && <span class="sb__cm">{it.meta}</span>}
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    )}
+  </section>
+)}
+<style>
+  .sb { margin: var(--ui-5, 2rem) 0 0; }
+  .sb__head { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; border-top: 2px solid var(--ink); padding-top: 0.5rem; margin-bottom: 0.75rem; }
+  .sb__kicker { margin: 0; font-family: var(--font-ui); font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+  .sb__title { margin: 0; font-family: var(--font-head); font-size: 1.375rem; line-height: 1.2; }
+  .sb__all { flex: none; font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 600; min-height: 24px; }
+  /* Two cards a row on a phone (four full-width photos made the page very long), four from 40rem. */
+  .sb__cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem 0.875rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (min-width: 40rem) { .sb__cards { gap: 1.25rem; grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .sb__card a { display: flex; flex-direction: column; gap: 0.25rem; color: inherit; text-decoration: none; }
+  .sb__card a:hover .sb__ct { text-decoration: underline; }
+  .sb__img { width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 6px; background: var(--ui-surface-2, var(--rule)); margin-bottom: 0.25rem; }
+  .sb__ck { font-family: var(--font-ui); font-size: 0.75rem; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .sb__ct, .sb__rt { font-family: var(--font-head); font-size: 1.0625rem; line-height: 1.25; color: var(--ink); }
+  .sb__cm { font-family: var(--font-ui); font-size: 0.8125rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .sb__list { list-style: none; margin: 0; padding: 0; }
+  .sb__list li { border-bottom: 1px solid var(--rule); }
+  .sb__row { display: flex; gap: 0.875rem; align-items: center; padding: 0.625rem 0; color: inherit; text-decoration: none; min-height: 44px; }
+  .sb__row:hover .sb__rt { text-decoration: underline; }
+  .sb__rowtext { display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; }
+  .sb__date { flex: none; width: 3.25rem; display: flex; flex-direction: column; align-items: center; padding: 0.25rem 0; border: 1px solid var(--rule); border-radius: 6px; font-family: var(--font-ui); font-variant-numeric: tabular-nums; }
+  .sb__date-top { font-size: 0.625rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+  .sb__date-day { font-size: 1.25rem; font-weight: 700; line-height: 1.1; color: var(--ink); }
+</style>
