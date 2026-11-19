@@ -6,6 +6,7 @@
    (max 30 rader): aktuell fas + deluppgift, ändrade filer, BESLUT OCH SKÄL,
    kända buggar, nästa steg, pekare till relevant handoff-fil.
    Committa efter varje deluppgift.
+   Läs inte log.md vid sessionsstart. Öppna bara den rubrik som state.md pekar på. Nya loggposter läggs överst.
 2. Sessionsstart: läs .claude/state.md, och bara den aktuella fasen i
    master-specen (inte hela filen). Kör git status; stoppa om trädet är smutsigt
    av något som inte står i state.md.
