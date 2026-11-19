@@ -384,7 +384,7 @@ const TOWN_GATED_PAGES = [
   { path: '/game-day/', activeFor: ['brookings_sd'] },
   { path: '/trash-recycling/', activeFor: ['brookings_sd'] },
   // Fas 3 "How do I..." hub: towns with answer pages in config/city-answers/index.ts (the answer pages themselves are a dynamic route).
-  { path: '/how-do-i/', activeFor: ['moreno_valley_ca'] },
+  { path: '/how-do-i/', activeFor: ['moreno_valley_ca', 'brookings_sd'] },
   { path: '/winter-guide/', activeFor: ['brookings_sd'] },
   { path: '/how-city-council-works/', activeFor: ['brookings_sd'] },
   { path: '/sdsu-campus-open-to-public/', activeFor: ['brookings_sd'] },

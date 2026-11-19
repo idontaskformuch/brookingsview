@@ -253,7 +253,7 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
   // depth program, a stronger keyword than a generic "sports" framing
   // would be for this town specifically.
   // Brookings-only game day guide (site/src/pages/game-day.astro), owner-ordered 2026-10-22.
-  // Brookings-only trash/recycling guide (site/src/pages/trash-recycling.astro), owner-ordered 2026-10-22.
+  // The trash/recycling guide moved to config/city-answers/brookings_sd.ts (Fas 3 K1, 2026-11-19); its title and H1 live there.
   // Brookings-only council guide (site/src/pages/how-city-council-works.astro), owner-ordered 2026-10-22.
   // Brookings-only campus guide (site/src/pages/sdsu-campus-open-to-public.astro), owner-ordered 2026-10-22.
   'campus-guide': {
@@ -265,11 +265,6 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
     titlePattern: 'How the City Council Works | {Site}',
     h1Pattern: '{Town} City Council: how it works and how to follow it',
     ledeRequirement: 'Answers: when does the council meet, how do I see the agenda, watch, and speak. Every rule from the city pages.',
-  },
-  'trash-recycling': {
-    titlePattern: 'Trash & Recycling Guide | {Site}',
-    h1Pattern: '{Town} trash, recycling and yard waste: pickup days and what goes where',
-    ledeRequirement: 'Answers: which day is mine, what goes in which cart, what do I do with big items, branches, electronics and paint. Every rule from the city pages.',
   },
   // Brookings-only winter guide (site/src/pages/winter-guide.astro), owner-ordered 2026-11-03.
   'winter-guide': {

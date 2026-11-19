@@ -46,6 +46,7 @@ import { thisWeekImagesFor } from '../config/this-week-images';
 import { holidayBandImage, cityImageSlot, responsiveSrc, CITY_PHOTO_SIZES } from '../lib/city-face';
 import { holidayPageDef } from '../config/holiday-pages/calendar';
 import { townHasHolidayPages } from '../config/holiday-pages/registry';
+import { answerPagesFor } from '../config/city-answers';
 import { resolveImage, type ImageCategory } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
 import { getTicketmasterEventsForTown, IN_TOWN_THRESHOLD_MILES } from '../lib/ticketmaster';
@@ -210,7 +211,8 @@ const cityHallBlock: BlockItem[] = wants.has('cityhall') && meetingsData
 const gettingAroundBlock: BlockItem[] = wants.has('getting_around') ? gettingAroundItems({ traffic, schoolClosures: [], tz, locale }) : [];
 
 // ---- Guides (cards): the town's evergreen pages that are built.
-const guideBuilt = (href: string) => (href === '/holidays/' ? townHasHolidayPages(siteConfig.townId) : linksToBuiltSection(href, siteConfig));
+const answerSlugs = new Set(answerPagesFor(siteConfig.townId).map((p) => `/${p.slug}/`));
+const guideBuilt = (href: string) => (href === '/holidays/' ? townHasHolidayPages(siteConfig.townId) : answerSlugs.has(href) || linksToBuiltSection(href, siteConfig));
 const guidesBlock: BlockItem[] = wants.has('guides')
   ? sections.guides.filter((g) => guideBuilt(g.href)).map((g) => ({ href: g.href, title: g.title, meta: g.meta, image: categoryImage(g.image, `guide-${g.href}`) }))
   : [];

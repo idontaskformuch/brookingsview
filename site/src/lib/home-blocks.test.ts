@@ -4,6 +4,7 @@ import { pickCategoryImage, pickFromPools, dateBox, distinctBy, sportsItems, cit
 import { categoryImagesFor } from '../config/category-images';
 import { HOME_SECTIONS_BY_TOWN, homeSectionsFor } from '../config/home-sections';
 import { ALL_CONFIGS } from './site-config';
+import { answerPagesFor } from '../config/city-answers';
 import type { Game, RegionalGame, TrafficIncident } from './db';
 
 // Real rows (CLAUDE.md #15), read 2026-11-19: sport_events 49 (Wyoming, women's basketball, home, 18 Nov 19:00 CST) and 12 (Indiana State,
@@ -95,7 +96,8 @@ describe('config/home-sections.ts', () => {
       for (const g of s.guides) {
         const p = g.href.replace(/^\/|\/$/g, '');
         const exists = ['.astro', '/index.astro'].some((ext) => existsSync(new URL(`../pages/${p}${ext}`, import.meta.url)))
-          || existsSync(new URL(`../pages/[${p}].astro`, import.meta.url)) || (p === 'events/free' && existsSync(new URL('../pages/events/[facet].astro', import.meta.url)));
+          || existsSync(new URL(`../pages/[${p}].astro`, import.meta.url)) || (p === 'events/free' && existsSync(new URL('../pages/events/[facet].astro', import.meta.url)))
+          || answerPagesFor(c.townId).some((a) => a.slug === p); // a "How do I..." page of the town (config/city-answers, Fas 3)
         expect(exists, `${c.townId} ${g.href}`).toBe(true);
       }
     }
