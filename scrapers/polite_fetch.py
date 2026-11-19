@@ -176,6 +176,14 @@ def _with_params(url: str, params: dict | None) -> str:
     return req.url
 
 
+def _without_params(url: str, keys) -> str:
+    """`url` with the query parameters named in `keys` removed (a secret_params value never reaches the log, the cache or a reason)."""
+    from urllib.parse import parse_qsl, urlencode, urlunparse
+    parts = urlparse(url)
+    kept = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k not in set(keys)]
+    return urlunparse(parts._replace(query=urlencode(kept)))
+
+
 class PoliteFetcher:
     def __init__(self, purpose: str, town_id: str | None = None, *, session=None, ledger: Ledger | None = None,
                  cache_dir: Path | None = CACHE_DIR, ua: str | None = None, clock=None, sleep=time.sleep):
@@ -199,10 +207,14 @@ class PoliteFetcher:
         self._where = "ci" if os.environ.get("GITHUB_ACTIONS") == "true" and os.environ.get("GITHUB_RUN_ID") else "local"
 
     # --- the one public call ------------------------------------------------------------------------------------------------
-    def get(self, url: str, params: dict | None = None, *, max_bytes: int | None = None) -> Fetched | Refused:
+    def get(self, url: str, params: dict | None = None, *, max_bytes: int | None = None,
+            secret_params: dict | None = None) -> Fetched | Refused:
         """max_bytes: a higher size cap for this one call (owner's one-off yes 2026-11-14 for a JS bundle cut at MAX_BYTES). A saved
-        copy from today that was cut at the cap it was fetched with is not a full copy for a call with a higher cap."""
+        copy from today that was cut at the cap it was fetched with is not a full copy for a call with a higher cap.
+        secret_params: query parameters sent with the request but never written anywhere (an API key, e.g. CDOT's apiKey): the
+        log, the cache, Fetched.url/final_url and every Refused carry the URL without them (2026-11-19, traffic to PoliteFetcher)."""
         url = _with_params(url, params)
+        send_url = _with_params(url, secret_params) if secret_params else None
         cap = max(max_bytes or MAX_BYTES, MAX_BYTES)
         parts = urlparse(url)
         if parts.scheme not in ("http", "https") or not parts.netloc:
@@ -236,7 +248,8 @@ class PoliteFetcher:
                 return Refused(url, f"robots.txt Crawl-delay {self._over_cap[host]:g} s is above the {MAX_CRAWL_DELAY_S:g} s cap and is "
                                     "never shortened: one request per host per run, already made")
             self._used.add(host)
-        got = self._request(url, domain, self.purpose, max_bytes=cap)
+        got = self._request(url, domain, self.purpose, max_bytes=cap, send_url=send_url,
+                            secret_keys=tuple(secret_params or ()))
         if isinstance(got, Fetched):
             got.llm_excluded = excluded
         return got
@@ -322,20 +335,23 @@ class PoliteFetcher:
                                                          "encoding": got.encoding, "cut": got.cut}), encoding="utf-8")
 
     # --- the request --------------------------------------------------------------------------------------------------------
-    def _request(self, url: str, domain: str, purpose: str, same_domain: bool = True, max_bytes: int = MAX_BYTES) -> Fetched | Refused:
+    def _request(self, url: str, domain: str, purpose: str, same_domain: bool = True, max_bytes: int = MAX_BYTES,
+                 send_url: str | None = None, secret_keys: tuple = ()) -> Fetched | Refused:
         gap = max(MIN_GAP_S, self._delay.get(domain, 0.0))
         wait = self._last.get(domain, -1e9) + gap - time.monotonic()
         if wait > 0:
             self._sleep(wait)
         self._last[domain] = time.monotonic()
         try:
-            res = self.session.get(url, headers={"User-Agent": self.ua}, timeout=TIMEOUT_S, allow_redirects=True, stream=True)
+            res = self.session.get(send_url or url, headers={"User-Agent": self.ua}, timeout=TIMEOUT_S, allow_redirects=True, stream=True)
             raw = getattr(res, "raw", None)
             body = raw.read(max_bytes, decode_content=True) if raw is not None else (res.content or b"")[:max_bytes]
         except Exception as exc:  # noqa: BLE001 -- any network failure is "no answer"
             self._log(url, domain, purpose, None, b"", f"no answer: {type(exc).__name__}")
             return Fetched(url, url, None)
         final = getattr(res, "url", url) or url
+        if secret_keys:
+            final = _without_params(final, secret_keys)
         if _is_challenge(res, body) or res.status_code == 403:
             kind = "challenge" if _is_challenge(res, body) else "403"
             self._log(url, domain, purpose, kind, b"")
@@ -348,6 +364,20 @@ class PoliteFetcher:
         if purpose in DAY_LIMITED and res.status_code == 200:
             self._save(got)
         return got
+
+
+def source_body(got: Fetched | Refused, what: str) -> bytes:
+    """The body of a scraper source's 200, or an exception the runner logs as a failed run (scrapers/runner.py run_source: the
+    error is printed, saved in scraper_runs and counted toward ALERT_AFTER_FAILURES). Never a partial body: a body that reached the
+    size cap fails the run instead of being parsed cut (owner 2026-11-19: "misslyckas tydligt ... inte trunkeras tyst")."""
+    if isinstance(got, Refused):
+        raise RuntimeError(f"{what}: polite_fetch refused {got.url}: {got.reason}")
+    if got.status != 200:
+        raise RuntimeError(f"{what}: {got.url} answered {got.status if got.status else 'nothing (no answer)'}")
+    if got.cut:
+        raise RuntimeError(f"{what}: {got.url} reached the {len(got.body)} byte size cap (polite_fetch MAX_BYTES {MAX_BYTES}); "
+                           "not parsed, a cut feed would silently drop rows")
+    return got.body
 
 
 def main(argv: list[str]) -> int:

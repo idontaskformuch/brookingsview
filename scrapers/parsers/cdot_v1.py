@@ -55,10 +55,10 @@ import json
 import os
 from datetime import datetime, timezone
 
-import requests
 
 from db.db import content_hash
 from scrapers.base_parser import BaseParser, FetchResult
+from scrapers.polite_fetch import PoliteFetcher, source_body
 from scrapers.user_agent import user_agent
 
 # Regelbaserad klassificering, samma stil/begränsning som traffic_v1.py:
@@ -77,18 +77,16 @@ class CdotParser(BaseParser):
     def _headers(self) -> dict:
         return {"User-Agent": user_agent(self.town_id)}
 
-    def _url(self) -> str:
-        # Nyckeln lever ENDAST i miljövariabeln (.env / GitHub secret) --
-        # aldrig i configs/*.json, som committas till git.
-        base = self.source_cfg["url"]
-        api_key = os.environ["CDOT_API_KEY"]
-        return f"{base}?apiKey={api_key}"
-
     def fetch(self) -> FetchResult:
-        r = requests.get(self._url(), headers=self._headers(), timeout=30)
-        r.raise_for_status()
-        return FetchResult(raw=r.content, content_type="application/geo+json",
-                            url=self.source_cfg["url"], http_code=r.status_code)
+        # Nyckeln lever ENDAST i miljövariabeln (.env / GitHub secret) --
+        # aldrig i configs/*.json, som committas till git. Den skickas som
+        # secret_params: polite_fetch skriver den aldrig i loggen, cachen eller
+        # ett felmeddelande. Alla anrop via scrapers/polite_fetch.py (ägaren
+        # 2026-11-19): robots.txt, hämtlogg, en UA, taket 1,5 MB (source_body).
+        fetcher = PoliteFetcher("source", self.town_id, ua=self._headers()["User-Agent"])
+        got = fetcher.get(self.source_cfg["url"], secret_params={"apiKey": os.environ["CDOT_API_KEY"]})
+        return FetchResult(raw=source_body(got, "cdot incidents"), content_type="application/geo+json",
+                           url=self.source_cfg["url"], http_code=200)
 
     def _bbox(self) -> tuple[float, float, float, float]:
         """(min_lat, max_lat, min_lon, max_lon) -- samma resonemang och

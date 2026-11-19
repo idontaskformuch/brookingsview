@@ -44,7 +44,6 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
-import requests
 
 # Caltrans tidsstämplar (både "Expected to end at" och "Last updated") är
 # lokal Kalifornien-tid, INTE UTC -- att bara stämpla siffrorna med
@@ -61,6 +60,7 @@ warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 from db.db import content_hash
 from scrapers.base_parser import BaseParser, FetchResult
+from scrapers.polite_fetch import PoliteFetcher, source_body
 from scrapers.user_agent import user_agent
 
 # Källans egna sluttidsformat, t.ex. "6:01pm Aug 31, 2026"
@@ -91,10 +91,12 @@ class TrafficParser(BaseParser):
     def _fetch_caltrans(self) -> FetchResult:
         urls = self.source_cfg["urls"]  # {"lane_closures": "...", "chp_incidents": "..."}
         payloads = {}
+        # Every request through scrapers/polite_fetch.py (owner 2026-11-19): robots.txt, fetch log, one UA, the 1.5 MB cap -- a feed
+        # that reaches the cap fails the run (source_body), it is never parsed cut. lcs2way.kml + chp-only.kml together were 1.30 MB
+        # at most in the 14 days to 19 Nov 2026 (watch point in the spec).
+        fetcher = PoliteFetcher("source", self.town_id, ua=self._headers()["User-Agent"])
         for kind, url in urls.items():
-            r = requests.get(url, headers=self._headers(), timeout=30)
-            r.raise_for_status()
-            payloads[kind] = r.text
+            payloads[kind] = source_body(fetcher.get(url), f"traffic {kind}").decode("utf-8", errors="replace")
         self._payloads = payloads
         # sparas som en enda snapshot -- kombinerad text räcker för proveniens
         raw = "\n".join(payloads.values()).encode("utf-8")
