@@ -1563,16 +1563,16 @@ export interface SchoolAlert {
  *  when the last successful check was. */
 export async function getRestrictionChecks(): Promise<{ latest: RestrictionCheck[]; lastGood: RestrictionCheck[] }> {
   const [latest, lastGood] = await Promise.all([
-    sql`SELECT DISTINCT ON (kind) kind, state, title, since_at, alert_count, alert_url, source_url, checked_at
+    sql`SELECT DISTINCT ON (kind) kind, state, alerts, alert_count, source_url, checked_at
           FROM restriction_checks
          WHERE town_id = ${TOWN_ID} ORDER BY kind, checked_at DESC, id DESC`,
-    sql`SELECT DISTINCT ON (kind) kind, state, title, since_at, alert_count, alert_url, source_url, checked_at
+    sql`SELECT DISTINCT ON (kind) kind, state, alerts, alert_count, source_url, checked_at
           FROM restriction_checks
          WHERE town_id = ${TOWN_ID} AND state <> 'unknown' ORDER BY kind, checked_at DESC, id DESC`,
   ]);
   const norm = (rows: unknown[]) => (rows as RestrictionCheck[]).map((r) => ({
     ...r,
-    since_at: r.since_at ? new Date(r.since_at).toISOString() : null,
+    alerts: Array.isArray(r.alerts) ? r.alerts.map((a) => ({ title: String(a.title ?? ''), since_at: a.since_at ?? null, url: a.url ?? null })) : null,
     checked_at: new Date(r.checked_at).toISOString(),
   }));
   return { latest: norm(latest), lastGood: norm(lastGood) };

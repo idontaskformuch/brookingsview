@@ -783,7 +783,7 @@ const CITIES: Record<string, SiteConfig> = {
     statusModules: ['alerts', 'fire_restrictions', 'water_restrictions', 'traffic', 'next_meeting', 'whats_on', 'election'],
     // Fas 5 source 1 (owner 2026-11-19): same URLs as configs/broomfield_co.json data_sources.restrictions.pages.
     restrictions: {
-      fire: { sourceUrl: 'https://broomfield.org/AlertCenter.aspx?AID=90' },
+      fire: { sourceUrl: 'https://broomfield.org/AlertCenter.aspx?CID=Fire-Alerts-and-Restrictions-8' },
       water: { sourceUrl: 'https://broomfield.org/AlertCenter.aspx?CID=Water-Restrictions-and-Drought-Condition-9' },
     },
     // Local Accent Identity, Broomfield-first rollout. A muted Front Range

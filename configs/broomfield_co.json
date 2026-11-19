@@ -334,16 +334,16 @@
       "type": "alert_center_restrictions",
       "enabled": true,
       "pages": [
-        {"kind": "fire", "shape": "alert", "category": "Fire Alerts and Restrictions",
-         "url": "https://broomfield.org/AlertCenter.aspx?AID=90"},
-        {"kind": "water", "shape": "category", "category": "Water Restrictions and Drought Conditions", "cid": 9,
+        {"kind": "fire", "category": "Fire Alerts and Restrictions", "cid": 8,
+         "url": "https://broomfield.org/AlertCenter.aspx?CID=Fire-Alerts-and-Restrictions-8"},
+        {"kind": "water", "category": "Water Restrictions and Drought Conditions", "cid": 9,
          "url": "https://broomfield.org/AlertCenter.aspx?CID=Water-Restrictions-and-Drought-Condition-9"}
       ],
       "output": {
         "format": "structured_data_no_ai",
         "voice": "n/a (källans ordagranna rubrik + fasta mallar, ingen AI)"
       },
-      "_notes": "Fas 5 källa 1 (ägaren 2026-11-19, nr 1+5). broomfield.org robots: User-agent * Crawl-delay 10, AlertCenter.aspx ej nekad; RSS.aspx, CivicAlerts.aspx, calendar.aspx, map.aspx nekade och läses aldrig. Båda sidorna lästa 19 nov (.claude/evidence/fas5-restrictions/). Parser: scrapers/parsers/alert_center_restrictions.py; sajten: site/src/lib/restrictions.ts. URL:erna speglas i site/src/lib/site-config.ts restrictions."
+      "_notes": "Fas 5 källa 1 (ägaren 2026-11-19, nr 1+5). broomfield.org robots: User-agent * Crawl-delay 10, AlertCenter.aspx ej nekad; RSS.aspx, CivicAlerts.aspx, calendar.aspx, map.aspx nekade och läses aldrig. Båda kategorisidorna lästa 19 nov (.claude/evidence/fas5-restrictions/cid8.html, cid9.html); brand flyttad från AID=90 till CID=8 (ägaren 19 nov kväll). Körs med broomfield-scrape 11:00 och 23:00 UTC. Parser: scrapers/parsers/alert_center_restrictions.py; sajten: site/src/lib/restrictions.ts. URL:erna speglas i site/src/lib/site-config.ts restrictions."
     },
     "jobs": {
       "type": "jobs",

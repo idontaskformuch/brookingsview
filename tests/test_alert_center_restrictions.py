@@ -1,11 +1,13 @@
 """scrapers/parsers/alert_center_restrictions.py (Fas 5 source 1, Broomfield fire + water restrictions).
 
-Fixtures are excerpts of the two real pages as read 2026-11-19 (tests/fixtures/alert_center/, markup unchanged). Edge cases are
-the same real page with the one changed thing named in the test (CLAUDE.md rule 15). The "data too old" case is the site's
+Fixtures are excerpts of the two real category pages as read 2026-11-19 (tests/fixtures/alert_center/, markup unchanged):
+fire CID=8 lists "Red Flag Warning" (November 18, 2026 6:00 PM) and "Level 1 Fire Restrictions in Effect" (November 17, 2026
+6:54 PM); water CID=9 lists "Broomfield is Under a Drought Watch" (February 9, 2026 8:00 AM). Edge cases are the same real page
+with the one changed thing named in the test (CLAUDE.md rule 15). The "data too old" case is the site's
 (site/src/lib/restrictions.test.ts): the parser only records what it read and when.
 """
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -14,24 +16,33 @@ from scrapers import polite_fetch as pf
 from scrapers.parsers.alert_center_restrictions import (
     AlertCenterRestrictionsParser,
     Unrecognised,
-    parse_alert_page,
     parse_category_page,
+    should_alert,
 )
 from scrapers.runner import REGISTRY, _resolve_key
 
 FIX = Path(__file__).parent / "fixtures"
-FIRE_HTML = (FIX / "alert_center" / "broomfield_aid90_2026-11-19.html").read_text(encoding="utf-8")
+FIRE_HTML = (FIX / "alert_center" / "broomfield_cid8_2026-11-19.html").read_text(encoding="utf-8")
 WATER_HTML = (FIX / "alert_center" / "broomfield_cid9_2026-11-19.html").read_text(encoding="utf-8")
 ROBOTS = (FIX / "robots" / "broomfield.txt").read_text(encoding="utf-8")
 CONFIG = json.loads((Path(__file__).parent.parent / "configs" / "broomfield_co.json").read_text(encoding="utf-8"))
 SOURCE = CONFIG["data_sources"]["restrictions"]
 FIRE_URL, WATER_URL = (p["url"] for p in SOURCE["pages"])
+FIRE_CAT, WATER_CAT = (p["category"] for p in SOURCE["pages"])
 ROBOTS_URL = "https://broomfield.org/robots.txt"
 NOW = datetime(2026, 11, 19, 23, 0, tzinfo=timezone.utc)
 
+
+def _drop_li(html: str, alert_id: int) -> str:
+    start = html.index(f'<li aria-labelledby="alertHeader_{alert_id}"')
+    end = html.index('<li aria-labelledby="alertHeader_', start + 1) if alert_id == 88 else html.rindex("</li>") + 5
+    return html[:start] + html[end:]
+
+
 # The real water page with its one alert taken out and its own counter at 0 (the two changed things).
-WATER_NONE_HTML = WATER_HTML[:WATER_HTML.index('<li aria-labelledby="alertHeader_92"')] + WATER_HTML[WATER_HTML.index("</li>") + 5:]
-WATER_NONE_HTML = WATER_NONE_HTML.replace('<span class="numAlerts">1  Alert</span>', '<span class="numAlerts">0  Alerts</span>')
+WATER_NONE_HTML = _drop_li(WATER_HTML, 92).replace('<span class="numAlerts">1  Alert</span>', '<span class="numAlerts">0  Alerts</span>')
+# The real fire page with both alerts taken out and its counter at 0 (the changed things).
+FIRE_NONE_HTML = _drop_li(_drop_li(FIRE_HTML, 88), 90).replace("2  Alerts</span>", "0  Alerts</span>")
 
 
 class FakeSession:
@@ -54,40 +65,64 @@ class FakeSession:
         return R()
 
 
-def run(routes, slept=None):
+def make_parser(routes=None, slept=None):
     parser = AlertCenterRestrictionsParser({"town_id": "broomfield_co", "timezone": "America/Denver"}, SOURCE)
-    session = FakeSession(routes)
+    session = FakeSession(routes or {})
     parser.fetcher = pf.PoliteFetcher("source", "broomfield_co", session=session, ledger=pf.MemoryLedger(), cache_dir=None,
                                       sleep=(slept.append if slept is not None else (lambda s: None)))
     parser.now = lambda: NOW
+    return parser, session
+
+
+def run(routes, slept=None):
+    parser, session = make_parser(routes, slept)
     fetched = parser.fetch()
     rows = {r["kind"]: r for r in parser.parse(fetched)}
     return rows, fetched, session
 
 
-def test_level_1_fire_restriction_is_the_sources_own_title_and_date():
-    rows, fetched, _ = run({ROBOTS_URL: (200, ROBOTS), FIRE_URL: (200, FIRE_HTML), WATER_URL: (200, WATER_HTML)})
+OK = {ROBOTS_URL: (200, ROBOTS), FIRE_URL: (200, FIRE_HTML), WATER_URL: (200, WATER_HTML)}
+
+
+def test_fire_category_lists_every_active_alert_verbatim_newest_first():
+    rows, fetched, _ = run(OK)
     fire = rows["fire"]
-    assert fire["state"] == "active"
-    assert fire["title"] == "Level 1 Fire Restrictions in Effect"
-    assert fire["since_text"] == "November 17, 2026 6:54 PM"  # the alert's date, not the 4:48 PM "Latest Update"
-    assert fire["since_at"] == "2026-11-17T18:54:00-07:00"
+    assert fire["state"] == "active" and fire["alert_count"] == 2
+    assert [(a["title"], a["since_text"]) for a in fire["alerts"]] == [
+        ("Red Flag Warning", "November 18, 2026 6:00 PM"),
+        ("Level 1 Fire Restrictions in Effect", "November 17, 2026 6:54 PM"),  # the alert's date, not the 4:48 PM update
+    ]
+    assert fire["alerts"][1]["since_at"] == "2026-11-17T18:54:00-07:00"
+    assert fire["alerts"][1]["url"] == "https://broomfield.org/AlertCenter.aspx?AID=Level-1-Fire-Restrictions-in-Effect-90"
+    assert (fire["title"], fire["since_text"]) == ("Red Flag Warning", "November 18, 2026 6:00 PM")  # newest repeated
     assert fire["source_url"] == FIRE_URL and fire["checked_at"] == NOW.isoformat() and fire["error"] is None
     assert fetched.docs_failed == 0
 
 
+def test_newest_first_by_the_alerts_own_date_not_page_order():
+    # The real fire page with its two <li> swapped (the changed thing): the order stays newest first.
+    first_end = FIRE_HTML.index('<li aria-labelledby="alertHeader_90"')
+    a, b = FIRE_HTML[FIRE_HTML.index('<li aria-labelledby="alertHeader_88"'):first_end], FIRE_HTML[first_end:FIRE_HTML.rindex("</li>") + 5]
+    swapped = FIRE_HTML.replace(a + b, b + a)
+    assert swapped != FIRE_HTML
+    titles = [x["title"] for x in parse_category_page(swapped, FIRE_CAT, 8)["alerts"]]
+    assert titles == ["Red Flag Warning", "Level 1 Fire Restrictions in Effect"]
+
+
 def test_water_drought_watch_from_the_category_page():
-    rows, _, _ = run({ROBOTS_URL: (200, ROBOTS), FIRE_URL: (200, FIRE_HTML), WATER_URL: (200, WATER_HTML)})
+    rows, _, _ = run(OK)
     water = rows["water"]
     assert (water["state"], water["title"], water["since_text"], water["alert_count"]) == (
         "active", "Broomfield is Under a Drought Watch", "February 9, 2026 8:00 AM", 1)
     assert water["alert_url"] == "https://broomfield.org/AlertCenter.aspx?AID=Broomfield-is-Under-a-Drought-Watch-92"
 
 
-def test_no_restriction_only_when_the_category_page_itself_says_zero():
-    assert parse_category_page(WATER_NONE_HTML, "Water Restrictions and Drought Conditions", 9)["state"] == "none"
-    rows, _, _ = run({ROBOTS_URL: (200, ROBOTS), FIRE_URL: (200, FIRE_HTML), WATER_URL: (200, WATER_NONE_HTML)})
-    assert rows["water"]["state"] == "none" and rows["water"]["title"] is None
+@pytest.mark.parametrize("kind, html", [("fire", FIRE_NONE_HTML), ("water", WATER_NONE_HTML)])
+def test_no_restriction_only_when_the_category_page_itself_says_zero(kind, html):
+    routes = dict(OK)
+    routes[FIRE_URL if kind == "fire" else WATER_URL] = (200, html)
+    rows, _, _ = run(routes)
+    assert rows[kind]["state"] == "none" and rows[kind]["title"] is None and rows[kind]["alerts"] == []
 
 
 @pytest.mark.parametrize("answer, reason", [
@@ -101,7 +136,7 @@ def test_fetch_failure_is_unknown_never_none(answer, reason):
         routes[WATER_URL] = answer
     rows, fetched, _ = run(routes)
     assert rows["water"]["state"] == "unknown" and reason in rows["water"]["error"]
-    assert rows["water"]["title"] is None
+    assert rows["water"]["title"] is None and rows["water"]["alerts"] is None
     assert rows["fire"]["state"] == "active"  # one page failing does not touch the other
     assert fetched.docs_failed == 1 and fetched.docs_attempted == 2
 
@@ -112,44 +147,101 @@ def test_both_pages_failing_marks_the_run_degraded():
 
 
 @pytest.mark.parametrize("change, html, expect", [
-    ("singleAlert renamed", FIRE_HTML.replace("listing singleAlert", "listing oneAlert"), "div.singleAlert not found"),
-    ("category heading changed", FIRE_HTML.replace("<h2>Fire Alerts and Restrictions</h2>", "<h2>Fire Alerts</h2>"),
-     "category heading"),
-    ("alert no longer marked 'on'", FIRE_HTML.replace('class="alert on noPhotos', 'class="alert noPhotos'), "not marked active"),
-    ("title element gone", FIRE_HTML.replace('<h3 id="alertTitle_90">', '<h4 id="alertTitle_90">'), "h3 title"),
-    ("not HTML at all", "\x00\x01 not a page", "div.singleAlert not found"),
+    ("category block renamed", FIRE_HTML.replace("divCat_8", "divCat_18"), "divCat_8 not found"),
+    ("category heading changed", FIRE_HTML.replace(">Fire Alerts and Restrictions</h2>", ">Fire Alerts</h2>"), "category heading"),
+    ("counter gone", FIRE_HTML.replace('<span class="numAlerts">2  Alerts</span>', ""), "numAlerts"),
+    ("counter disagrees with the list", FIRE_HTML.replace("2  Alerts</span>", "3  Alerts</span>"), "counter says 3"),
+    ("counter 0 but alerts listed", FIRE_HTML.replace("2  Alerts</span>", "0  Alerts</span>"), "counter says 0"),
+    ("an alert no longer marked 'on'", FIRE_HTML.replace('class="alert on first"', 'class="alert first"'), "not marked active"),
+    ("title element gone", FIRE_HTML.replace('<h3 id="alertHeader_90">', '<h4 id="alertHeader_90">'), "h3 title"),
+    ("date in another format", FIRE_HTML.replace("November 18, 2026 6:00 PM", "18/11/2026 18:00"), "is not"),
+    ("not HTML at all", "\x00\x01 not a page", "divCat_8 not found"),
 ])
-def test_changed_fire_page_is_unknown_not_a_crash(change, html, expect):
-    rows, _, _ = run({ROBOTS_URL: (200, ROBOTS), FIRE_URL: (200, html), WATER_URL: (200, WATER_HTML)})
+def test_changed_page_is_unknown_not_none_and_not_a_crash(change, html, expect):
+    with pytest.raises(Unrecognised, match=expect):
+        parse_category_page(html, FIRE_CAT, 8)
+    rows, _, _ = run({**OK, FIRE_URL: (200, html)})
     assert rows["fire"]["state"] == "unknown", change
     assert "page structure changed" in rows["fire"]["error"] and expect in rows["fire"]["error"]
+    assert rows["water"]["state"] == "active"
 
 
-@pytest.mark.parametrize("change, html, expect", [
-    ("category block renamed", WATER_HTML.replace("divCat_9", "divCat_10"), "divCat_9 not found"),
-    ("counter gone", WATER_HTML.replace('<span class="numAlerts">1  Alert</span>', ""), "numAlerts"),
-    ("counter disagrees with the list", WATER_HTML.replace("1  Alert</span>", "2  Alerts</span>"), "counter says 2"),
-    ("counter 0 but an alert listed", WATER_HTML.replace("1  Alert</span>", "0  Alerts</span>"), "counter says 0"),
-])
-def test_changed_water_page_is_unknown_not_none(change, html, expect):
-    with pytest.raises(Unrecognised, match=expect):
-        parse_category_page(html, "Water Restrictions and Drought Conditions", 9)
-    rows, _, _ = run({ROBOTS_URL: (200, ROBOTS), FIRE_URL: (200, FIRE_HTML), WATER_URL: (200, html)})
-    assert rows["water"]["state"] == "unknown", change
-
-
-def test_crawl_delay_10_between_the_two_pages_and_only_configured_urls():
+def test_crawl_delay_10_between_pages_and_only_configured_urls():
     slept: list[float] = []
-    _, _, session = run({ROBOTS_URL: (200, ROBOTS), FIRE_URL: (200, FIRE_HTML), WATER_URL: (200, WATER_HTML)}, slept)
+    _, _, session = run(OK, slept)
     assert session.calls == [ROBOTS_URL, FIRE_URL, WATER_URL]
     assert len([s for s in slept if s > 9.0]) >= 2  # robots -> fire and fire -> water, each about 10 s
 
 
-def test_config_pages_avoid_every_disallowed_path_and_resolve_to_this_parser():
+def test_config_reads_two_category_pages_and_no_disallowed_path():
     assert REGISTRY[_resolve_key(SOURCE, "restrictions")].endswith(":AlertCenterRestrictionsParser")
+    assert [(p["kind"], p["cid"]) for p in SOURCE["pages"]] == [("fire", 8), ("water", 9)]
     for page in SOURCE["pages"]:
         path = page["url"].split("broomfield.org", 1)[1].lower()
-        assert path.startswith("/alertcenter.aspx?")
+        assert path.startswith(f"/alertcenter.aspx?cid=") and path.endswith(f"-{page['cid']}")
         for denied in ("/rss.aspx", "/civicalerts.aspx", "/calendar.aspx", "/map.aspx", "/common/modules/icalendar/"):
             assert not path.startswith(denied)
-    assert parse_alert_page(FIRE_HTML, SOURCE["pages"][0]["category"])["state"] == "active"
+
+
+# --- 72 h unknown alert ----------------------------------------------------------------------------------------------------
+
+def test_should_alert_once_per_unknown_streak_after_72_hours():
+    start = NOW - timedelta(hours=73)
+    assert should_alert("unknown", start, False, NOW) is True
+    assert should_alert("unknown", start, True, NOW) is False             # this streak already alerted
+    assert should_alert("unknown", NOW - timedelta(hours=72), False, NOW) is False  # exactly 72 h: not yet
+    assert should_alert("active", start, False, NOW) is False             # streak ended by a good check
+    assert should_alert("unknown", None, None, NOW) is False
+
+
+class FakeCursor:
+    def __init__(self, conn):
+        self.conn = conn
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def execute(self, sql, params):
+        self.conn.executed.append((sql, params))
+
+    def fetchone(self):
+        return self.conn.answers.pop(0)
+
+
+class FakeConn:
+    """Answers the streak query in order (one tuple per configured page)."""
+    def __init__(self, answers):
+        self.answers, self.executed = list(answers), []
+
+    def cursor(self):
+        return FakeCursor(self)
+
+
+def test_after_upsert_sends_one_alert_and_marks_the_row_only_when_delivered():
+    parser, _ = make_parser()
+    sent = []
+    parser.send_alert = lambda msg, title=None, priority="default": sent.append((msg, title, priority)) or True
+    start = NOW - timedelta(hours=80)
+    conn = FakeConn([("unknown", 41, start, False, "fire: answered 500"), ("active", 42, None, None, None)])
+    parser.after_upsert(conn)
+    assert len(sent) == 1 and "fire restrictions: status unknown for 80 h" in sent[0][0] and sent[0][2] == "high"
+    assert FIRE_URL in sent[0][0]
+    updates = [(sql, p) for sql, p in conn.executed if sql.startswith("UPDATE")]
+    assert updates == [("UPDATE restriction_checks SET alert_sent_at = %s WHERE id = %s", (NOW, 41))]
+
+    # next run, same streak, row now marked: no second alert
+    sent.clear()
+    parser.after_upsert(FakeConn([("unknown", 43, start, True, "fire: answered 500"), ("active", 44, None, None, None)]))
+    assert sent == []
+
+
+def test_after_upsert_undelivered_alert_is_not_marked_and_never_raises():
+    parser, _ = make_parser()
+    parser.send_alert = lambda *a, **k: False
+    conn = FakeConn([("unknown", 41, NOW - timedelta(hours=80), False, None), ("unknown", 42, NOW - timedelta(hours=1), False, None)])
+    parser.after_upsert(conn)
+    assert not any(sql.startswith("UPDATE") for sql, _ in conn.executed)
+    parser.after_upsert(FakeConn([]))  # a broken query answer: logged, not raised
