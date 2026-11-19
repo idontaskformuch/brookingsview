@@ -330,6 +330,21 @@
       },
       "_notes": "VERIFIED 2026-08-27 live, with the real CDOT_API_KEY: https://data.cotrip.org/api/v1/incidents?apiKey=... returns 200 OK GeoJSON FeatureCollection, statewide, ~17 active incidents at test time. Key lives ONLY in the CDOT_API_KEY env var (.env locally, GitHub Actions secret in CI) -- never in this file, which is committed to git; cdot_v1.py appends it to `url` at request time. data.cotrip.org/api/v1/roadConditions also exists and is also key-gated but was NOT wired in: it's a different data model (100 weather-forecast road segments/page, ~3.6MB, mountain-pass-focused) that doesn't fit this table's point-incident schema."
     },
+    "restrictions": {
+      "type": "alert_center_restrictions",
+      "enabled": true,
+      "pages": [
+        {"kind": "fire", "shape": "alert", "category": "Fire Alerts and Restrictions",
+         "url": "https://broomfield.org/AlertCenter.aspx?AID=90"},
+        {"kind": "water", "shape": "category", "category": "Water Restrictions and Drought Conditions", "cid": 9,
+         "url": "https://broomfield.org/AlertCenter.aspx?CID=Water-Restrictions-and-Drought-Condition-9"}
+      ],
+      "output": {
+        "format": "structured_data_no_ai",
+        "voice": "n/a (källans ordagranna rubrik + fasta mallar, ingen AI)"
+      },
+      "_notes": "Fas 5 källa 1 (ägaren 2026-11-19, nr 1+5). broomfield.org robots: User-agent * Crawl-delay 10, AlertCenter.aspx ej nekad; RSS.aspx, CivicAlerts.aspx, calendar.aspx, map.aspx nekade och läses aldrig. Båda sidorna lästa 19 nov (.claude/evidence/fas5-restrictions/). Parser: scrapers/parsers/alert_center_restrictions.py; sajten: site/src/lib/restrictions.ts. URL:erna speglas i site/src/lib/site-config.ts restrictions."
+    },
     "jobs": {
       "type": "jobs",
       "enabled": true,

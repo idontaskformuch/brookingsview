@@ -17,6 +17,7 @@ import type { NavConfig } from './nav-sections';
 import type { TodayPageConfig } from './today-page';
 import type { TrafficIndexingRule } from './traffic-verdict';
 import { validatePlaceConfig, type CountryId, type NationId } from './country-profile';
+import type { RestrictionSource } from './restrictions';
 
 export interface SiteConfig {
   townId: string;
@@ -79,6 +80,10 @@ export interface SiteConfig {
   /** Public-safety notices (wildfires near the town, air quality, evacuation links): /safety/ and the line on /today. Moreno Valley and Broomfield
    *  (owner 2026-10-29); the towns must also exist in lib/safety-towns.ts. Other towns redirect /safety/ to /. */
   safetyNotices?: true;
+  /** Fire and water restrictions from the City's own Alert Center (Fas 5 source 1, owner 2026-11-19; lib/restrictions.ts). Mirrors
+   *  configs/<town_id>.json data_sources.restrictions.pages[].url (the scraper reads those; this is the link shown when there is no
+   *  check yet). Shown as CityStatus rows ('fire_restrictions', 'water_restrictions') and a section on /safety/. Absent: nothing. */
+  restrictions?: { fire?: RestrictionSource; water?: RestrictionSource };
   /** false = not listed in the other towns' multi-site disclosure yet (an unlaunched, noindexed
    *  site is not advertised from the live ones). Default true. */
   listedInNetwork?: boolean;
@@ -775,7 +780,12 @@ const CITIES: Record<string, SiteConfig> = {
     hasWhatsOn: true,
     // 'whats_on' added alongside the enable above -- see Moreno Valley's
     // identical comment just above for why.
-    statusModules: ['alerts', 'traffic', 'next_meeting', 'whats_on', 'election'],
+    statusModules: ['alerts', 'fire_restrictions', 'water_restrictions', 'traffic', 'next_meeting', 'whats_on', 'election'],
+    // Fas 5 source 1 (owner 2026-11-19): same URLs as configs/broomfield_co.json data_sources.restrictions.pages.
+    restrictions: {
+      fire: { sourceUrl: 'https://broomfield.org/AlertCenter.aspx?AID=90' },
+      water: { sourceUrl: 'https://broomfield.org/AlertCenter.aspx?CID=Water-Restrictions-and-Drought-Condition-9' },
+    },
     // Local Accent Identity, Broomfield-first rollout. A muted Front Range
     // slate-teal (H185) -- deliberately not green (avoids reading as an
     // interpretation of Vail Resorts' own branding, which this town's

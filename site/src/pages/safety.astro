@@ -7,6 +7,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import ShareButton from '../components/ShareButton.astro';
 import SafetyNotices from '../components/SafetyNotices.astro';
+import RestrictionStatus from '../components/RestrictionStatus.astro';
 import { siteConfig } from '../lib/site-config';
 import { SAFETY_TOWNS } from '../lib/safety-towns';
 import { resolvePageMeta } from '../lib/page-meta';
@@ -27,6 +28,8 @@ const breadcrumbTrail: BreadcrumbEntry[] = [{ label: 'Home', href: '/' }, { labe
     <ShareButton title={pageMeta.title} />
   </header>
 
+  <RestrictionStatus />
+
   <section class="safety-evac" aria-labelledby="safety-evac-h">
     <h2 id="safety-evac-h">Evacuation information</h2>
     <p>We do not publish evacuation orders or maps. The official pages do, and they are the ones to rely on:</p>
@@ -45,6 +48,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [{ label: 'Home', href: '/' }, { labe
       <li>The fire list is wildfire data from NIFC's national incident feed, checked about every 15 minutes. It shows fires reported by the agencies fighting them, so a new fire can take time to appear and the size and containment can be behind what is happening on the ground.</li>
       <li>The air-quality index is AirNow's current reading from the nearest monitor, which can be miles away. It is preliminary data that has not been fully checked and can change. The color and category follow the EPA's standard index ranges.</li>
       <li>If we cannot confirm the data is recent, we show nothing rather than an old number.</li>
+      {siteConfig.restrictions && <li>Fire and water restrictions are the City's own alert titles, word for word, from its Alert Center. If our last check failed or is more than 48 hours old, the line says the status is unknown and links to the City's page instead.</li>}
       <li>This is not an alert system. Sign up for the official alerts from the links above.</li>
     </ul>
   </section>

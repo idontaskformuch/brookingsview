@@ -51,6 +51,8 @@ import { normalizeSportTitle } from './week-groups';
 import { ownPageHref } from './ai-text';
 import { ELECTION_BY_TOWN } from '../config/election';
 import { buildElectionStatus } from './election';
+import { loadRestrictionViews } from './restrictions-data';
+import { UNKNOWN_TEXT, type RestrictionKind, type RestrictionView } from './restrictions';
 
 export type StatusTone = 'quiet' | 'notice' | 'alert';
 
@@ -93,6 +95,8 @@ const ICONS: Record<string, string> = {
   university: 'athletics',
   whats_on: 'ticket',
   election: 'vote',
+  fire_restrictions: 'fire',
+  water_restrictions: 'water',
 };
 
 const CLOSURE_LABEL: Record<'confirmed' | 'watch' | 'clear', string> = {
@@ -277,13 +281,37 @@ async function resolveElection(): Promise<CityStatusModule | null> {
   return { id: 'election', icon: ICONS.election, label: 'Election', tone: 'notice', href: href ?? '/vote/', swapAt: then, ...rest };
 }
 
+/** Fire/water restriction row (Fas 5 source 1, lib/restrictions.ts). Always rendered when configured: "Status unknown, see the
+ *  source" is itself the answer the owner asked for, never hidden and never replaced by "no restrictions". The row carries
+ *  data-swap-* (the election row's mechanism, lib/election-swap.ts) so the browser switches it to unknown once the check is 48 h
+ *  old. Exported and pure for the unit test. */
+export function buildRestrictionStatus(v: RestrictionView): CityStatusModule {
+  const id = `${v.kind}_restrictions`;
+  const known = v.state !== 'unknown';
+  return {
+    id, icon: ICONS[id], label: v.label,
+    value: v.more ? `${v.text} (${v.more})` : v.text,
+    tone: v.tone,
+    href: known ? '/safety/#restrictions' : v.sourceUrl,
+    asOf: known && v.checkedAt ? new Date(v.checkedAt) : new Date(),
+    swapAt: known && v.staleAt ? { at: v.staleAt, value: UNKNOWN_TEXT, href: v.sourceUrl } : undefined,
+  };
+}
+
+function restrictionResolver(kind: RestrictionKind): ModuleResolver {
+  return async () => {
+    const view = (await loadRestrictionViews(siteConfig, new Date())).find((v) => v.kind === kind);
+    return view ? buildRestrictionStatus(view) : null;
+  };
+}
+
 // Always rendered: their quiet state is still informative (handoff's own
 // "Visibility rules"). `university`/`next_meeting` weren't explicitly
 // classified in the handoff's Always/Conditional split -- both follow the
 // SAME "a real 'nothing scheduled' is still worth a line" reasoning
 // events_today/weather were given, so they're grouped here too, disclosed
 // rather than silently assumed.
-const ALWAYS_RENDERED = new Set(['weather', 'events_today', 'next_meeting', 'university']);
+const ALWAYS_RENDERED = new Set(['weather', 'events_today', 'next_meeting', 'university', 'fire_restrictions', 'water_restrictions']);
 
 interface ModuleDef {
   resolve: ModuleResolver;
@@ -320,6 +348,8 @@ const MODULES: Record<string, ModuleDef> = {
   whats_on: { resolve: resolveWhatsOn, hasSource: (cfg) => !!cfg.hasWhatsOn },
   // Election 2026 (/vote): not ALWAYS_RENDERED -- null outside the window, rendered as a normal row.
   election: { resolve: resolveElection, hasSource: (cfg) => !!ELECTION_BY_TOWN[cfg.townId]?.enabled },
+  fire_restrictions: { resolve: restrictionResolver('fire'), hasSource: (cfg) => !!cfg.restrictions?.fire },
+  water_restrictions: { resolve: restrictionResolver('water'), hasSource: (cfg) => !!cfg.restrictions?.water },
 };
 
 /** Validates a town's `statusModules` config against real capability --

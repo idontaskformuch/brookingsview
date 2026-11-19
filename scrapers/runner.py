@@ -51,6 +51,7 @@ REGISTRY: dict[str, str] = {
     "cdot":            "scrapers.parsers.cdot_v1:CdotParser",
     "vail_news":       "scrapers.parsers.vail_news_v1:VailNewsParser",
     "usda":            "scrapers.parsers.usda:UsdaParser",
+    "alert_center_restrictions": "scrapers.parsers.alert_center_restrictions:AlertCenterRestrictionsParser",
     # stubbar (väntar på Stage 0-verifiering av källstruktur)
     "smartgov":        "scrapers.parsers.smartgov_v1:SmartGovParser",
     "civicengage_agenda_center": "scrapers.parsers.civicengage_pdf_v1:CivicEngageParser",

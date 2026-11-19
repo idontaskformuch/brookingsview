@@ -1,0 +1,63 @@
+---
+/** "Can I have a fire / water my lawn right now?" -- the City's own fire and water restriction alerts (Fas 5 source 1, owner
+ *  2026-11-19; lib/restrictions.ts). One CompactRow per kind, linking to the City's page: the source's own title verbatim, "In
+ *  effect since", "Last checked". A failed or 48 h old check reads "Status unknown, see the source", also in a page built while the
+ *  data was fresh (the script below switches it at data-stale-at, no rebuild). Renders nothing for a town without
+ *  siteConfig.restrictions. */
+import SectionHeader from './ui/SectionHeader.astro';
+import CompactRow from './ui/CompactRow.astro';
+import { siteConfig } from '../lib/site-config';
+import { loadRestrictionViews } from '../lib/restrictions-data';
+import { metaLine } from '../lib/restrictions';
+
+const views = await loadRestrictionViews(siteConfig, new Date());
+const tz = siteConfig.timezone;
+---
+{views.length > 0 && (
+  <section id="restrictions" class="restrictions" aria-label="Fire and water restrictions" data-tz={tz}>
+    <SectionHeader title="Fire and water restrictions" />
+    {views.map((v) => (
+      <CompactRow href={v.sourceUrl}>
+        <span class="restrictions__row" data-restriction={v.kind} data-state={v.state} data-stale-at={v.staleAt ?? undefined}
+          data-checked-at={v.checkedAt ?? undefined}>
+          <span class="restrictions__label">{v.label}</span>
+          <span class="restrictions__text" data-r-text>{v.text}{v.more && ` (${v.more})`}</span>
+          <span class="restrictions__meta" data-r-meta>{metaLine(v, tz)}</span>
+        </span>
+      </CompactRow>
+    ))}
+    <p class="restrictions__note">From the City's own Alert Center; each row opens the City's own page, which is the one to rely on. We check it a few times a day.</p>
+  </section>
+)}
+
+<style>
+  .restrictions { margin: 1.25rem 0; }
+  .restrictions__row { display: flex; flex-direction: column; gap: 0.15rem; }
+  .restrictions__label { font-size: var(--ui-meta); color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.04em; }
+  .restrictions__text { font-weight: var(--ui-primary-weight); }
+  .restrictions__meta, .restrictions__note { font-size: var(--ui-meta); color: var(--ink-soft); }
+  .restrictions__note { margin: 0.5rem 0 0; }
+</style>
+
+<script>
+  import { UNKNOWN_TEXT, formatChecked } from '../lib/restrictions';
+  // Same 48 h rule as the build (lib/restrictions.ts restrictionView): past data-stale-at the row is "unknown", whatever it said.
+  const root = document.querySelector<HTMLElement>('#restrictions');
+  const tz = root?.dataset.tz || 'UTC';
+  const flip = () => {
+    let waiting = 0;
+    root?.querySelectorAll<HTMLElement>('[data-stale-at]').forEach((row) => {
+      if (row.dataset.state === 'unknown') return;
+      const at = Date.parse(row.dataset.staleAt || '');
+      if (Number.isNaN(at)) return;
+      if (Date.now() < at) { waiting++; return; }
+      row.dataset.state = 'unknown';
+      const text = row.querySelector('[data-r-text]');
+      const meta = row.querySelector('[data-r-meta]');
+      if (text) text.textContent = UNKNOWN_TEXT;
+      if (meta) meta.textContent = row.dataset.checkedAt ? `Last successful check ${formatChecked(row.dataset.checkedAt, tz)}` : 'Not checked yet';
+    });
+    return waiting;
+  };
+  if (flip() > 0) { const h = setInterval(() => { if (flip() === 0) clearInterval(h); }, 60_000); }
+</script>
