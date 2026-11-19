@@ -1,0 +1,42 @@
+---
+/** "How do I..." hub (Fas 3): every answer page of the town, each question with its one-line answer and a link. FAQPage JSON-LD only for
+ *  confirmed answers (owner 2026-11-19). A town without answer pages has no hub (redirect, out of the sitemap via TOWN_GATED_PAGES). */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import AboutThisPage from '../components/ui/AboutThisPage.astro';
+import SectionRule from '../components/SectionRule.astro';
+import { siteConfig } from '../lib/site-config';
+import { answerPagesFor } from '../config/city-answers';
+import { answerStatus, faqJsonLd, inlineHtml, todayIn } from '../lib/city-answers';
+
+const pages = answerPagesFor(siteConfig.townId);
+if (pages.length === 0) return Astro.redirect('/', 302);
+const today = todayIn(siteConfig.timezone);
+const faq = faqJsonLd(pages.flatMap((p) => p.answers), today);
+---
+<BaseLayout title={`How Do I… in ${siteConfig.cityName} | ${siteConfig.siteName}`} description={`Answers to everyday questions in ${siteConfig.cityName}, each from the official source page, with the date it was checked.`} wide>
+  {faq && <script type="application/ld+json" is:inline slot="head" set:html={JSON.stringify(faq)} />}
+  <header class="lede"><h1>How do I… in {siteConfig.cityName}</h1></header>
+  {pages.map((p) => (
+    <section class="hub-page">
+      <SectionRule label={p.h1} href={`/${p.slug}/`} />
+      <ul class="hub-list">
+        {p.answers.map((a) => (
+          <li>
+            <a class="hub-q" href={`/${p.slug}/#${a.id}`}>{a.question}</a>
+            {answerStatus(a, today) === 'unconfirmed' && <span class="hub-status"> · Unconfirmed</span>}
+            {a.faq && <p class="hub-a" set:html={inlineHtml(a.faq)} />}
+          </li>
+        ))}
+      </ul>
+    </section>
+  ))}
+  <AboutThisPage slot="about">
+    <p>Each answer is read from an official source page and shows when it was last checked. An answer that has not been checked for 120 days is marked unconfirmed until it is read again.</p>
+  </AboutThisPage>
+</BaseLayout>
+<style>
+  .hub-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.875rem; max-width: 46rem; }
+  .hub-q { font-family: var(--font-head); font-size: 1.125rem; font-weight: 600; }
+  .hub-status { font-family: var(--font-ui); font-size: var(--ui-meta, 0.8125rem); color: var(--ink-soft); }
+  .hub-a { margin: 0.25rem 0 0; color: var(--ink-soft); }
+</style>

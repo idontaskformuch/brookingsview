@@ -1,0 +1,40 @@
+---
+/** CityAnswers (Fas 3): the body of a "How do I..." page, one card per answer: the question as H2 in the resident's words, the answer as
+ *  data, then what you do (links). Sources and "Checked <date>" go under About this page (pages/[answer].astro). An answer read more than
+ *  UNCONFIRMED_AFTER_DAYS ago, or one its source has not confirmed yet, carries an "Unconfirmed" line. No town code paths: everything
+ *  comes from config/city-answers/<town>.ts. */
+import type { AnswerPage } from '../../config/city-answers/types';
+import { answerStatus } from '../../lib/city-answers';
+import SectionRule from '../SectionRule.astro';
+import AnswerBlocks from './AnswerBlocks.astro';
+
+interface Props { page: AnswerPage; today: string }
+const { page, today } = Astro.props;
+---
+<header class="lede">
+  <h1>{page.h1}</h1>
+</header>
+{page.answers.map((a) => (
+  <section class="ans" id={a.id} data-status={answerStatus(a, today)}>
+    <SectionRule label={a.question} />
+    {answerStatus(a, today) === 'unconfirmed' && (
+      <p class="ans-status">Unconfirmed: the source has not confirmed this for the current season yet. Check the source before you go.</p>
+    )}
+    <AnswerBlocks blocks={a.blocks} today={today} />
+    {a.actions && a.actions.length > 0 && (
+      <p class="ans-actions">{a.actions.map((x) => <a class="ans-action" href={x.href} rel={/^https?:/i.test(x.href) ? 'noopener' : undefined}>{x.label} &rarr;</a>)}</p>
+    )}
+  </section>
+))}
+{page.tail && (
+  <>
+    <SectionRule label={page.tail.heading} />
+    <AnswerBlocks blocks={page.tail.blocks} today={today} />
+  </>
+)}
+<style>
+  .ans :global(p), .ans :global(li) { max-width: 46rem; }
+  .ans-status { font-family: var(--font-ui); font-size: var(--ui-meta, 0.8125rem); font-weight: 600; color: var(--warn-ink, #8a5a00); }
+  .ans-actions { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin: 0.75rem 0 0; }
+  .ans-action { display: inline-flex; align-items: center; min-height: 44px; font-family: var(--font-ui); font-weight: 600; }
+</style>

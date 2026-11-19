@@ -21,6 +21,7 @@
  */
 import type { SiteConfig } from '../lib/site-config';
 import { isSectionBuilt } from '../lib/sections';
+import { answerPagesFor } from './city-answers';
 
 export interface ClusterDefinition {
   key: string;
@@ -124,6 +125,14 @@ export const CLUSTERS: Record<string, ClusterDefinition> = {
     // example above. Primary home is whats_happening.
     secondarySpokes: ['free-things-to-do'],
   },
+  // Fas 3 (2026-11-19): "How do I..." answers (config/city-answers/), one hub per town with answer pages; each answer page is a spoke.
+  answers: {
+    key: 'answers',
+    label: 'How do I…',
+    hubRoute: 'how-do-i',
+    primarySpokes: ['answer/detail'],
+    secondarySpokes: [],
+  },
   // hubRoute here is a placeholder only -- see CLUSTER_TOWN_OVERRIDES.
   // Every real town has its own distinct flagship "local life" page
   // (jackrabbits.astro / sports.astro / vail-resorts.astro -- three
@@ -190,6 +199,9 @@ export type RouteAvailability = (config: SiteConfig) => boolean;
  *  own.
  */
 export const ROUTE_AVAILABILITY: Record<string, RouteAvailability> = {
+  // Fas 3: the answers cluster exists where config/city-answers/index.ts has pages for the town.
+  'how-do-i': (c) => answerPagesFor(c.townId).length > 0,
+  'answer/detail': (c) => answerPagesFor(c.townId).length > 0,
   // Civic -- city-hall.astro has no gate; every town has meetings.
   'city-hall': () => true,
   'city-hall/archive': () => true,
@@ -306,6 +318,7 @@ export const HUB_HREF: Record<string, string> = {
   jackrabbits: '/jackrabbits/',
   sports: '/sports/',
   'vail-resorts': '/vail-resorts/',
+  'how-do-i': '/how-do-i/',
 };
 
 /** Answer-engine-visibility handoff, Section 2 (llms.txt): the same
@@ -321,6 +334,10 @@ export const HUB_HREF: Record<string, string> = {
  *  hard single-town gate (see ROUTE_AVAILABILITY), so its description is
  *  already written for that one real town specifically. */
 export const HUB_NAV_COPY: Record<string, { label: string; description: string }> = {
+  'how-do-i': {
+    label: 'How do I…',
+    description: 'Answers to everyday questions in {Town}, each from the official source page, with the date it was checked.',
+  },
   'city-hall': {
     label: 'City hall',
     description: 'City council, county commission and committee meetings in {Town}, in plain language.',

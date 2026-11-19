@@ -336,6 +336,11 @@
       "born_from": "Fas 2 CLS check 2026-11-19: the JS All button carries `hidden` but .snav__allbtn's display:inline-flex overrode it, so without JS two All controls showed, and when the script hid the <details> one the nav row widened 72 px and every centred tab moved (CLS 0.015 at 1440, Brookings). Fixture: site/src/lib/section-nav-ui.test.ts 'exactly one All control'.",
       "what": "two All controls taking space at once, or the nav row changing width when the script starts (vitest section-nav-ui.test.ts, real browser)"
     },
+    "build.no-self-import": {
+      "severity": "hard",
+      "born_from": "Fas 3 2026-11-19: components/answers/AnswerBlocks.astro imported itself for nested blocks; the build exited 0 but every page lost its /_astro/*.css link (Moreno build, all pages unstyled). Found by a review screenshot. Fixture: site/src/lib/no-self-import.test.ts.",
+      "what": "an .astro component that imports itself (use Astro.self), or a built page without the layout stylesheet link (vitest no-self-import.test.ts)"
+    },
     "front.rail-modules": {
       "severity": "hard",
       "born_from": "Fylliga sidor Fas 2 2026-11-19 (.claude/specs/full-pages-no-ai-prose.md): the desktop rail (RailLayout + config/home-rail.ts) on the front page and the holiday pages. A module without data must be hidden, the rail never an empty box, the reserve only when the rail is short, a two-month-old result never shown. Fixture: site/src/lib/rail.test.ts (real rows: Broomfield meetings 11825/11824/12328, Moreno Valley Angels finals 25-27 Sep 2026, config/holiday-pages Broomfield 2026).",

@@ -1,0 +1,63 @@
+---
+/** "Find your pickup day" picker of Brookings' trash guide, moved verbatim from pages/trash-recycling.astro (Fas 3, K1). The city's rules
+ *  live in lib/trash-schedule.ts; this only asks which side of 8th Street South you live on and applies them in the browser. */
+const BASE = 'https://www.cityofbrookings-sd.gov';
+---
+<div class="tr-picker">
+  <label for="tr-side"><strong>Where do you live?</strong></label>
+  <select id="tr-side">
+    <option value="">Choose…</option>
+    <option value="south">South of 8th Street South</option>
+    <option value="north">North of 8th Street South</option>
+  </select>
+  <div id="tr-result" aria-live="polite" hidden></div>
+  <p class="tr-note">Dates apply the city's holiday rule (see "Holiday weeks" below). The city's
+  <a href={`${BASE}/DocumentCenter/View/19767/2026-Solid-Waste-Calendar-and-Guide`} rel="noopener">2026 Solid Waste Calendar and Guide</a> is the authority if a date looks wrong.</p>
+</div>
+
+<script>
+  // Next pickup for the chosen side of 8th Street South, applying the city's holiday rule (lib/trash-schedule.ts).
+  import { nextPickup, type Side } from '../../lib/trash-schedule';
+
+  const TZ = 'America/Chicago';
+  function todayUtc(): number {
+    const p = new Intl.DateTimeFormat('en-US', { timeZone: TZ, year: 'numeric', month: 'numeric', day: 'numeric' }).formatToParts(new Date());
+    const get = (t: string) => Number(p.find((x) => x.type === t)!.value);
+    return Date.UTC(get('year'), get('month') - 1, get('day'));
+  }
+  const fmt = (t: number) => new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(t));
+
+  const select = document.getElementById('tr-side') as HTMLSelectElement | null;
+  const out = document.getElementById('tr-result');
+  select?.addEventListener('change', () => {
+    const side = select.value as Side | '';
+    if (!out) return;
+    if (!side) { out.hidden = true; out.textContent = ''; return; }
+    const today = todayUtc();
+    const rows: [string, string][] = [];
+    for (const [label, stream] of [['Garbage', 'garbage'], ['Recycling', 'recycling'], ['Yard waste', 'yard']] as const) {
+      const n = nextPickup(side, stream, today);
+      if (!n) rows.push([label, 'Not in season (2026 collection ran April 6 to November 24)']);
+      else rows.push([label, `${fmt(n.date)}${n.shifted ? ` (moved for ${n.holiday ?? 'a holiday'})` : ''}`]);
+    }
+    out.textContent = '';
+    const ul = document.createElement('ul');
+    for (const [label, when] of rows) {
+      const li = document.createElement('li');
+      const b = document.createElement('strong');
+      b.textContent = `${label}: `;
+      li.append(b, document.createTextNode(when));
+      ul.append(li);
+    }
+    out.append(ul);
+    out.hidden = false;
+  });
+</script>
+
+<style>
+  .tr-picker { margin: 0 0 1rem; max-width: 46rem; }
+  .tr-picker select { font: inherit; padding: 0.35rem 0.5rem; margin-left: 0.5rem; }
+  #tr-result { margin-top: 0.75rem; padding: 0.5rem 1rem; border-left: 4px solid var(--section-accent, #2f5f8f); background: var(--surface, transparent); }
+  #tr-result ul { margin: 0; padding-left: 1.1rem; }
+  .tr-note { font-size: 0.9rem; max-width: 46rem; }
+</style>

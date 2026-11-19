@@ -1,0 +1,41 @@
+---
+/** The coming holiday weeks with Brookings' pickup rule applied (lib/trash-schedule.ts), moved verbatim from pages/trash-recycling.astro
+ *  (Fas 3, K1). Holidays in the next 120 days, computed at build time in the town's zone. */
+import { upcomingHolidayShifts } from '../../lib/trash-schedule';
+
+const todayUtc = (() => { const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', year: 'numeric', month: 'numeric', day: 'numeric' }).formatToParts(new Date());
+  const g = (t: string) => Number(p.find((x) => x.type === t)!.value); return Date.UTC(g('year'), g('month') - 1, g('day')); })();
+const southShifts = upcomingHolidayShifts(todayUtc, 120, 'south');
+const northShifts = upcomingHolidayShifts(todayUtc, 120, 'north');
+const holidayRows = southShifts.map((h, i) => ({ name: h.name, date: h.date, south: h.moves, north: northShifts[i].moves }))
+  .filter((h) => h.south.length > 0 || h.north.length > 0);
+const fmtHoliday = (t: number) => new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(t));
+---
+{holidayRows.length > 0 ? (
+  <>
+    <p><strong>Coming up</strong> (the rules above applied to the next few holidays):</p>
+    <table class="tr-table">
+      <caption class="sr-only">Pickup changes for upcoming holidays</caption>
+      <thead><tr><th scope="col">Holiday</th><th scope="col">South of 8th St. S.</th><th scope="col">North of 8th St. S.</th></tr></thead>
+      <tbody>
+        {holidayRows.map((h) => (
+          <tr>
+            <th scope="row">{h.name}, {fmtHoliday(h.date)}</th>
+            <td>{h.south.length > 0 ? h.south.join('; ') : 'No change'}</td>
+            <td>{h.north.length > 0 ? h.north.join('; ') : 'No change'}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+    <p class="tr-note">Yard waste collection ends November 24, 2026, so yard waste changes after that date do not apply this year.</p>
+  </>
+) : (
+  <p>No collection holidays fall in the next four months.</p>
+)}
+<style>
+  .tr-note { font-size: 0.9rem; max-width: 46rem; }
+  .tr-table { border-collapse: collapse; width: 100%; max-width: 46rem; margin: 0 0 0.75rem; }
+  .tr-table th, .tr-table td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--rule, #ddd); }
+  @media (max-width: 30rem) { .tr-table th, .tr-table td { padding: 0.4rem 0.3rem; font-size: 0.875rem; overflow-wrap: anywhere; } }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>

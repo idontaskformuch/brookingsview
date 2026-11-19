@@ -1,0 +1,34 @@
+---
+/** "How do I..." answer pages (Fas 3): one route per page in config/city-answers/<town>.ts. Drafts are built only with PREVIEW_DRAFTS=1
+ *  (owner 2026-11-19: Broomfield's Christmas tree page waits for the 1 Dec re-read). A build after an answer's checkAt prints a warning. */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import AboutThisPage from '../components/ui/AboutThisPage.astro';
+import CityAnswers from '../components/answers/CityAnswers.astro';
+import { siteConfig } from '../lib/site-config';
+import { answerPagesFor } from '../config/city-answers';
+import { checkAtWarnings, faqJsonLd, inlineHtml, todayIn } from '../lib/city-answers';
+import { formatIsoDate } from '../lib/holiday-page';
+import { countryProfile } from '../lib/country-profile';
+import type { AnswerPage } from '../config/city-answers/types';
+
+export function getStaticPaths() {
+  const pages = answerPagesFor(siteConfig.townId, process.env.PREVIEW_DRAFTS === '1');
+  for (const w of checkAtWarnings(pages, todayIn(siteConfig.timezone), siteConfig.townId)) console.warn(w);
+  return pages.map((page) => ({ params: { answer: page.slug }, props: { page } }));
+}
+
+const { page } = Astro.props as { page: AnswerPage };
+const today = todayIn(siteConfig.timezone);
+const faq = faqJsonLd(page.answers, today);
+const checked = [...page.answers.map((a) => a.checked)].sort().at(-1)!;
+const sources = page.sourcesInAbout === false ? [] : [...new Map(page.answers.flatMap((a) => a.sources).map((s) => [s.url, { name: s.name, href: s.url }])).values()];
+const locale = countryProfile(siteConfig.country).locale as 'en-US' | 'en-GB';
+---
+<BaseLayout title={page.title.replace('{Site}', siteConfig.siteName)} description={page.description} wide>
+  {faq && <script type="application/ld+json" is:inline slot="head" set:html={JSON.stringify(faq)} />}
+  <CityAnswers page={page} today={today} />
+  <AboutThisPage slot="about" sources={sources}>
+    <p set:html={inlineHtml(page.about)} />
+    {page.sourcesInAbout !== false && <p>Checked {formatIsoDate(checked, true, locale)}.</p>}
+  </AboutThisPage>
+</BaseLayout>
