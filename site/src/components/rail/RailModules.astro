@@ -1,0 +1,192 @@
+---
+/** The rail's modules (Fas 2): loads its own data so the front page and the holiday pages show the same rail. Which modules show and in
+ *  which order: config/home-rail.ts through lib/rail.ts planRail (a module without data is hidden; the reserve fills in only when the rail
+ *  would be shorter than the first screen). Renders nothing at all when no module has data, so RailLayout gives no aside. Data and
+ *  template strings only, no prose. */
+import CityStatus from '../CityStatus.astro';
+import GameCard from '../GameCard.astro';
+import RegionalGameCard from '../RegionalGameCard.astro';
+import SdsuEventCard from '../SdsuEventCard.astro';
+import JackrabbitGameDayLine from '../JackrabbitGameDayLine.astro';
+import JackrabbitWidget from '../JackrabbitWidget.astro';
+import BurroBonanzaWidget from '../BurroBonanzaWidget.astro';
+import WorkplaceWatchWidget from '../WorkplaceWatchWidget.astro';
+import TrafficWidget from '../TrafficWidget.astro';
+import AdSlot from '../AdSlot.astro';
+import RailMeetings from './RailMeetings.astro';
+import RailHoliday from './RailHoliday.astro';
+import RailWeather from './RailWeather.astro';
+import {
+  getActiveTrafficIncidents, getUpcomingGames, getNextRegionalGame, getNextSdsuMarqueeEvent, getAgPrices, getEmployerJobStats,
+  getRegionalSports, getWeatherSnapshot,
+} from '../../lib/db';
+import { siteConfig } from '../../lib/site-config';
+import { isSectionBuilt } from '../../lib/sections';
+import { homeRailFor, type RailModuleKind } from '../../config/home-rail';
+import { planRail, railMeetings, nextRailHoliday, latestFinal, scoreLine, RAIL_WEATHER_DAYS } from '../../lib/rail';
+import { loadUpcomingMeetings } from '../../lib/meetings-data';
+import { frontPageHolidays } from '../../lib/front-page-holidays';
+import { localDayNumber } from '../../lib/local-day';
+import { holidayPageDef } from '../../config/holiday-pages/calendar';
+import { holidayBandImage } from '../../lib/city-face';
+import { weekInfoForInstant } from '../../lib/this-week';
+import { countryProfile } from '../../lib/country-profile';
+import { viewFor } from '../../lib/weather-html';
+import { formatCalendarDate } from '../../lib/db';
+import type { MeetingView } from '../../lib/meetings-view';
+
+interface Props {
+  now: Date;
+  /** Open the rail with Right Now (holiday pages; the front page has it as its own grid item). */
+  withStatus?: boolean;
+  /** Meetings and holiday pages the page already shows. */
+  excludeMeetingIds?: Set<string>;
+  excludeHolidaySlugs?: Set<string>;
+  /** The front page's photo of the week, which the holiday thumbnail never repeats. */
+  frontImageId?: string | null;
+  /** Already loaded by the page (the front page), to avoid a second query. */
+  meetingsData?: { meetings: MeetingView[]; todayYmd: string } | null;
+}
+const { now, withStatus = false, excludeMeetingIds = new Set(), excludeHolidaySlugs = new Set(), frontImageId = null } = Astro.props;
+const cfg = homeRailFor(siteConfig.townId);
+const tz = siteConfig.timezone;
+const profile = countryProfile(siteConfig.country);
+const wants = new Set<RailModuleKind>([...cfg.modules, ...cfg.reserve]);
+
+const meetingsData = Astro.props.meetingsData !== undefined ? Astro.props.meetingsData : await loadUpcomingMeetings();
+const [traffic, games, regionalNext, sdsuNext, prices, jobStats, regional, weather] = await Promise.all([
+  wants.has('traffic') && isSectionBuilt('traffic', siteConfig) ? getActiveTrafficIncidents() : Promise.resolve([]),
+  wants.has('sport') && isSectionBuilt('jackrabbits', siteConfig) ? getUpcomingGames(1) : Promise.resolve([]),
+  wants.has('sport') && isSectionBuilt('sports', siteConfig) ? getNextRegionalGame() : Promise.resolve(null),
+  wants.has('sport') ? getNextSdsuMarqueeEvent() : Promise.resolve(null),
+  wants.has('markets') ? getAgPrices() : Promise.resolve([]),
+  wants.has('workplace') && siteConfig.hasWorkplaceWatch ? getEmployerJobStats() : Promise.resolve([]),
+  wants.has('sport') && isSectionBuilt('sports', siteConfig) ? getRegionalSports() : Promise.resolve([]),
+  wants.has('weather') && isSectionBuilt('weather', siteConfig) ? getWeatherSnapshot() : Promise.resolve(null),
+]);
+
+// Meetings
+const { next: nextMeeting, more: moreMeetings } = meetingsData ? railMeetings(meetingsData.meetings, meetingsData.todayYmd, excludeMeetingIds) : { next: null, more: [] };
+
+// Holiday: the next holiday page with its own band photo as the thumbnail.
+const today = localDayNumber(now, tz);
+const todayDate = new Date(today * 86_400_000);
+const holiday = nextRailHoliday(frontPageHolidays(siteConfig.townId, todayDate.getUTCFullYear()), today, excludeHolidaySlugs);
+const holidayDef = holiday ? holidayPageDef(holiday.slug) : undefined;
+const holidayThumb = holidayDef
+  ? holidayBandImage(siteConfig.townId, holidayDef.holidayId, { y: todayDate.getUTCFullYear(), m: todayDate.getUTCMonth() + 1, d: todayDate.getUTCDate() }, weekInfoForInstant(now, tz).slug, frontImageId)
+  : null;
+
+// Sport: the next game in one slot (the sooner of the Jackrabbits game and SDSU's marquee event; else the regional team), then the latest
+// regional result. Same rule as the front page's old game tile.
+const nextGame = games[0] ?? null;
+const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
+  nextGame && sdsuNext
+    ? (new Date(nextGame.starts_at ?? 0) <= new Date(sdsuNext.starts_at ?? 0) ? 'jackrabbits' : 'sdsu')
+    : nextGame ? 'jackrabbits' : sdsuNext ? 'sdsu' : regionalNext ? 'regional' : null;
+const todayYmd = todayDate.toISOString().slice(0, 10);
+const lastResult = latestFinal(regional.filter((g) => g.relevance_tier === 'primary'), todayYmd);
+// A draw is "D" in British usage and a tie "T" in American (the country profile's spelling, not a country branch).
+const drawLetter = profile.spelling === 'british' ? 'D' : 'T';
+
+// Workplace Watch: the biggest hiring mover (same rule the front page used; a leader tied at zero is not shown).
+const hasHiringHistory = jobStats.some((s) => s.postings_change !== null);
+const mover = jobStats.reduce<typeof jobStats[number] | null>((best, s) => {
+  if (hasHiringHistory) {
+    if (s.postings_change === null) return best;
+    return !best || Math.abs(s.postings_change) > Math.abs(best.postings_change!) ? s : best;
+  }
+  if (!s.postings_now) return best;
+  return !best || s.postings_now > (best.postings_now ?? 0) ? s : best;
+}, null);
+const hiringMover = mover && (mover.postings_now || mover.postings_change) ? mover : null;
+
+// Weather: the coming days from the forecast, one spare so the browser can drop a day that has passed since the build.
+const wxDays = weather
+  ? viewFor({ periods: weather.periods, hourly: weather.hourly, fetchedAt: weather.fetchedAt },
+      { unit: profile.temperatureUnit, lat: siteConfig.townCenter.lat, lon: siteConfig.townCenter.lon, tz, country: siteConfig.country }, now)
+      .days.filter((d) => d.high !== null || d.low !== null).slice(0, RAIL_WEATHER_DAYS + 1)
+  : [];
+
+const plan = planRail(cfg, {
+  meeting: nextMeeting !== null,
+  meetings_more: moreMeetings.length > 0,
+  holiday: holiday !== null && holidayDef !== undefined,
+  sport: gameSlot !== null || lastResult !== null,
+  numbers: false,
+  weather: wxDays.length >= RAIL_WEATHER_DAYS,
+  traffic: traffic.length > 0,
+  workplace: hiringMover !== null,
+  markets: prices.length > 0,
+  // Promo cards: the town's config decides (they have no data of their own).
+  play: true,
+  burro_bonanza: true,
+}, { withStatus });
+---
+{(plan.modules.length > 0 || withStatus) && (
+  <>
+    {withStatus && <CityStatus />}
+    {plan.modules.map((m, i) => (
+      <>
+        {m === 'meeting' && nextMeeting && <RailMeetings title="Next meeting" meetings={[nextMeeting]} todayYmd={meetingsData!.todayYmd} />}
+        {m === 'meetings_more' && <RailMeetings title="Later meetings" meetings={moreMeetings} todayYmd={meetingsData!.todayYmd} />}
+        {m === 'holiday' && holiday && <RailHoliday label={holiday.label} url={holiday.url} daysAway={holiday.daysAway} insights={holiday.insights ?? []} thumb={holidayThumb} />}
+        {m === 'sport' && (
+          <section class="rail-mod" aria-label="Sports">
+            <p class="rail-mod__label">Sports</p>
+            {gameSlot === 'jackrabbits' && nextGame ? (
+              <>
+                <a class="rail-mod__link" href="/jackrabbits/"><GameCard game={nextGame} /></a>
+                <JackrabbitGameDayLine />
+              </>
+            ) : gameSlot === 'sdsu' && sdsuNext ? (
+              <a class="rail-mod__link" href="/university/"><SdsuEventCard event={sdsuNext} /></a>
+            ) : gameSlot === 'regional' && regionalNext && (
+              <a class="rail-mod__link" href="/sports/"><RegionalGameCard game={regionalNext} /></a>
+            )}
+            {lastResult && (
+              <p class="rail-mod__result">
+                <a href="/sports/">Last result: {lastResult.team_name} {scoreLine(lastResult.team_score!, lastResult.opponent_score!, drawLetter)} {lastResult.home_away === 'home' ? 'vs' : 'at'} {lastResult.opponent_name}</a>
+                <span class="rail-mod__meta"> · {formatCalendarDate(lastResult.game_date)}</span>
+              </p>
+            )}
+          </section>
+        )}
+        {m === 'weather' && <RailWeather days={wxDays} tz={tz} />}
+        {m === 'traffic' && <a class="rail-mod__link" href="/traffic/"><TrafficWidget incidents={traffic} /></a>}
+        {m === 'workplace' && hiringMover && (
+          <WorkplaceWatchWidget hiringName={hiringMover.name} hiringCount={hiringMover.postings_now} hiringDelta={hiringMover.postings_change} />
+        )}
+        {m === 'markets' && (
+          <a class="rail-mod rail-mod__link" href="/farm-report/">
+            <p class="rail-mod__label">Markets</p>
+            <table class="rail-prices data">
+              <tbody>
+                {prices.map((p) => (
+                  <tr><th scope="row">{p.commodity}</th><td>{p.price !== null ? Number(p.price).toFixed(2) : '—'}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </a>
+        )}
+        {m === 'play' && <JackrabbitWidget />}
+        {m === 'burro_bonanza' && <BurroBonanzaWidget />}
+        {plan.adAfter === i + 1 && <AdSlot />}
+      </>
+    ))}
+  </>
+)}
+<style>
+  .rail-mod { border-top: 1px solid var(--rule); padding-top: 0.75rem; }
+  .rail-mod__label {
+    margin: 0 0 0.375rem; font-family: var(--font-ui); font-size: 0.625rem; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--ink-soft);
+  }
+  .rail-mod__link { display: block; color: inherit; text-decoration: none; border-radius: 3px; transition: background-color 0.12s ease; }
+  .rail-mod__link:hover { background: var(--navy-tint); }
+  .rail-mod__result { margin: 0.5rem 0 0; font-family: var(--font-ui); font-size: 0.875rem; font-variant-numeric: tabular-nums; }
+  .rail-mod__meta { color: var(--ink-soft); }
+  .rail-prices { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  .rail-prices th { text-align: left; font-weight: 400; text-transform: capitalize; padding: 0.1875rem 0; color: var(--ink-soft); }
+  .rail-prices td { text-align: right; padding: 0.1875rem 0; font-variant-numeric: tabular-nums; }
+</style>

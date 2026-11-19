@@ -1,0 +1,45 @@
+---
+/** Rail module (Fas 2): the forecast for the next three days as a DayStrip (high, low, condition icon). The build ships one spare day; a
+ *  small inline script drops any day that has passed since the build (the page is built twice a day), so the strip always starts today.
+ *  The strip has a fixed height either way: no layout shift. */
+import DayStrip from '../ui/DayStrip.astro';
+import type { DayView } from '../../lib/weather-model';
+import { RAIL_WEATHER_DAYS } from '../../lib/rail';
+
+interface Props { days: DayView[]; tz: string }
+const { days, tz } = Astro.props;
+const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const label = (key: string) => WD[new Date(`${key}T12:00:00Z`).getUTCDay()];
+---
+<section class="rail-wx" aria-label="Weather, next three days" data-tz={tz} data-show={RAIL_WEATHER_DAYS}>
+  <a class="rail-wx__head" href="/weather/">Weather</a>
+  <div class="rail-wx__days" data-keys={days.map((d) => d.key).join(',')}>
+    <DayStrip label="Forecast by day" days={days.map((d) => ({
+      label: label(d.key),
+      value: d.high !== null ? `${Math.round(d.high)}°` : `${Math.round(d.low!)}°`,
+      sub: d.high !== null && d.low !== null ? `Low ${Math.round(d.low)}°` : d.high === null ? 'Night' : undefined,
+      icon: d.icon ?? undefined,
+    }))} />
+  </div>
+  <script is:inline>
+    (function () {
+      var s = document.currentScript && document.currentScript.parentElement; if (!s) return;
+      try {
+        var tz = s.getAttribute('data-tz'); var show = +s.getAttribute('data-show');
+        var today = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        var keys = (s.querySelector('[data-keys]').getAttribute('data-keys') || '').split(',');
+        var items = s.querySelectorAll('.ui-day');
+        for (var i = 0; i < keys.length && i < items.length; i++) if (keys[i] < today) items[i].remove();
+        if (s.querySelectorAll('.ui-day').length < show) s.hidden = true;
+      } catch (e) { /* keep the build's days */ }
+    })();
+  </script>
+</section>
+<style>
+  .rail-wx { border-top: 1px solid var(--rule); padding-top: 0.75rem; }
+  .rail-wx__head { display: inline-block; margin: 0 0 0.25rem; font-family: var(--font-ui); font-size: 0.625rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; }
+  .rail-wx__head:hover { text-decoration: underline; }
+  .rail-wx__days :global(.ui-day:nth-child(n + 4)) { display: none; }
+  .rail-wx__days :global(.ui-day) { flex-basis: 0; }
+  .rail-wx__days :global(.ui-day__value) { font-size: 1.375rem; }
+</style>

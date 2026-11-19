@@ -316,6 +316,11 @@
         "born_from": "Fylliga sidor Fas 0 2026-11-18 (.claude/specs/full-pages-phase0-inventory.md): site/src/lib/db.ts resolveThisWeekImage INSERTed into the live this_week_image_usage table from any build that rendered SectionHero (/today, /tonight, /this-weekend) in a week with no row -- local builds, battery.sh, astro dev and review-shots (whose header said 'writes nothing') included; the site's neon() client has no read-only lock. Regression fixtures: site/src/lib/build-write-gate.test.ts (mocked neon counts write queries; 5 of 8 fail on 28dcd07) and tests/test_image_history_write_flag.py (2 of 4 fail on the workflows at 28dcd07).",
         "what": "the site build sends any write SQL without IMAGE_HISTORY_WRITE=1, any write SQL exists in site/src outside db.ts recordThisWeekImageUse, a workflow that deploys lacks IMAGE_HISTORY_WRITE: '1' on its build step, or anything outside the deploying workflows sets it (vitest + pytest in battery.sh and tests.yml)"
     },
+    "front.rail-modules": {
+      "severity": "hard",
+      "born_from": "Fylliga sidor Fas 2 2026-11-19 (.claude/specs/full-pages-no-ai-prose.md): the desktop rail (RailLayout + config/home-rail.ts) on the front page and the holiday pages. A module without data must be hidden, the rail never an empty box, the reserve only when the rail is short, a two-month-old result never shown. Fixture: site/src/lib/rail.test.ts (real rows: Broomfield meetings 11825/11824/12328, Moreno Valley Angels finals 25-27 Sep 2026, config/holiday-pages Broomfield 2026).",
+      "what": "a rail module shown without data, an empty rail aside, a reserve module while the rail already reaches the first screen, the page's own holiday or an already-featured meeting repeated in the rail, a sports result older than OFF_SEASON_DAYS, or a town/country branch in the rail code (vitest rail.test.ts + standard-layout.test.ts)"
+    },
     "front.city-photo-rotation": {
         "severity": "hard",
         "born_from": "Fylliga sidor Fas 1a 2026-11-18 (.claude/specs/full-pages-no-ai-prose.md, owner decisions after Fas 0): the front page had no town photo since 4b91a7f while the weekly rotation kept recording an unseen pick. Fixture: site/src/lib/city-face.test.ts simulates every day 7 Sep 2026 - 28 Feb 2027 for all four towns (pickWeekImage, the same function db.ts resolveThisWeekImage uses).",

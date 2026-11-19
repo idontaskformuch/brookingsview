@@ -16,14 +16,7 @@ import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
 import FrontPageLead from '../components/FrontPageLead.astro';
 import GameCard from '../components/GameCard.astro';
-import RegionalGameCard from '../components/RegionalGameCard.astro';
-import SdsuEventCard from '../components/SdsuEventCard.astro';
-import JackrabbitWidget from '../components/JackrabbitWidget.astro';
-import JackrabbitGameDayLine from '../components/JackrabbitGameDayLine.astro';
-import WorkplaceWatchWidget from '../components/WorkplaceWatchWidget.astro';
-import BurroBonanzaWidget from '../components/BurroBonanzaWidget.astro';
 import SchoolAlertBanner from '../components/SchoolAlertBanner.astro';
-import TrafficWidget from '../components/TrafficWidget.astro';
 import Tile from '../components/Tile.astro';
 import CityStatus from '../components/CityStatus.astro';
 import ResultsBanner from '../components/ResultsBanner.astro';
@@ -34,11 +27,12 @@ import TopEventCard from '../components/TopEventCard.astro';
 import { selectTopEvent } from '../lib/top-event';
 import OrientationHeader from '../components/OrientationHeader.astro';
 import QuickLinks from '../components/QuickLinks.astro';
+import RailLayout from '../components/RailLayout.astro';
+import RailModules from '../components/rail/RailModules.astro';
+import { railMeetings } from '../lib/rail';
 import {
-  getUpcomingStories, getActiveAlerts, getUpcomingGames, getNextRegionalGame,
-  getNextSdsuMarqueeEvent, getActiveSchoolAlerts, getActiveTrafficIncidents,
-  getAgPrices,
-  getEmployerJobStats, getUpcomingArtsEvents, getRecentJobs, getNextMeeting,
+  getUpcomingStories, getActiveAlerts, getUpcomingGames,
+  getActiveSchoolAlerts, getUpcomingArtsEvents, getRecentJobs, getNextMeeting,
   getRecentProjectUpdates, PROJECT_PENDING_OUTCOME_LABEL, formatDate,
   getFacilities,
 } from '../lib/db';
@@ -80,14 +74,10 @@ import { rankTicketmasterEvents, collapseMarqueeRuns, ticketmasterResolvableImag
 
 const homeLayout = homeLayoutFor(siteConfig.townId);
 
-const [alerts, schoolAlerts, trafficIncidents, games, nextRegionalGame, nextSdsuEvent, prices, facilities, quickLinkEvents, quickLinkArtsEvents, quickLinkJobs, quickLinkNextMeeting] = await Promise.all([
+const [alerts, schoolAlerts, games, facilities, quickLinkEvents, quickLinkArtsEvents, quickLinkJobs, quickLinkNextMeeting] = await Promise.all([
   getActiveAlerts(),
   getActiveSchoolAlerts(),
-  getActiveTrafficIncidents(),
   getUpcomingGames(3),
-  getNextRegionalGame(),
-  getNextSdsuMarqueeEvent(),
-  getAgPrices(),
   getFacilities(),
   // Front-page orientation pass, Phase 2 ("Looking for something?" quick
   // links) -- deliberately its OWN fetch:
@@ -184,9 +174,13 @@ const todayBlock = takeRows(blocks.today, 5);
 const weekendBlock = takeRows(blocks.weekend, 6);
 const weekBlock = takeRows(blocks.week, 6);
 const comingUp = blocks.later.slice(0, 5);
+// The rail's next meeting (Fas 2) is not repeated as a Worth knowing row either.
+const railNextMeeting = meetingsData ? railMeetings(meetingsData.meetings, meetingsData.todayYmd, featuredMeetingIds).next : null;
 const worthMeetings = meetingsData
-  ? selectWorthKnowingMeetings(meetingsData.meetings.filter((m) => !featuredMeetingIds.has(String(m.id))), meetingsData.todayYmd)
+  ? selectWorthKnowingMeetings(meetingsData.meetings.filter((m) => !featuredMeetingIds.has(String(m.id)) && m.id !== railNextMeeting?.id), meetingsData.todayYmd)
   : [];
+// Holiday pages the lead or a secondary already links: the rail's holiday module skips them.
+const featuredHolidaySlugs = new Set([frontPage.lead, ...frontPage.secondaries].flatMap((it) => (it.type === 'holiday' && it.pageSlug ? [it.pageSlug] : [])));
 
 const nextGame = games[0] ?? null;
 
@@ -220,17 +214,6 @@ const timelyEventTeaser = isEventTeaserWeekend
 // "next game" regardless of home/away.
 const todayHomeGame = isSectionBuilt('jackrabbits', siteConfig) && nextGame && nextGame.home_away === 'home'
   && dayOffsetOf(nextGame.starts_at) === 0 ? nextGame : null;
-
-// 2026-10-01: getLatestEmployerRatings() (rating-derived) is no longer
-// fetched here at all -- the homepage card only ever needed it for the
-// rating/ranking display that's now hidden, see WorkplaceWatchWidget.astro's
-// own comment. employerJobStats (Adzuna-derived, unrelated source) is all
-// this page still needs.
-// Bara hämtat på towns med Workplace Watch enabled -- ingen anledning att
-// fråga en tabell som alltid är tom annars.
-const employerJobStats = siteConfig.hasWorkplaceWatch ? await getEmployerJobStats() : [];
-// Samma resonemang: bara hämtat för Broomfield, tabellen är alltid tom för
-// de andra två (town_id-scopad, se db/migrations/029_vail_news.sql).
 
 // Sitewide presentation-layer pass -- the marquee module. Same
 // rank/collapse pipeline lib/cityStatus.ts's buildWhatsOnStatus() already
@@ -292,59 +275,7 @@ for (const entry of whatsOnEntries) {
     break;
   }
 }
-// 2026-10-01: the rating-derived topEmployer/biggestMover pair that used to
-// live here (getLatestEmployerRatings()[0], and a reduce() over
-// rating_delta_vs_last_month) was removed, along with the fetch itself
-// (see above getEmployerJobStats), when the homepage widget's rating/
-// ranking display was hidden -- see WorkplaceWatchWidget.astro's own
-// comment. /workplace-watch's own full table still fetches ratings
-// directly (getLatestEmployerRatings() is still used there, just no longer
-// here on the homepage).
-
-// Fas 4a: a reduce() over posting-count
-// change. Falls back to "who has the most listings right now" when NO
-// employer has month-over-month history yet (every town's first tracked
-// month) -- a real, useful fact even before a delta is computable, rather
-// than showing nothing at all for the widget's entire first month live.
-// Either way, a "leader" tied at zero (every tracked employer has 0
-// postings, true for Broomfield today) is not surfaced in the WIDGET --
-// technically honest but misleading framing to call one of several zeros
-// "the leader"; the full /workplace-watch table still shows every
-// employer's real (possibly zero) count with proper context.
-const hasHiringHistory = employerJobStats.some((s) => s.postings_change !== null);
-const biggestHiringMoverRaw = hasHiringHistory
-  ? employerJobStats.reduce<typeof employerJobStats[number] | null>((best, s) => {
-      if (s.postings_change === null) return best;
-      if (!best || Math.abs(s.postings_change) > Math.abs(best.postings_change!)) return s;
-      return best;
-    }, null)
-  : employerJobStats.reduce<typeof employerJobStats[number] | null>((best, s) => {
-      if (!s.postings_now) return best;
-      if (!best || s.postings_now > (best.postings_now ?? 0)) return s;
-      return best;
-    }, null);
-const biggestHiringMover =
-  biggestHiringMoverRaw && (biggestHiringMoverRaw.postings_now || biggestHiringMoverRaw.postings_change)
-    ? biggestHiringMoverRaw
-    : null;
-
-// Jackrabbits nästa match och SDSU:s nästa "marquee"-evenemang (Athletics/
-// Music) konkurrerar om SAMMA rail-slot för Brookings -- "mutually
-// exclusive" enligt spec, inte två samtidiga rutor. Whichever is
-// chronologically sooner vinner slotten; det finns inget "rätt" svar när
-// båda finns (en Jackrabbits-match ÄR ofta redan med i SDSU:s egen
-// Athletics-kategori), så tidsordning är den enda regeln som inte kräver
-// att gissa vilken källa som "äger" sanningen.
-// A game card links the town's sports page, so it shows only where that page is built (lib/sections.ts, F18 2026-11-13).
-const railGame = isSectionBuilt('jackrabbits', siteConfig) ? nextGame : null;
-const railRegionalGame = isSectionBuilt('sports', siteConfig) ? nextRegionalGame : null;
-const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
-  railGame && nextSdsuEvent
-    ? (new Date(railGame.starts_at ?? 0) <= new Date(nextSdsuEvent.starts_at ?? 0) ? 'jackrabbits' : 'sdsu')
-    : railGame ? 'jackrabbits'
-    : nextSdsuEvent ? 'sdsu'
-    : railRegionalGame ? 'regional'
-    : null;
+// The rail's own tiles (next game, Workplace Watch, traffic, markets, promos) load in components/rail/RailModules.astro (Fas 2).
 ---
 
 <BaseLayout title={`${siteConfig.siteName} — what's happening in ${placeAbbr(siteConfig)}`} wide description={isWordCut(frontPage.meta_description) ? metaDescription('home', siteConfig) : frontPage.meta_description}>
@@ -370,8 +301,11 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
   <OrientationHeader now={now} />
   {ELECTION_BY_TOWN[siteConfig.townId] && <ResultsBanner />}
   {siteConfig.safetyNotices && <SafetyNotices townId={siteConfig.townId} timezone={siteConfig.timezone} variant="compact" onlyWhenActive />}
-  <FrontPageLead page={frontPage} cityImage={cityImage} holidayThumb={holidayThumb} />
-  <CityStatus />
+  {/* Fas 2 (RailLayout): from 62rem the lead and the main column on the left, Right Now and the rail on the right, starting level with the
+      lead. Below 62rem the source order is the page order, unchanged: lead, Right Now, the main column, the rail, the rest. */}
+  <RailLayout>
+  <FrontPageLead slot="lead" page={frontPage} cityImage={cityImage} holidayThumb={holidayThumb} />
+  <CityStatus slot="now" />
 
 
   {/* Marquee module (sitewide presentation-layer pass): the single
@@ -451,63 +385,9 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
   </section>
 
 
-  <aside class="rail" aria-label="Conditions and numbers">
-      {gameSlot === 'jackrabbits' && nextGame ? (
-        <>
-          <a class="rail__link rail__game" href="/jackrabbits/">
-            <GameCard game={nextGame} />
-          </a>
-          {/* Bara vid en RIKTIG Jackrabbits-match, inte ett allmänt SDSU-
-              marquee-event eller en Moreno Valley-match -- se gameSlot
-              ovan. Egen <a>, inte nästlad i länken ovan (ogiltig HTML). */}
-          <JackrabbitGameDayLine />
-        </>
-      ) : gameSlot === 'sdsu' && nextSdsuEvent ? (
-        <a class="rail__link rail__game" href="/university/">
-          <SdsuEventCard event={nextSdsuEvent} />
-        </a>
-      ) : gameSlot === 'regional' && nextRegionalGame && (
-        <a class="rail__link rail__game" href="/sports/">
-          <RegionalGameCard game={nextRegionalGame} />
-        </a>
-      )}
-      {homeLayout.railWidgets.map((w) => (w === 'jackrabbits' ? <JackrabbitWidget /> : <BurroBonanzaWidget />))}
-      {/* 2026-10-01: gated on biggestHiringMover (Adzuna-sourced), not
-          topEmployer (rating-sourced) -- rating/ranking is hidden pending
-          a Glassdoor/Indeed ToS review, see WorkplaceWatchWidget.astro's
-          own comment. With no rating to show, there's nothing left to
-          headline the card with when hiring data is absent, so the card
-          simply doesn't render in that case rather than showing an empty
-          shell. */}
-      {siteConfig.hasWorkplaceWatch && biggestHiringMover && (
-        <WorkplaceWatchWidget
-          hiringName={biggestHiringMover.name}
-          hiringCount={biggestHiringMover.postings_now}
-          hiringDelta={biggestHiringMover.postings_change}
-        />
-      )}
-      {trafficIncidents.length > 0 && isSectionBuilt('traffic', siteConfig) && (
-        <a class="rail__link" href="/traffic/">
-          <TrafficWidget incidents={trafficIncidents} />
-        </a>
-      )}
-      {prices.length > 0 && (
-        <a class="rail__link rail__prices" href="/farm-report/">
-          <p class="rail__label">Markets</p>
-          <table class="prices data">
-            <tbody>
-              {prices.map((p) => (
-                <tr>
-                  <th scope="row">{p.commodity}</th>
-                  <td>{p.price !== null ? Number(p.price).toFixed(2) : '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </a>
-      )}
-      <p class="rail__hint">Tap a panel for the full picture &rarr;</p>
-  </aside>
+  <RailModules slot="rail" now={now} excludeMeetingIds={featuredMeetingIds} excludeHolidaySlugs={featuredHolidaySlugs} frontImageId={cityImage?.id ?? null} meetingsData={meetingsData} />
+
+  <div slot="after">
 
   {worthMeetings.length > 0 && (
     // Data rows from the meetings view (organ, kind, date and time, agenda items, agenda link), picked by rule: real meetings with an agenda in the
@@ -549,6 +429,9 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       (recipe, review, science column), which stopped generating -- removed
       outright along with "Today's read" and "Latest from" above. */}
 
+  </div>
+  </RailLayout>
+
   <section aria-label="Sections">
     <SectionRule label={`More from ${siteConfig.cityName}`} />
     <div class="panels">
@@ -586,51 +469,6 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
   font-weight: 600;
 }
 
-/* Widget row -- a horizontal band of tiles below lead+secondary, not a
-   sidebar column beside them. Each tile wraps at its own natural width. */
-.rail {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  align-items: stretch;
-  margin-bottom: 1.75rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid var(--rule);
-}
-.rail__link { flex: 1 1 14rem; }
-.rail__prices { flex-basis: 16rem; }
-.rail__hint { flex-basis: 100%; }
-.rail__link {
-  display: block;
-  color: inherit;
-  text-decoration: none;
-  border-radius: 3px;
-  transition: background-color 0.12s ease;
-}
-.rail__link:hover { background: var(--navy-tint); }
-.rail__hint {
-  margin: 0.25rem 0 0;
-  font-size: 0.75rem;
-  color: var(--ink-soft);
-  font-style: italic;
-}
-.rail__game { border-top: 1px solid var(--rule); padding-top: 0.25rem; }
-.rail__prices { border-top: 1px solid var(--rule); padding-top: 0.75rem; }
-.rail__label {
-  margin: 0 0 0.375rem;
-  font-family: var(--font-ui);
-  font-size: 0.625rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-.prices { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-.prices th {
-  text-align: left; font-weight: 400; text-transform: capitalize;
-  padding: 0.1875rem 0; color: var(--ink-soft);
-}
-.prices td { text-align: right; padding: 0.1875rem 0; font-variant-numeric: tabular-nums; }
 
 /* Spaltström: hårfina vertikala linjer mellan spalterna, som i en tidning. */
 .river { display: grid; gap: 0 1.5rem; }

@@ -1,0 +1,28 @@
+---
+/** Rail module (Fas 2): the next holiday page, with its own band photo as a thumbnail ("Thanksgiving · in 8 days") and up to two of the
+ *  page's insight lines (lib/holiday-view.ts holidayInsights, the same rule as the front page's holiday card, Fas 1c). */
+import CityPhoto from '../CityPhoto.astro';
+import type { CityImage } from '../../lib/city-face';
+import { holidayKicker, MAX_CARD_INSIGHTS } from '../../lib/front-page';
+
+interface Props { label: string; url: string; daysAway: number; insights: string[]; thumb: CityImage | null }
+const { label, url, daysAway, insights, thumb } = Astro.props;
+const [name, when] = holidayKicker(label, daysAway).split(' · ');
+---
+<section class="rail-hol" aria-label={label}>
+  {thumb && <a class="rail-hol__thumb" href={url} tabindex="-1" aria-hidden="true"><CityPhoto image={thumb} variant="thumb" /></a>}
+  <div class="rail-hol__text">
+    <p class="rail-hol__kicker">Coming up · {when}</p>
+    <a class="rail-hol__title" href={url}>{name}</a>
+    {insights.length > 0 && <ul class="rail-hol__insights">{insights.slice(0, MAX_CARD_INSIGHTS).map((line) => <li>{line}</li>)}</ul>}
+  </div>
+</section>
+<style>
+  .rail-hol { border-top: 1px solid var(--rule); padding-top: 0.75rem; display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: 0.75rem; align-items: start; }
+  .rail-hol:not(:has(.rail-hol__thumb)) { grid-template-columns: minmax(0, 1fr); }
+  .rail-hol__kicker { margin: 0; font-family: var(--font-ui); font-size: 0.75rem; font-weight: 600; color: var(--accent); }
+  .rail-hol__title { font-family: var(--font-head); font-size: 1.1875rem; line-height: 1.25; color: var(--ink); text-decoration: none; }
+  .rail-hol__title:hover { text-decoration: underline; }
+  .rail-hol__insights { list-style: none; margin: 0.25rem 0 0; padding: 0; font-family: var(--font-ui); font-size: 0.8125rem; }
+  .rail-hol__insights li { padding-left: 0.5rem; border-left: 3px solid var(--brand-accent, var(--accent)); margin-top: 0.25rem; }
+</style>

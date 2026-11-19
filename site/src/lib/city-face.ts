@@ -150,7 +150,8 @@ export function responsiveSrc(path: string): ResponsiveSrc {
 
 /** `sizes` per CityPhoto variant (the shell is 72rem wide on desktop, 1.25rem gutters on mobile). */
 export const CITY_PHOTO_SIZES: Record<'lead' | 'band' | 'card' | 'thumb', string> = {
-  lead: '(min-width: 75rem) 72rem, calc(100vw - 2.5rem)',
+  // The lead sits in RailLayout's main column (≈2fr of 2fr + 1fr, 2rem gap) from 62rem (Fas 2).
+  lead: '(min-width: 75rem) 47rem, (min-width: 62rem) calc((100vw - 4.5rem) * 0.67), calc(100vw - 2.5rem)',
   band: '(min-width: 75rem) 72rem, calc(100vw - 2.5rem)',
   card: '(min-width: 40rem) 22rem, calc(100vw - 2.5rem)',
   thumb: '7.5rem',

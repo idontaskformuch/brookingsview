@@ -1,0 +1,32 @@
+---
+/** Rail module (Fas 2): the next meeting, or the meetings after it (reserve). Organ, date, "in 5 days", and the agenda link when the source
+ *  has one. Data fields only (lib/meetings-view.ts). */
+import { daysBetween, relativeDays, type MeetingView } from '../../lib/meetings-view';
+
+interface Props { title: string; meetings: MeetingView[]; todayYmd: string }
+const { title, meetings, todayYmd } = Astro.props;
+---
+{meetings.length > 0 && (
+  <section class="rail-mtg" aria-label={title}>
+    <p class="rail-mtg__label">{title}</p>
+    <ul class="rail-mtg__list">
+      {meetings.map((m) => (
+        <li class="rail-mtg__item">
+          <a class="rail-mtg__organ" href={`/city-hall/#meeting-${m.id}`}>{m.bodyLabel}{m.typeLabel && ` · ${m.typeLabel}`}</a>
+          <span class="rail-mtg__when">{m.dateLabel}{m.time && ` · ${m.time}`} · {relativeDays(daysBetween(todayYmd, m.ymd))}</span>
+          {m.agendaUrl && <a class="rail-mtg__agenda" href={m.agendaUrl} rel="noopener">Agenda{m.items.length > 0 && ` (${m.items.length} ${m.items.length === 1 ? 'item' : 'items'})`}</a>}
+        </li>
+      ))}
+    </ul>
+  </section>
+)}
+<style>
+  .rail-mtg { border-top: 1px solid var(--rule); padding-top: 0.75rem; }
+  .rail-mtg__label { margin: 0 0 0.375rem; font-family: var(--font-ui); font-size: 0.625rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); }
+  .rail-mtg__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.625rem; }
+  .rail-mtg__item { display: flex; flex-direction: column; gap: 0.125rem; }
+  .rail-mtg__organ { font-family: var(--font-head); font-size: 1.0625rem; line-height: 1.25; color: var(--ink); text-decoration: none; }
+  .rail-mtg__organ:hover { text-decoration: underline; }
+  .rail-mtg__when { font-family: var(--font-ui); font-size: var(--ui-meta, 0.8125rem); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .rail-mtg__agenda { font-family: var(--font-ui); font-size: var(--ui-meta, 0.8125rem); font-weight: 600; color: var(--accent); min-height: 24px; }
+</style>
