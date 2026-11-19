@@ -11,8 +11,9 @@
  *  Home sales are not a number anywhere (owner 2026-11-19: Moreno Valley's source has had no sale since 31 Oct 2025). */
 import {
   getOkReadStarts, getEventOccurrencesBetween, getTrafficClosureCandidatesSeenSince, getMeetingDatesBetween, getMeetingDecisionsInMonth,
-  getTrafficLatestRead, getTrafficIncidentsListedAt, getJobFirstPostings,
+  getTrafficLatestRead, getTrafficIncidentsListedAt, getJobFirstPostings, getEventSourceStarts,
 } from './db';
+import { FROZEN_EVENT_SOURCES } from './frozen-sources.mjs';
 import { siteConfig } from './site-config';
 import { isSectionBuilt } from './sections';
 import { homeRailFor } from '../config/home-rail';
@@ -24,14 +25,24 @@ import { monthQueryWindow, rowsInMonth } from './month-gate.mjs';
 import { isCancelled } from './meetings-view';
 import {
   NUMBERS_WEEKS, JOBS_READ_MAX_AGE_DAYS, fullWeeks, weekOf, weekStartDay, countByWeek, coveredSeries, weeklyRow, closureWeekSpans,
-  lastFullMonth, readWithin, pickRows, type Coverage, type NumberRow,
+  lastFullMonth, readWithin, pickRows, readsSteady, sourcesConstant, type Coverage, type NumberRow, type SourceSpan,
 } from './town-numbers';
 
 const DAY_MS = 86_400_000;
 
-function coverage(read: { first: string | null; starts: string[] }, tz: string, zeroIsGap = false): Coverage {
-  return { firstReadWeek: read.first ? weekOf(read.first, tz) : null, readWeeks: new Set(read.starts.map((s) => weekOf(s, tz))), zeroIsGap };
+function readsByWeek(read: { starts: string[] }, tz: string): Map<number, number> {
+  const n = new Map<number, number>();
+  for (const s of read.starts) { const w = weekOf(s, tz); n.set(w, (n.get(w) ?? 0) + 1); }
+  return n;
 }
+
+function coverage(read: { first: string | null; starts: string[] }, tz: string, zeroIsGap = false): Coverage {
+  return { firstReadWeek: read.first ? weekOf(read.first, tz) : null, readWeeks: readsByWeek(read, tz), zeroIsGap };
+}
+
+/** A count read from one source (traffic, jobs): its start is the first successful read. */
+const oneSource = (name: string, read: { first: string | null }, tz: string): SourceSpan[] =>
+  [{ name, startWeek: read.first ? weekOf(read.first, tz) : null, stopWeek: null }];
 
 export async function loadTownNumbers(now: Date): Promise<NumberRow[]> {
   const tz = siteConfig.timezone;
@@ -47,7 +58,8 @@ export async function loadTownNumbers(now: Date): Promise<NumberRow[]> {
   const month = lastFullMonth(now, tz, locale);
   const mWin = monthQueryWindow(month.y, month.m);
 
-  const [eventReads, events, trafficReads, trafficRun, closureRows, jobReads, jobFirsts, meetings, decisions] = await Promise.all([
+  const [eventSources, eventReads, events, trafficReads, trafficRun, closureRows, jobReads, jobFirsts, meetings, decisions] = await Promise.all([
+    getEventSourceStarts(),
     getOkReadStarts('events', from),
     getEventOccurrencesBetween(from, to),
     hasTraffic ? getOkReadStarts('traffic', from) : null,
@@ -65,8 +77,15 @@ export async function loadTownNumbers(now: Date): Promise<NumberRow[]> {
   {
     const series = coveredSeries(countByWeek(events.map((e) => weekOf(e, tz)), weeks), weeks, coverage(eventReads, tz, true));
     const value = series[series.length - 1];
+    // Sources: each one's first row, and a frozen one's stop (Moreno Valley's Tockify feeds, 13 Nov 2026) -- a source that stops
+    // must not look like a fall.
+    const frozen = (FROZEN_EVENT_SOURCES as Record<string, Record<string, { since: string }>>)[siteConfig.townId] ?? {};
+    const sources: SourceSpan[] = eventSources.map((s) => ({
+      name: s.source, startWeek: weekOf(s.first, tz), stopWeek: frozen[s.source] ? weekOf(`${frozen[s.source].since}T12:00:00Z`, tz) : null,
+    }));
+    const comparable = readsSteady(readsByWeek(eventReads, tz), weeks) && sourcesConstant(sources, weeks);
     rows.push(value == null ? null : weeklyRow({
-      id: 'events', label: 'Events last week', value, href: '/events/', span, series, weeks, trend: !noTrend.has('events'), locale,
+      id: 'events', label: 'Events last week', value, href: '/events/', span, series, weeks, trend: !noTrend.has('events'), locale, comparable,
     }));
   }
 
@@ -84,6 +103,7 @@ export async function loadTownNumbers(now: Date): Promise<NumberRow[]> {
       rows.push(weeklyRow({
         id: 'closures', label: 'Active road closures', value: current.length, href: '/traffic/',
         span: `road closures listed per week, last ${NUMBERS_WEEKS} full weeks`, series, weeks, trend: !noTrend.has('closures'), locale,
+        comparable: readsSteady(readsByWeek(trafficReads, tz), weeks) && sourcesConstant(oneSource('traffic', trafficReads, tz), weeks),
       }));
     }
   }
@@ -97,6 +117,7 @@ export async function loadTownNumbers(now: Date): Promise<NumberRow[]> {
       rows.push(weeklyRow({
         id: 'jobs', label: 'New job listings, past 7 days', value: newJobCount(first, now), href: '/jobs/',
         span: `new listings per week, last ${NUMBERS_WEEKS} full weeks`, series, weeks, trend: !noTrend.has('jobs'), locale,
+        comparable: readsSteady(readsByWeek(jobReads, tz), weeks) && sourcesConstant(oneSource('jobs', jobReads, tz), weeks),
       }));
     }
   }

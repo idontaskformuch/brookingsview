@@ -3822,3 +3822,19 @@ export async function getMeetingDatesBetween(start: Date, end: Date): Promise<{ 
        AND meeting_date >= ${start.toISOString()} AND meeting_date < ${end.toISOString()}
   `) as { meeting_date: string; raw_data: Record<string, any> | null }[];
 }
+
+/** Each events source that has published event stories (stories.slug = 'event-' || events.id) and its first row: when it started
+ *  feeding the events count (lib/town-numbers.ts sourcesConstant). Only dated stories, the ones the weekly count can include: the five
+ *  undated alert stories in Brookings (county_alert, nws_alert, e.g. event-1 "Brookings: Heat Advisory") never count. */
+export async function getEventSourceStarts(): Promise<{ source: string; first: string }[]> {
+  return (await sql`
+    SELECT e.source, MIN(e.created_at) AS first
+      FROM events e
+      JOIN stories s ON s.town_id = e.town_id AND s.slug = 'event-' || e.id
+     WHERE e.town_id = ${TOWN_ID}
+       AND s.source_type = 'event'
+       AND s.published_at IS NOT NULL
+       AND s.occurs_at IS NOT NULL
+     GROUP BY e.source
+  `) as { source: string; first: string }[];
+}

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   NUMBERS_WEEKS, weekOf, weekOfDay, weekStartDay, fullWeeks, countByWeek, coveredSeries, lineValues, insightLine, weeklyRow,
-  closureWeekSpans, lastFullMonth, pickRows, readWithin, INSIGHT_NOUNS, type NumberRow,
+  closureWeekSpans, lastFullMonth, pickRows, readWithin, readsSteady, sourcesConstant, INSIGHT_NOUNS, type NumberRow,
 } from './town-numbers';
 import { sparkNumberHtml, sparklineHtml } from './ui/ui-html';
 
@@ -124,10 +124,10 @@ describe('rows', () => {
   });
   it('trend off (Moreno Valley closures, D3): the number stays, line and insight go', () => {
     const { weeks, counts } = window12('2026-10-12');
-    const r = weeklyRow({ id: 'events', label: 'Events last week', value: 9, href: '/events/', span: 's', series: counts, weeks, trend: false, locale: 'en-US' });
+    const r = weeklyRow({ id: 'events', label: 'Events last week', value: 9, href: '/events/', span: 's', series: counts, weeks, trend: false, locale: 'en-US', comparable: true });
     expect(r.line).toBeNull();
     expect(r.insight).toBeNull();
-    const on = weeklyRow({ id: 'events', label: 'Events last week', value: 9, href: '/events/', span: 's', series: counts, weeks, trend: true, locale: 'en-US' });
+    const on = weeklyRow({ id: 'events', label: 'Events last week', value: 9, href: '/events/', span: 's', series: counts, weeks, trend: true, locale: 'en-US', comparable: true });
     expect(on.insight).toBe('Quietest event week since August');
   });
   it('a number without a line has the same row markup as one with a line (D2)', () => {
@@ -161,5 +161,52 @@ describe('month and freshness', () => {
     expect(readWithin('2026-10-22T16:25:31Z', now, 7)).toBe(false);
     expect(readWithin('2026-11-18T23:01:27Z', new Date('2026-11-19T14:00:00Z'), 7)).toBe(true);
     expect(readWithin(null, now, 7)).toBe(false);
+  });
+});
+
+describe('same sources and schedule in all 12 weeks (Beslut 7 tillägg)', () => {
+  // Successful reads per week, scrape_runs status ok (SELECT 2026-11-19, weeks from Monday 31 Aug to Monday 9 Nov, then the week of
+  // 16 Nov as it stood on Thu 19 Nov).
+  const ymds = ['2026-08-31', '2026-09-07', '2026-09-14', '2026-09-21', '2026-09-28', '2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02', '2026-11-09', '2026-11-16'];
+  const weeks = ymds.map(weekIdx);
+  const reads = (n: number[]) => new Map(weeks.map((w, i) => [w, n[i]]));
+  it('Broomfield traffic: 26-33 reads a week until October, 14 after the move to twice a day (28 Oct) -> no line', () => {
+    expect(readsSteady(reads([26, 33, 28, 27, 25, 22, 26, 29, 20, 14, 14, 14]), weeks)).toBe(false);
+  });
+  it('Brookings jobs: 4-7 reads a week (median 5.5; 4 is more than 25 % below) -> no line', () => {
+    expect(readsSteady(reads([5, 7, 5, 6, 6, 5, 6, 4, 4, 7, 6, 6]), weeks)).toBe(false);
+  });
+  it('Broomfield jobs, weeks 31 Aug - 19 Oct: 6 reads each week -> steady; one changed field (19 Oct at 4) -> not', () => {
+    const six = [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6];
+    expect(readsSteady(reads(six), weeks)).toBe(true);
+    const c = [...six]; c[7] = 4; // real value in the week of 19 Oct
+    expect(readsSteady(reads(c), weeks)).toBe(false);
+  });
+  it('a week without a read fails', () => {
+    const m = reads([6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]); m.delete(weeks[3]);
+    expect(readsSteady(m, weeks)).toBe(false);
+  });
+  it('Moreno Valley events: city_events and library frozen since 13 Nov 2026 -> a stop inside the window, no line (not a fall)', () => {
+    const tz = 'America/Los_Angeles';
+    const src = [
+      { name: 'city_events', startWeek: weekOf('2026-07-23T12:00:00Z', tz), stopWeek: weekOf('2026-11-13T12:00:00Z', tz) },
+      { name: 'library', startWeek: weekOf('2026-07-23T12:00:00Z', tz), stopWeek: weekOf('2026-11-13T12:00:00Z', tz) },
+    ];
+    expect(sourcesConstant(src, weeks)).toBe(false);
+    // Twelve weeks that end before the stop: unchanged sources.
+    expect(sourcesConstant(src, weeks.map((w) => w - 2))).toBe(true);
+  });
+  it('Moreno Valley events: farm_house_collective first row 6 Sep 2026 -> a new source inside the window', () => {
+    const src = [{ name: 'farm_house_collective', startWeek: weekOf('2026-09-06T12:00:00Z', 'America/Los_Angeles'), stopWeek: null }];
+    // Sun 6 Sep is in the week of 31 Aug: the first week of this window, partial for the new source.
+    expect(sourcesConstant(src, weeks)).toBe(false);
+    expect(sourcesConstant(src, weeks.map((w) => w + 1))).toBe(true);
+  });
+  it('not comparable: the number stays, line and insight go', () => {
+    const { weeks: w, counts } = window12('2026-10-12');
+    const r = weeklyRow({ id: 'events', label: 'Events last week', value: 9, href: '/events/', span: 's', series: counts, weeks: w, trend: true, locale: 'en-US', comparable: false });
+    expect(r.line).toBeNull();
+    expect(r.insight).toBeNull();
+    expect(r.value).toBe(9);
   });
 });

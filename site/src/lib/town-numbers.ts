@@ -8,6 +8,10 @@
  *      every week of August 2026 (scrape_runs ok, ~1000 items a read) yet no published event occurs in 3 Aug-6 Sep, so a read alone
  *      does not show the week was covered (owner: "Morenos evenemang i augusti ... ingen linje förrän luckan har passerat").
  *  D2: one line per number, and a number without a line looks like the others (ui-html sparkNumberHtml).
+ *  Beslut 7 tillägg (owner 2026-11-19): rows per week follow how often the source is read (Moreno Valley traffic: 125 reads a week
+ *      in August, 13 in November), so a line compares only when the sources and the schedule are the same in all 12 weeks:
+ *      the same active sources every week (sourcesConstant) and successful reads per week within ±25 % of the window's median
+ *      (readsSteady). Otherwise the number shows without a line and without an insight line.
  *  D5: an insight line needs the same coverage as the line, at most one per number, no percentages or trend words, and "since <Month>"
  *      only when an earlier covered week really was higher (lower); a record for all the data we have gives no line. */
 import { localDayNumber } from './local-day';
@@ -46,8 +50,8 @@ export function countByWeek(rowWeeks: number[], weeks: number[]): number[] {
 export interface Coverage {
   /** Week of the source's first successful read ever; null = never read. */
   firstReadWeek: number | null;
-  /** Weeks with at least one successful read. */
-  readWeeks: Set<number>;
+  /** Successful reads per week (a week missing = no read). */
+  readWeeks: Map<number, number> | Set<number>;
   /** Stories-based counts: a week with 0 rows is not covered (see the module doc). */
   zeroIsGap?: boolean;
 }
@@ -58,6 +62,38 @@ export function coveredSeries(counts: number[], weeks: number[], cov: Coverage):
     const w = weeks[i];
     if (cov.firstReadWeek == null || w <= cov.firstReadWeek || !cov.readWeeks.has(w)) return null;
     return cov.zeroIsGap && c === 0 ? null : c;
+  });
+}
+
+/** Max distance of a week's successful reads from the window's median, as a share of the median (Beslut 7 tillägg). */
+export const READS_MAX_DEVIATION = 0.25;
+
+const median = (xs: number[]) => {
+  const s = [...xs].sort((a, b) => a - b);
+  const h = Math.floor(s.length / 2);
+  return s.length % 2 ? s[h] : (s[h - 1] + s[h]) / 2;
+};
+
+/** Successful reads in every week of `weeks` within READS_MAX_DEVIATION of their median (a week without a read fails). */
+export function readsSteady(readsByWeek: Map<number, number>, weeks: number[]): boolean {
+  const r = weeks.map((w) => readsByWeek.get(w) ?? 0);
+  const m = median(r);
+  return m > 0 && r.every((v) => Math.abs(v - m) <= READS_MAX_DEVIATION * m);
+}
+
+/** A source of a count: the week it started (its first row) and the week it stopped (a frozen source's `since`), null = not known /
+ *  still running. */
+export interface SourceSpan { name: string; startWeek: number | null; stopWeek: number | null }
+
+/** The same sources were active in every week of `weeks`: none started after the window's first week began (a source starting in
+ *  the first week is partial there too) and none stopped before the window ended. */
+export function sourcesConstant(sources: SourceSpan[], weeks: number[]): boolean {
+  const first = weeks[0];
+  const last = weeks[weeks.length - 1];
+  return sources.every((s) => {
+    if (s.startWeek != null && s.startWeek >= first && s.startWeek <= last) return false;
+    if (s.stopWeek != null && s.stopWeek >= first && s.stopWeek <= last) return false;
+    return true;
   });
 }
 
@@ -132,8 +168,10 @@ export const INSIGHT_NOUNS: Record<'events' | 'closures' | 'jobs', InsightNouns>
 export function weeklyRow(o: {
   id: 'events' | 'closures' | 'jobs'; label: string; value: number; href: string; span: string;
   series: (number | null)[]; weeks: number[]; trend: boolean; locale: string;
+  /** Beslut 7 tillägg: readsSteady() && sourcesConstant() over the same weeks. */
+  comparable: boolean;
 }): NumberRow {
-  const line = o.trend ? lineValues(o.series) : null;
+  const line = o.trend && o.comparable ? lineValues(o.series) : null;
   return {
     id: o.id, label: o.label, value: o.value, href: o.href,
     line, span: line ? o.span : null,
