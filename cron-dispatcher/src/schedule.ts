@@ -42,6 +42,11 @@ export const SPORTS_UTC_HOUR = 17;
 // Glasgow sport (Sportmonks, collection only; sports.enabled stays false so nothing is shown): same daily tick, its own workflow.
 export const GLASGOW_SPORTS_WORKFLOW = 'glasgow-sports.yml';
 
+// Traffic only (owner Beslut 10, 2026-11-19): Moreno Valley + Broomfield `--only traffic` at 05:00 and 17:00 UTC, so with the 11:00/23:00
+// UTC scrape runs the feeds are read every 6 hours. Rides the first 15-minute tick of those hours (no extra cron trigger); no build.
+export const TRAFFIC_WORKFLOW = 'traffic.yml';
+export const TRAFFIC_UTC_HOURS = [5, 17];
+
 // Broomfield is deliberately absent: its school_alerts sources are disabled
 // (zero runs/rows ever, Adams 12 bot-challenge, BVSD app-only), so a morning
 // run there would only rebuild with nothing to show. Revisit when a source
@@ -91,7 +96,12 @@ export function dueWorkflows(cron: string, scheduledTime: number): string[] {
   }
   if (cron === ALERTS_CRON) {
     const at = new Date(scheduledTime);
-    return at.getUTCHours() === SPORTS_UTC_HOUR && at.getUTCMinutes() < 15 ? [SPORTS_WORKFLOW, GLASGOW_SPORTS_WORKFLOW] : [];
+    if (at.getUTCMinutes() >= 15) return [];
+    const hour = at.getUTCHours();
+    return [
+      ...(hour === SPORTS_UTC_HOUR ? [SPORTS_WORKFLOW, GLASGOW_SPORTS_WORKFLOW] : []),
+      ...(TRAFFIC_UTC_HOURS.includes(hour) ? [TRAFFIC_WORKFLOW] : []),
+    ];
   }
   return [];
 }

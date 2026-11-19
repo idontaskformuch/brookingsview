@@ -51,7 +51,7 @@ async function dispatch(token: string, workflow: string): Promise<void> {
 export default {
   async scheduled(controller: ScheduledController, env: Env): Promise<void> {
     if (controller.cron === ALERTS_CRON) {
-      // The once-a-day Brookings sports fetch rides this tick (schedule.ts); a failed dispatch must not stop the warnings below.
+      // The once-a-day sports fetches and the 05/17 UTC traffic read ride this tick (schedule.ts); a failed dispatch must not stop the warnings below.
       const dueSports = dueWorkflows(controller.cron, controller.scheduledTime);
       const dispatched = await Promise.allSettled(dueSports.map((w) => dispatch(env.GITHUB_TOKEN, w)));
       const dispatchFailed = dispatched.filter((r): r is PromiseRejectedResult => r.status === 'rejected');

@@ -1,0 +1,40 @@
+name: traffic
+# Traffic only (owner Beslut 10, 2026-11-19): Moreno Valley (Caltrans QuickMap) and Broomfield (CDOT COtrip) read at 05:00 and 17:00 UTC,
+# between the 11:00/23:00 UTC scrape runs, so the feeds are read every 6 hours. Started by the cron dispatcher's existing 15-minute
+# tick (cron-dispatcher/src/schedule.ts TRAFFIC_WORKFLOW), never by GitHub's own schedule; no new cron trigger.
+# Reads only: `--only traffic`, every request through scrapers/polite_fetch.py (traffic_v1.py, cdot_v1.py). No publish, no build, no
+# deploy: traffic_incidents is never counted by scripts/ci_changed.py, so the pages show the rows at the next build for other reasons.
+
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: traffic
+  cancel-in-progress: false
+
+jobs:
+  traffic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - town: moreno_valley_ca
+            ua: "ViewMediaBot (+https://morenovalleyview.com/contact)"
+          - town: broomfield_co
+            ua: "ViewMediaBot (+https://broomfieldview.com/contact)"
+    env:
+      DATABASE_URL:         ${{ secrets.DATABASE_URL }}
+      USER_AGENT:           ${{ matrix.ua }}
+      CDOT_API_KEY:         ${{ secrets.CDOT_API_KEY }}
+      ALERT_WEBHOOK:        ${{ secrets.ALERT_WEBHOOK }}
+      ALERT_AFTER_FAILURES: "3"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+      - run: pip install -r requirements.txt
+      - name: Read traffic (no publish, no build)
+        run: python -m scrapers.runner --config configs/${{ matrix.town }}.json --only traffic

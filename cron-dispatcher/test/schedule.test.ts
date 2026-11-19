@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ALERTS_CRON } from '../src/alerts/towns';
-import { GLASGOW_SPORTS_WORKFLOW, MORNING_CRON, OSM_WORKFLOW, REGISTER_WORKFLOW, SCRAPE_CRON, SCRAPE_WORKFLOWS, SPORTS_UTC_HOUR, SPORTS_WORKFLOW, dueWorkflows } from '../src/schedule';
+import { GLASGOW_SPORTS_WORKFLOW, MORNING_CRON, OSM_WORKFLOW, REGISTER_WORKFLOW, SCRAPE_CRON, SCRAPE_WORKFLOWS, SPORTS_UTC_HOUR, SPORTS_WORKFLOW, TRAFFIC_UTC_HOURS, TRAFFIC_WORKFLOW, dueWorkflows } from '../src/schedule';
 
 const at = (iso: string) => Date.parse(iso);
 
@@ -91,8 +91,8 @@ describe('Brookings sports fetch', () => {
   it('fires once a day, on the first alerts tick of 17:00 UTC', () => {
     const fired = [];
     for (let h = 0; h < 24; h++) for (const m of ['00', '15', '30', '45']) fired.push(...dueWorkflows(ALERTS_CRON, at(`2026-11-09T${String(h).padStart(2, '0')}:${m}:00Z`)));
-    expect(fired).toEqual([SPORTS_WORKFLOW, GLASGOW_SPORTS_WORKFLOW]);
-    expect(dueWorkflows(ALERTS_CRON, at('2026-11-09T17:00:00Z'))).toEqual([SPORTS_WORKFLOW, GLASGOW_SPORTS_WORKFLOW]);
+    expect(fired.filter((w) => w !== TRAFFIC_WORKFLOW)).toEqual([SPORTS_WORKFLOW, GLASGOW_SPORTS_WORKFLOW]);
+    expect(dueWorkflows(ALERTS_CRON, at('2026-11-09T17:00:00Z'))).toEqual([SPORTS_WORKFLOW, GLASGOW_SPORTS_WORKFLOW, TRAFFIC_WORKFLOW]);
   });
   it('never shares an hour with the scrape ticks (a sports run never overlaps a scrape)', () => {
     const scrapeHours = SCRAPE_CRON.split(' ')[1].split(',').map(Number);
@@ -112,5 +112,29 @@ describe('Brookings sports fetch', () => {
     expect(yml).not.toContain('even-if-disabled');
     expect(yml).not.toMatch(/--dry-run|set -x|echo[^\n]*SPORTMONKS/);
     expect(yml).not.toMatch(/run:[^\n]*\$\{\{\s*secrets/); // a secret is only ever passed through env:, never spliced into a command line
+  });
+});
+
+describe('Traffic read (owner Beslut 10, 2026-11-19)', () => {
+  it('fires twice a day, on the first alerts tick of 05:00 and 17:00 UTC, and nowhere else', () => {
+    const fired: string[] = [];
+    for (let h = 0; h < 24; h++) for (const m of ['00', '15', '30', '45']) {
+      if (dueWorkflows(ALERTS_CRON, at(`2026-11-09T${String(h).padStart(2, '0')}:${m}:00Z`)).includes(TRAFFIC_WORKFLOW)) fired.push(`${h}:${m}`);
+    }
+    expect(fired).toEqual(['5:00', '17:00']);
+  });
+  it('together with the scrape ticks the feeds are read every 6 hours, and never in a scrape hour', () => {
+    const scrapeHours = SCRAPE_CRON.split(' ')[1].split(',').map(Number);
+    for (const h of TRAFFIC_UTC_HOURS) expect(scrapeHours).not.toContain(h);
+    expect([...scrapeHours, ...TRAFFIC_UTC_HOURS].sort((a, b) => a - b)).toEqual([5, 11, 17, 23]);
+  });
+  it('the workflow reads traffic only, for Moreno Valley and Broomfield, with no publish, build or deploy', () => {
+    const yml = readFileSync(new URL(`../../.github/workflows/${TRAFFIC_WORKFLOW}`, import.meta.url), 'utf8');
+    expect(yml).toContain('workflow_dispatch');
+    expect(yml).toContain('--only traffic');
+    expect(yml).toContain('town: moreno_valley_ca');
+    expect(yml).toContain('town: broomfield_co');
+    expect(yml).not.toMatch(/ai_pipeline|astro build|wrangler|npm ci/);
+    expect(yml).not.toMatch(/run:[^\n]*\$\{\{\s*secrets/);
   });
 });
