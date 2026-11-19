@@ -51,7 +51,6 @@ const meta = timeless && state.kind === 'evergreen'
 checkTitleLength(meta.title);
 // Oldest to newest row check, one date when they are all the same (owner 2026-11-14).
 const span = checkedSpan(page);
-const jsonLd = buildHolidayEventsJsonLd(page, siteConfig.timezone, countryProfile(siteConfig.country).addressCountry, today);
 const pageUrl = new URL(Astro.url.pathname, Astro.site ?? siteConfig.siteUrl).href;
 const webPage = {
   '@context': 'https://schema.org',
@@ -82,6 +81,9 @@ const frontPhoto = siteConfig.noindexSite && photoPool.length === 0
 const [ty, tm, td] = today.split('-').map(Number);
 const band = holidayBandImage(siteConfig.townId, def.holidayId, { y: ty, m: tm, d: td }, photoWeek.slug, frontPhoto?.id ?? null);
 const bandSrc = band ? responsiveSrc(band.path) : null;
+// Event image = the band photo above (the only picture the page shows).
+const jsonLd = buildHolidayEventsJsonLd(page, siteConfig.timezone, countryProfile(siteConfig.country).addressCountry, today,
+  bandSrc ? new URL(bandSrc.src, Astro.site ?? siteConfig.siteUrl).href : undefined);
 ---
 <BaseLayout title={meta.title} description={meta.description} wide modified={page.dataUpdatedOn}>
   <script type="application/ld+json" is:inline slot="head" set:html={JSON.stringify(webPage)} />

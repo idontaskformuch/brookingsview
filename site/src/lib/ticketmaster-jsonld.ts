@@ -62,6 +62,13 @@ export function buildTicketmasterEventJsonLd(
     availability: 'https://schema.org/InStock',
   } : undefined;
 
+  // Performer (Search Console, owner 2026-11-18: only from the source's own fields): Discovery's attractions are the acts for music and
+  // comedy; for theatre, family shows and sport an attraction is the production or a team, not a performer, so those get none.
+  const performs = e.segment === 'Music' || e.genre === 'Comedy';
+  const performer = performs && e.attractionNames && e.attractionNames.length > 0
+    ? e.attractionNames.map((name) => ({ '@type': 'PerformingGroup', name }))
+    : undefined;
+
   return {
     '@context': 'https://schema.org',
     '@type': 'Event',
@@ -74,6 +81,7 @@ export function buildTicketmasterEventJsonLd(
     ...(location ? { location } : {}),
     ...(e.imageUrl ? { image: [e.imageUrl] } : {}),
     ...(offers ? { offers } : {}),
+    ...(performer ? { performer: performer.length === 1 ? performer[0] : performer } : {}),
     // No organizer (owner 2026-11-16): Discovery does not name one, and the venue repeated as organizer is not the organiser.
   };
 }

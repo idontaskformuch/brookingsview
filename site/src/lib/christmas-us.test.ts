@@ -135,6 +135,15 @@ describe('Event JSON-LD only for confirmed, timed events', () => {
       expect(buildHolidayEventsJsonLd(p, t.tz, 'US'), t.id).toHaveLength(expected);
     }
   });
+
+  it("every Event carries the page's band photo as image when given, none without (Search Console, owner 2026-11-18)", () => {
+    // Real band photo on brookingsview.com/christmas/ (build 2026-11-19).
+    const band = 'https://brookingsview.com/assets/images/holidays/brookings_sd-christmas-04-960.webp';
+    const withImage = buildHolidayEventsJsonLd(page('brookings_sd'), 'America/Chicago', 'US', undefined, band);
+    expect(withImage.length).toBeGreaterThan(0);
+    for (const ld of withImage) expect(ld.image, String(ld.name)).toEqual([band]);
+    for (const ld of buildHolidayEventsJsonLd(page('brookings_sd'), 'America/Chicago', 'US')) expect(ld.image).toBeUndefined();
+  });
 });
 
 describe('Nearby (NB1/NB2, owner 2026-11-18)', () => {

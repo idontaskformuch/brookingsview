@@ -44,7 +44,6 @@ checkTitleLength(meta.title);
 const span = checkedSpan(page);
 // Every row's checkedOn, feed rows marked ":feed", for the QA check (scripts/verify_holiday_season.mjs) that the heading ends on a read date.
 const rowsChecked = [...new Set([...page.facts, ...page.events].map((r) => `${r.checkedOn}${'feed' in r && r.feed ? ':feed' : ''}`))].sort().join(' ');
-const jsonLd = buildHolidayEventsJsonLd(page, tz, countryProfile(siteConfig.country).addressCountry, today);
 const pageUrl = new URL(Astro.url.pathname, Astro.site ?? siteConfig.siteUrl).href;
 const webPage = { '@context': 'https://schema.org', '@type': 'WebPage', name: meta.title, url: pageUrl, dateModified: page.dataUpdatedOn };
 
@@ -68,6 +67,9 @@ const frontPhoto = siteConfig.noindexSite && photoPool.length === 0
 const [ty, tm, td] = today.split('-').map(Number);
 const band = holidayBandImage(siteConfig.townId, def.holidayId, { y: ty, m: tm, d: td }, photoWeek.slug, frontPhoto?.id ?? null);
 const bandSrc = band ? responsiveSrc(band.path) : null;
+// Event image = the band photo above (the only picture the page shows).
+const jsonLd = buildHolidayEventsJsonLd(page, tz, countryProfile(siteConfig.country).addressCountry, today,
+  bandSrc ? new URL(bandSrc.src, Astro.site ?? siteConfig.siteUrl).href : undefined);
 const PILL: Record<HolidayChange, { tone: 'alert' | 'warn' | 'ok'; text: string }> = {
   closed: { tone: 'alert', text: 'Closed' }, changed: { tone: 'warn', text: 'Changed' }, open: { tone: 'ok', text: 'Open' },
 };

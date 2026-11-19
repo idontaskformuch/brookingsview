@@ -21,6 +21,26 @@ function tmItem(occurs_at: string | null, overrides: Partial<TicketmasterEvent> 
 // The /whats-on/ listing: since SPEC Fas 13a the events' markup lives there (no detail page).
 const CANONICAL = 'https://brookingsview.com/whats-on/';
 
+describe('performer (Search Console, owner 2026-11-18: only from the source)', () => {
+  // Real row: Brookings /whats-on/ build 2026-11-19, Ticketmaster Z7r9jZ1A7q3eb "Casey Donahew" at The District, Sioux Falls.
+  const casey = (overrides: Partial<TicketmasterEvent> = {}) => tmItem('2026-11-21T02:00:00Z', {
+    id: 'Z7r9jZ1A7q3eb', title: 'Casey Donahew', ticketUrl: 'https://www.ticketmaster.com/event/Z7r9jZ1A7q3eb',
+    segment: 'Music', attractionNames: ['Casey Donahew'], ...overrides,
+  });
+
+  it('a music event names its attraction as performer', () => {
+    expect(buildTicketmasterEventJsonLd(casey(), CANONICAL)!.performer).toEqual({ '@type': 'PerformingGroup', name: 'Casey Donahew' });
+  });
+
+  it('the same row as theatre (segment the only changed field) gets none: there the attraction is the production', () => {
+    expect(buildTicketmasterEventJsonLd(casey({ segment: 'Arts & Theatre' }), CANONICAL)!.performer).toBeUndefined();
+  });
+
+  it('the same row without attractions (attractionNames the only changed field) gets none, never the title', () => {
+    expect(buildTicketmasterEventJsonLd(casey({ attractionNames: [] }), CANONICAL)!.performer).toBeUndefined();
+  });
+});
+
 describe('buildTicketmasterEventJsonLd', () => {
   it('returns null when there is no date to anchor an Event on', () => {
     const item = tmItem(null);

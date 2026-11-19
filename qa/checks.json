@@ -520,6 +520,11 @@
       "severity": "soft",
       "born_from": "G5 2026-11-18: sdsu_weekly_digest.py stored byline 'AI-generated' on every digest, also the template_fallback ones (the normal case since ee7f39c), and /s/university-digest-2026-w47/ showed that label over text no model wrote. Owner G5: no AI label on the template digest. Regression fixtures: tests/test_llm_gate_paths.py 'sdsu digest byline only for model text' fails on 82ea516's sdsu_weekly_digest.py; the page hides an 'AI-generated' byline when generated_by is not ai:* (pages/s/[slug].astro hasByline). Digest rules: site/src/lib/university-digest.test.ts.",
       "what": "a story no model wrote (generated_by not ai:*) is stored or shown with the 'AI-generated' byline, or a university digest insight line appears without its rule firing (pytest + vitest)"
+    },
+    "build.event-jsonld-recommended": {
+      "severity": "soft",
+      "born_from": "Search Console Events (owner's mail 2026-11-18, .claude/specs/search-console-events-2026-11-18.md): brookingsview.com 17 Nov image/endDate missing, glasgowloop.co.uk 16 Nov performer/image/organizer/description/offers missing. Builds 2026-11-19: every Event on /christmas/ (Brookings 18, Glasgow 10) had no image though the page shows its band photo; no Ticketmaster Event on /whats-on/ had performer though Discovery lists the act (attractions). Regression fixtures (all fail before the fix): site/src/lib/christmas-us.test.ts 'band photo as image', site/src/lib/ticketmaster-jsonld.test.ts 'performer' (real row Z7r9jZ1A7q3eb Casey Donahew), site/src/lib/ticketmaster.test.ts 'attraction name'. No dist-wide check: the warnings that stay are fields the sources do not have (end times, prices, organizer, description), which the owner accepts.",
+      "what": "an Event JSON-LD that leaves out a recommended field (image, performer) the source or the page has: holiday events without the band photo the page shows, a music/comedy Ticketmaster event without its attraction as performer (vitest)"
     }
   }
 }

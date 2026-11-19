@@ -218,6 +218,9 @@ export interface TicketmasterEvent {
   /** Discovery API's own primary classification ("Music", "Arts & Theatre", ...), for the evening layer's groups. Optional: older fixtures lack it. */
   segment?: string | null;
   genre?: string | null;
+  /** Every attraction Discovery lists for the event, in its order (`_embedded.attractions[].name`). The Event JSON-LD's performer
+   *  for music and comedy (lib/ticketmaster-jsonld.ts); optional so older fixtures without it read as none. */
+  attractionNames?: string[];
 }
 
 function formatPriceRange(ranges: RawTicketmasterEvent['priceRanges']): string | null {
@@ -385,6 +388,7 @@ export function normalizeTicketmasterEvent(raw: RawTicketmasterEvent): Ticketmas
     priceCurrency: priceRange?.currency ?? null,
     segment: primary?.segment?.name ?? null,
     genre: primary?.genre?.name ?? null,
+    attractionNames: (raw._embedded?.attractions ?? []).flatMap((a) => (a.name?.trim() ? [cleanTicketmasterTitle(a.name)] : [])),
   };
   return {
     sourceKind: 'ticketmaster',

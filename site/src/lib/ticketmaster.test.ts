@@ -80,6 +80,7 @@ describe('normalizeTicketmasterEvent', () => {
         priceCurrency: null,
         segment: 'Sports',
         genre: null,
+        attractionNames: [],
       },
     });
   });
@@ -95,6 +96,19 @@ describe('normalizeTicketmasterEvent', () => {
       },
     }));
     expect(result.ticketmasterEvent.attractionId).toBe('K8vZ9172HM0');
+  });
+
+  it('keeps every attraction name in order for the JSON-LD performer (Search Console, owner 2026-11-18; same real Disney On Ice row)', () => {
+    const result = normalizeTicketmasterEvent(realFixture({
+      _embedded: {
+        venues: [{ name: 'Denny Sanford PREMIER Center' }],
+        attractions: [
+          { id: 'K8vZ9172HM0', name: 'Disney On Ice presents Find Your Hero' },
+          { id: 'K8vZ9171K80', name: 'Disney On Ice' },
+        ],
+      },
+    }));
+    expect(result.ticketmasterEvent.attractionNames).toEqual(['Disney On Ice presents Find Your Hero', 'Disney On Ice']);
   });
 
   it('handles no attractions at all -- confirmed live, real events can lack this field entirely', () => {

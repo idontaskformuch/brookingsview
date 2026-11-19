@@ -454,7 +454,11 @@ export function isEventPast(e: HolidayEvent, today: string): boolean {
 /** Event JSON-LD for the confirmed events only. An unconfirmed event never gets markup, nor does a confirmed one
  *  without a start time, unless it is a run flagged `seasonJsonLd` (date-only startDate/endDate). With `today`
  *  (local date), an event whose last day has passed gets none: markup is only for events still ahead. */
-export function buildHolidayEventsJsonLd(page: HolidayPageData, timeZone: string, country = 'US', today?: string): Record<string, unknown>[] {
+/*  `image` (absolute URL) is the page's own band photo, the one picture the page shows: the events have no photo of their own, and
+ *  Search Console asks for one (owner 2026-11-18: never a picture the page does not show). */
+export function buildHolidayEventsJsonLd(
+  page: HolidayPageData, timeZone: string, country = 'US', today?: string, image?: string,
+): Record<string, unknown>[] {
   return page.events.flatMap((e) => {
     if (e.status !== 'confirmed' || e.fromCalendar) return [];
     if (today !== undefined && isEventPast(e, today)) return [];
@@ -476,6 +480,7 @@ export function buildHolidayEventsJsonLd(page: HolidayPageData, timeZone: string
       url: e.url,
       location: { '@type': 'Place', name: e.venue.name, address },
     };
+    if (image) ld.image = [image];
     if (e.endTime) ld.endDate = localIso(e.endDate ?? e.date, e.endTime, timeZone);
     else if (e.endDate) ld.endDate = e.endDate;
     return [ld];
