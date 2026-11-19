@@ -66,3 +66,18 @@
   text-transform: uppercase; color: var(--ink-soft); }
 .ui-sh__title { font-size: 1.25rem; }
 .ui-sh__all { flex: none; font-family: var(--font-ui); font-size: var(--ui-meta); font-weight: var(--ui-primary-weight); padding: var(--ui-2) 0; }
+
+/* Sparkline: number + label, then a small line over the series. The line uses --ink-soft (non-text contrast >= 3:1 on both themes, like the
+   other ui strokes); the last point is accent. The line draws in once, only for readers who have not asked for reduced motion. */
+.ui-spark { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-3); font-family: var(--font-ui); }
+.ui-spark__text { margin: 0; display: flex; align-items: baseline; gap: var(--ui-2); min-width: 0; }
+.ui-spark__value { font-size: 1.375rem; font-weight: var(--ui-hero-weight); line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
+.ui-spark__label { font-size: var(--ui-meta); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.ui-spark__alt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ui-spark__svg { flex: none; overflow: visible; }
+.ui-spark__line { stroke: var(--ink-soft); }
+.ui-spark__dot { fill: var(--accent); }
+@media (prefers-reduced-motion: no-preference) {
+  .ui-spark__line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: ui-spark-draw 0.6s ease-out forwards; }
+  @keyframes ui-spark-draw { to { stroke-dashoffset: 0; } }
+}

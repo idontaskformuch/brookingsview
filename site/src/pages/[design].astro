@@ -6,6 +6,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import HeroStat from '../components/ui/HeroStat.astro';
 import InsightLine from '../components/ui/InsightLine.astro';
 import RangeBar from '../components/ui/RangeBar.astro';
+import Sparkline from '../components/ui/Sparkline.astro';
 import HourStrip from '../components/ui/HourStrip.astro';
 import DayRows from '../components/ui/DayRows.astro';
 import TimeStrip from '../components/ui/TimeStrip.astro';
@@ -66,6 +67,15 @@ const catLabel: Record<string, string> = { civic: 'Civic', music: 'Music', famil
       <p class="g__cap">Unit follows the city config (this build: {siteConfig.country === 'gb' ? 'Celsius' : 'Fahrenheit'}); the sample numbers are in that unit.</p>
       <p class="g__cap">Missing data draws nothing:</p>
       <RangeBar scaleMin={0} scaleMax={100} low={NaN} high={68} />
+    </div>
+
+    <SectionHeader title="Sparkline" />
+    <div class="g__stack" style="max-width: 22rem">
+      <!-- Real weekly counts, live DB read 2026-11-19 (weeks 24 Aug - 9 Nov): Brookings events (stories), Broomfield traffic_incidents. -->
+      <Sparkline values={[8, 3, 17, 11, 18, 14, 14, 10, 14, 9, 10, 14]} label="events last week" span="last 12 weeks" />
+      <Sparkline values={[7, 9, 15, 17, 16, 15, 13, 14, 23, 19, 11, 8]} label="traffic incidents last week" span="last 12 weeks" />
+      <p class="g__cap">Axis starts at zero; straight segments; the line draws in only without reduced motion. Fewer than two values draws nothing:</p>
+      <Sparkline values={[4]} label="one value" />
     </div>
 
     <SectionHeader title="HourStrip" />

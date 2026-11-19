@@ -1,0 +1,12 @@
+---
+/** A number with its label and a small line over a series (e.g. the last 12 weeks), oldest first. Not drawn at all with fewer than two
+ *  values or a value that is not a count (no data, no element); a period the source did not cover is the caller's to leave out, never a 0.
+ *  The axis starts at zero. The svg is decorative; the text alternative carries the number and every value. Tabular numbers; the draw-in
+ *  animation runs only without prefers-reduced-motion.
+ *  Markup is built by lib/ui/ui-html.ts (sparklineHtml); styles: design/ui-components.css. */
+import { sparklineHtml } from '../../lib/ui/ui-html';
+
+interface Props { values: number[]; label: string; value?: string | number; span?: string; attrs?: Record<string, unknown> }
+const { values, label, value, span, attrs } = Astro.props;
+---
+<Fragment set:html={sparklineHtml({ values, label, value, span, attrs })} />

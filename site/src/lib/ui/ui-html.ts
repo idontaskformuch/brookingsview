@@ -141,3 +141,43 @@ export function sectionHeaderHtml(p: { title: string; kicker?: string; seeAllHre
   return `<header class="ui-sh"><div>${p.kicker ? `<p class="ui-sh__kicker">${esc(p.kicker)}</p>` : ''}<${h} class="ui-sh__title">${esc(p.title)}</${h}></div>`
     + `${p.seeAllHref ? `<a class="ui-sh__all" href="${esc(p.seeAllHref)}">${esc(p.seeAllLabel ?? 'See all')}</a>` : ''}</header>`;
 }
+
+// ---- sparkline: a number with its label and a small line over a series (e.g. 12 weeks), oldest first ----
+export interface SparklineProps {
+  /** The series, oldest first. Every value must be a finite number >= 0: a period without data is the caller's to leave out, never a 0. */
+  values: number[];
+  /** What the number is ("Events this week"). */
+  label: string;
+  /** The number shown; defaults to the last value. */
+  value?: string | number;
+  /** What the series covers, for the text alternative ("last 12 weeks"). */
+  span?: string;
+  attrs?: Record<string, unknown>;
+}
+export const SPARK_W = 120;
+export const SPARK_H = 28;
+const SPARK_PAD = 3;
+/** Points of the line on a 0-based scale (counts: the axis starts at zero so a small change does not look like a big one). */
+export function sparkPoints(values: number[]): { x: number; y: number }[] {
+  const max = Math.max(...values);
+  const step = (SPARK_W - 2 * SPARK_PAD) / (values.length - 1);
+  return values.map((v, i) => ({
+    x: round(SPARK_PAD + i * step),
+    y: round(max === 0 ? SPARK_H - SPARK_PAD : SPARK_PAD + (1 - v / max) * (SPARK_H - 2 * SPARK_PAD)),
+  }));
+}
+/** '' with fewer than two values or any value that is not a finite number >= 0 (no data, no element). Straight segments, not a smoothed
+ *  curve: a curve would draw values between the weeks that were never counted. The svg is decorative; the numbers are in the text. */
+export function sparklineHtml(p: SparklineProps): string {
+  const vs = p.values;
+  if (vs.length < 2 || vs.some((v) => typeof v !== 'number' || !Number.isFinite(v) || v < 0)) return '';
+  const pts = sparkPoints(vs);
+  const last = pts[pts.length - 1];
+  const shown = p.value ?? vs[vs.length - 1];
+  const alt = `${p.label}: ${shown}. ${p.span ? `${p.span[0].toUpperCase()}${p.span.slice(1)}` : 'Series'}, oldest first: ${vs.join(', ')}.`;
+  return `<div class="ui-spark"${attrsHtml(p.attrs)}><p class="ui-spark__text"><span class="ui-spark__value">${esc(shown)}</span> <span class="ui-spark__label">${esc(p.label)}</span></p>`
+    + `<span class="ui-spark__alt">${esc(alt)}</span>`
+    + `<svg class="ui-spark__svg" width="${SPARK_W}" height="${SPARK_H}" viewBox="0 0 ${SPARK_W} ${SPARK_H}" aria-hidden="true" focusable="false">`
+    + `<polyline class="ui-spark__line" points="${pts.map((q) => `${q.x},${q.y}`).join(' ')}" pathLength="1" fill="none" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>`
+    + `<circle class="ui-spark__dot" cx="${last.x}" cy="${last.y}" r="2.5"/></svg></div>`;
+}

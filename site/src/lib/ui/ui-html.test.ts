@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { attrsHtml, curvePath, dayRowsHtml, esc, heroHtml, hourStripHtml, insightHtml, rangeBarHtml, sectionHeaderHtml } from './ui-html';
+import { attrsHtml, curvePath, dayRowsHtml, esc, heroHtml, hourStripHtml, insightHtml, rangeBarHtml, sectionHeaderHtml, sparklineHtml, sparkPoints } from './ui-html';
 import { buildWeatherView } from '../weather-model';
 import { weatherRegionHtml } from '../weather-html';
 
@@ -132,5 +132,38 @@ describe('weatherRegionHtml', () => {
     expect(html).toContain('Today’s high');
     expect(html).not.toContain('Next 24 hours');
     expect(html).not.toContain('data-wx-insight="rain"');
+  });
+});
+
+describe('sparklineHtml', () => {
+  // Brookings events per week (stories, occurs_at, live DB read 2026-11-19), 12 full weeks 24 Aug - 9 Nov.
+  const brookings = [8, 3, 17, 11, 18, 14, 14, 10, 14, 9, 10, 14];
+  it('draws nothing with fewer than two values or a value that is not a count (no data, no element)', () => {
+    expect(sparklineHtml({ values: [], label: 'x' })).toBe('');
+    expect(sparklineHtml({ values: [4], label: 'x' })).toBe('');
+    expect(sparklineHtml({ values: [4, NaN], label: 'x' })).toBe('');
+    expect(sparklineHtml({ values: [4, -1], label: 'x' })).toBe('');
+  });
+  it('shows the last value by default and carries every value, oldest first, in the text alternative', () => {
+    const h = sparklineHtml({ values: brookings, label: 'events last week', span: 'last 12 weeks' });
+    expect(h).toContain('<span class="ui-spark__value">14</span>');
+    expect(h).toContain('events last week: 14. Last 12 weeks, oldest first: 8, 3, 17, 11, 18, 14, 14, 10, 14, 9, 10, 14.');
+    expect(h).toContain('aria-hidden="true"');
+    expect(h).toContain('class="ui-spark__line"');
+  });
+  it('escapes the label and an explicit value', () => {
+    const h = sparklineHtml({ values: [1, 2], label: '<b>', value: '"3"' });
+    expect(h).toContain('&lt;b&gt;');
+    expect(h).toContain('&quot;3&quot;');
+  });
+  it('axis starts at zero: the highest week touches the top, a zero week the bottom, all-zero is a flat line at the bottom', () => {
+    const pts = sparkPoints(brookings);
+    expect(pts).toHaveLength(12);
+    expect(Math.min(...pts.map((p) => p.y))).toBe(pts[4].y); // 18, the busiest week
+    expect(pts[4].y).toBe(3);
+    expect(sparkPoints([0, 5]).map((p) => p.y)).toEqual([25, 3]);
+    expect(sparkPoints([0, 0]).map((p) => p.y)).toEqual([25, 25]);
+    expect(pts[0].x).toBe(3);
+    expect(pts[11].x).toBe(117);
   });
 });
