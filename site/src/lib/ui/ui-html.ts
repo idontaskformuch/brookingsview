@@ -175,9 +175,20 @@ export function sparklineHtml(p: SparklineProps): string {
   const last = pts[pts.length - 1];
   const shown = p.value ?? vs[vs.length - 1];
   const alt = `${p.label}: ${shown}. ${p.span ? `${p.span[0].toUpperCase()}${p.span.slice(1)}` : 'Series'}, oldest first: ${vs.join(', ')}.`;
-  return `<div class="ui-spark"${attrsHtml(p.attrs)}><p class="ui-spark__text"><span class="ui-spark__value">${esc(shown)}</span> <span class="ui-spark__label">${esc(p.label)}</span></p>`
-    + `<span class="ui-spark__alt">${esc(alt)}</span>`
-    + `<svg class="ui-spark__svg" width="${SPARK_W}" height="${SPARK_H}" viewBox="0 0 ${SPARK_W} ${SPARK_H}" aria-hidden="true" focusable="false">`
+  return sparkRow(p.label, shown, alt, p.attrs,
+    `<svg class="ui-spark__svg" width="${SPARK_W}" height="${SPARK_H}" viewBox="0 0 ${SPARK_W} ${SPARK_H}" aria-hidden="true" focusable="false">`
     + `<polyline class="ui-spark__line" points="${pts.map((q) => `${q.x},${q.y}`).join(' ')}" pathLength="1" fill="none" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>`
-    + `<circle class="ui-spark__dot" cx="${last.x}" cy="${last.y}" r="2.5"/></svg></div>`;
+    + `<circle class="ui-spark__dot" cx="${last.x}" cy="${last.y}" r="2.5"/></svg>`);
+}
+
+/** The same row without a line (Fas 4 D2, owner 2026-11-19: a number whose source does not cover the whole span looks like the
+ *  others). An empty box of the line's size keeps the text in the same place; the text alternative is the number alone. */
+export function sparkNumberHtml(p: { label: string; value: string | number; attrs?: Record<string, unknown> }): string {
+  return sparkRow(p.label, p.value, `${p.label}: ${p.value}.`, p.attrs,
+    `<span class="ui-spark__svg ui-spark__svg--none" style="width:${SPARK_W}px;height:${SPARK_H}px" aria-hidden="true"></span>`);
+}
+
+function sparkRow(label: string, shown: string | number, alt: string, attrs: Record<string, unknown> | undefined, graphic: string): string {
+  return `<div class="ui-spark"${attrsHtml(attrs)}><p class="ui-spark__text"><span class="ui-spark__value">${esc(shown)}</span> <span class="ui-spark__label">${esc(label)}</span></p>`
+    + `<span class="ui-spark__alt">${esc(alt)}</span>${graphic}</div>`;
 }

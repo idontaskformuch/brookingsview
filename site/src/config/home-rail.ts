@@ -20,13 +20,17 @@ export interface RailConfig {
   modules: RailModuleKind[];
   reserve: RailModuleKind[];
   adSlot?: { afterModule: number };
+  /** "<Town> in numbers" (Fas 4): numbers shown without a line or insight line, whatever their coverage. */
+  numbersNoTrend?: ('events' | 'closures' | 'jobs')[];
 }
 
 const SPEC_ORDER: RailModuleKind[] = ['meeting', 'holiday', 'sport', 'numbers', 'weather'];
 
 export const HOME_RAIL_BY_TOWN: Record<string, RailConfig> = {
   brookings_sd: { modules: [...SPEC_ORDER, 'traffic', 'markets', 'play'], reserve: ['meetings_more'], adSlot: { afterModule: 2 } },
-  moreno_valley_ca: { modules: [...SPEC_ORDER, 'traffic', 'burro_bonanza'], reserve: ['meetings_more'], adSlot: { afterModule: 2 } },
+  // Owner D3 2026-11-19: Moreno Valley's closures get no line and no insight until the fall in its traffic rows (260 -> 50 a week,
+  // Aug-Nov 2026) is explained; see the open point in specs/full-pages-no-ai-prose.md "Beslut 7".
+  moreno_valley_ca: { modules: [...SPEC_ORDER, 'traffic', 'burro_bonanza'], reserve: ['meetings_more'], adSlot: { afterModule: 2 }, numbersNoTrend: ['closures'] },
   broomfield_co: { modules: [...SPEC_ORDER, 'traffic', 'workplace'], reserve: ['meetings_more'], adSlot: { afterModule: 2 } },
   glasgow: { modules: [...SPEC_ORDER, 'traffic'], reserve: ['meetings_more'], adSlot: { afterModule: 2 } },
 };

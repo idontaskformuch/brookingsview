@@ -1,0 +1,36 @@
+---
+/** Rail module (Fas 4): "<Town> in numbers" -- 2 to 4 counts from our own DB (lib/town-numbers-data.ts), each a link to the page that
+ *  counts it the same way. One line per number where its source covers 12 full weeks; a number without a line keeps the same row
+ *  (D2). At most one insight line per number, only when a rule holds (lib/town-numbers.ts insightLine). Data and template strings only. */
+import { sparklineHtml, sparkNumberHtml } from '../../lib/ui/ui-html';
+import type { NumberRow } from '../../lib/town-numbers';
+
+interface Props { rows: NumberRow[]; cityName: string }
+const { rows, cityName } = Astro.props;
+const rowHtml = (r: NumberRow) => (r.line
+  ? sparklineHtml({ values: r.line, label: r.label, value: r.value, span: r.span ?? undefined })
+  : sparkNumberHtml({ label: r.label, value: r.value }));
+---
+<section class="rail-mod rail-num" aria-label={`${cityName} in numbers`}>
+  <p class="rail-num__label">{cityName} in numbers</p>
+  <ul class="rail-num__list">
+    {rows.map((r) => (
+      <li data-number={r.id}>
+        <a class="rail-num__link" href={r.href} set:html={rowHtml(r)} />
+        {r.insight && <p class="rail-num__insight">{r.insight}</p>}
+      </li>
+    ))}
+  </ul>
+</section>
+<style>
+  .rail-num { border-top: 1px solid var(--rule); padding-top: 0.75rem; }
+  .rail-num__label {
+    margin: 0 0 0.375rem; font-family: var(--font-ui); font-size: 0.625rem; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--ink-soft);
+  }
+  .rail-num__list { list-style: none; margin: 0; padding: 0; }
+  .rail-num__list > li + li { margin-top: 0.5rem; }
+  .rail-num__link { display: block; color: inherit; text-decoration: none; border-radius: 3px; padding: 0.125rem 0; transition: background-color 0.12s ease; }
+  .rail-num__link:hover { background: var(--navy-tint); }
+  .rail-num__insight { margin: 0.125rem 0 0; font-family: var(--font-ui); font-size: 0.8125rem; color: var(--ink); }
+</style>

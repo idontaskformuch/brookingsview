@@ -3771,3 +3771,54 @@ export async function getElectionResults(now: Date = new Date()): Promise<Public
   const snapshot = await readLastValid((text, params) => sql(text, params) as unknown as Promise<Array<Record<string, unknown>>>, TOWN_ID, town.cadence.electionDate);
   return toPublic(town, snapshot, now);
 }
+
+// ---- "<Town> in numbers" (Fas 4, lib/town-numbers.ts) ----
+
+/** Successful reads of one scraper source: the first ever and every start since `since` (the weeks the source covered, D1). */
+export async function getOkReadStarts(sourceKey: string, since: Date): Promise<{ first: string | null; starts: string[] }> {
+  const [first, rows] = await Promise.all([
+    sql`SELECT MIN(started_at) AS first FROM scrape_runs WHERE town_id = ${TOWN_ID} AND source_key = ${sourceKey} AND status = 'ok'`,
+    sql`SELECT started_at FROM scrape_runs
+         WHERE town_id = ${TOWN_ID} AND source_key = ${sourceKey} AND status = 'ok' AND started_at >= ${since.toISOString()}`,
+  ]);
+  return {
+    first: (first[0] as { first: string | null } | undefined)?.first ?? null,
+    starts: (rows as { started_at: string }[]).map((r) => r.started_at),
+  };
+}
+
+/** occurs_at of every published event story in [start, end): the same WHERE as getEventStoriesOccurringBetween(), only the date. */
+export async function getEventOccurrencesBetween(start: Date, end: Date): Promise<string[]> {
+  const rows = (await sql`
+    SELECT occurs_at FROM stories
+     WHERE town_id = ${TOWN_ID}
+       AND source_type = 'event'
+       AND published_at IS NOT NULL
+       AND superseded_by_slug IS NULL
+       AND occurs_at >= ${start.toISOString()} AND occurs_at < ${end.toISOString()}
+  `) as { occurs_at: string }[];
+  return rows.map((r) => r.occurs_at);
+}
+
+/** Every incident of a type that can be a closure (lib/traffic.ts trafficKind decides) last seen at or after `since`, unfiltered by
+ *  zone: the caller classifies with classifyTrafficIncident() like /traffic/. */
+export async function getTrafficClosureCandidatesSeenSince(since: Date): Promise<TrafficIncident[]> {
+  return (await sql`
+    SELECT incident_type, title, description, road, severity, lat, lon, starts_at, ends_at, last_seen_at, created_at
+      FROM traffic_incidents
+     WHERE town_id = ${TOWN_ID}
+       AND incident_type IN ('lane_closure', 'chp_incident')
+       AND last_seen_at >= ${since.toISOString()}
+     ORDER BY created_at
+  `) as TrafficIncident[];
+}
+
+/** meeting_date and raw_data (lib/meetings-view.ts isCancelled) of every meeting in [start, end) (lib/month-gate.mjs
+ *  monthQueryWindow; the caller keeps the local month). */
+export async function getMeetingDatesBetween(start: Date, end: Date): Promise<{ meeting_date: string; raw_data: Record<string, any> | null }[]> {
+  return (await sql`
+    SELECT meeting_date, raw_data FROM meetings
+     WHERE town_id = ${TOWN_ID}
+       AND meeting_date >= ${start.toISOString()} AND meeting_date < ${end.toISOString()}
+  `) as { meeting_date: string; raw_data: Record<string, any> | null }[];
+}

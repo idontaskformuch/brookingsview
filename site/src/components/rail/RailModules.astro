@@ -16,6 +16,8 @@ import AdSlot from '../AdSlot.astro';
 import RailMeetings from './RailMeetings.astro';
 import RailHoliday from './RailHoliday.astro';
 import RailWeather from './RailWeather.astro';
+import RailNumbers from './RailNumbers.astro';
+import { loadTownNumbers } from '../../lib/town-numbers-data';
 import {
   getActiveTrafficIncidents, getUpcomingGames, getNextRegionalGame, getNextSdsuMarqueeEvent, getAgPrices, getEmployerJobStats,
   getRegionalSports, getWeatherSnapshot,
@@ -58,7 +60,7 @@ const profile = countryProfile(siteConfig.country);
 const wants = new Set<RailModuleKind>([...cfg.modules, ...cfg.reserve]);
 
 const meetingsData = Astro.props.meetingsData !== undefined ? Astro.props.meetingsData : await loadUpcomingMeetings();
-const [traffic, games, regionalNext, sdsuNext, prices, jobStats, regional, weather] = await Promise.all([
+const [traffic, games, regionalNext, sdsuNext, prices, jobStats, regional, weather, numbers] = await Promise.all([
   wants.has('traffic') && isSectionBuilt('traffic', siteConfig) ? getActiveTrafficIncidents() : Promise.resolve([]),
   wants.has('sport') && isSectionBuilt('jackrabbits', siteConfig) ? getUpcomingGames(1) : Promise.resolve([]),
   wants.has('sport') && isSectionBuilt('sports', siteConfig) ? getNextRegionalGame() : Promise.resolve(null),
@@ -67,6 +69,7 @@ const [traffic, games, regionalNext, sdsuNext, prices, jobStats, regional, weath
   wants.has('workplace') && siteConfig.hasWorkplaceWatch ? getEmployerJobStats() : Promise.resolve([]),
   wants.has('sport') && isSectionBuilt('sports', siteConfig) ? getRegionalSports() : Promise.resolve([]),
   wants.has('weather') && isSectionBuilt('weather', siteConfig) ? getWeatherSnapshot() : Promise.resolve(null),
+  wants.has('numbers') ? loadTownNumbers(now) : Promise.resolve([]),
 ]);
 
 // Meetings
@@ -117,7 +120,7 @@ const plan = planRail(cfg, {
   meetings_more: moreMeetings.length > 0,
   holiday: holiday !== null && holidayDef !== undefined,
   sport: gameSlot !== null || lastResult !== null,
-  numbers: false,
+  numbers: numbers.length > 0,
   weather: wxDays.length >= RAIL_WEATHER_DAYS,
   traffic: traffic.length > 0,
   workplace: hiringMover !== null,
@@ -156,6 +159,7 @@ const plan = planRail(cfg, {
             )}
           </section>
         )}
+        {m === 'numbers' && <RailNumbers rows={numbers} cityName={siteConfig.cityName} />}
         {m === 'weather' && <RailWeather days={wxDays} tz={tz} />}
         {m === 'traffic' && <a class="rail-mod__link" href="/traffic/"><TrafficWidget incidents={traffic} /></a>}
         {m === 'workplace' && hiringMover && (
