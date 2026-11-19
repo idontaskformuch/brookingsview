@@ -25,7 +25,7 @@ import { monthQueryWindow, rowsInMonth } from './month-gate.mjs';
 import { isCancelled } from './meetings-view';
 import {
   NUMBERS_WEEKS, JOBS_READ_MAX_AGE_DAYS, fullWeeks, weekOf, weekStartDay, countByWeek, coveredSeries, weeklyRow, closureWeekSpans,
-  lastFullMonth, readWithin, pickRows, readsSteady, sourcesConstant, type Coverage, type NumberRow, type SourceSpan,
+  lastFullMonth, readWithin, pickRows, readsSteady, readEveryWeek, sourcesConstant, type Coverage, type NumberRow, type SourceSpan,
 } from './town-numbers';
 
 const DAY_MS = 86_400_000;
@@ -83,7 +83,8 @@ export async function loadTownNumbers(now: Date): Promise<NumberRow[]> {
     const sources: SourceSpan[] = eventSources.map((s) => ({
       name: s.source, startWeek: weekOf(s.first, tz), stopWeek: frozen[s.source] ? weekOf(`${frozen[s.source].since}T12:00:00Z`, tz) : null,
     }));
-    const comparable = readsSteady(readsByWeek(eventReads, tz), weeks) && sourcesConstant(sources, weeks);
+    // Beslut 8: events and jobs need a read every week and unchanged sources; only traffic also needs a steady read count.
+    const comparable = readEveryWeek(readsByWeek(eventReads, tz), weeks) && sourcesConstant(sources, weeks);
     rows.push(value == null ? null : weeklyRow({
       id: 'events', label: 'Events last week', value, href: '/events/', span, series, weeks, trend: !noTrend.has('events'), locale, comparable,
     }));
@@ -117,7 +118,7 @@ export async function loadTownNumbers(now: Date): Promise<NumberRow[]> {
       rows.push(weeklyRow({
         id: 'jobs', label: 'New job listings, past 7 days', value: newJobCount(first, now), href: '/jobs/',
         span: `new listings per week, last ${NUMBERS_WEEKS} full weeks`, series, weeks, trend: !noTrend.has('jobs'), locale,
-        comparable: readsSteady(readsByWeek(jobReads, tz), weeks) && sourcesConstant(oneSource('jobs', jobReads, tz), weeks),
+        comparable: readEveryWeek(readsByWeek(jobReads, tz), weeks) && sourcesConstant(oneSource('jobs', jobReads, tz), weeks),
       }));
     }
   }

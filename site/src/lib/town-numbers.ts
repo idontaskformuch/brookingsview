@@ -4,14 +4,16 @@
  *  Weeks are the town's local calendar weeks, Monday first. A "full week" has ended; the current week never counts.
  *  D1: a line only when the source covers all NUMBERS_WEEKS full weeks; otherwise the number alone. A week is covered when the source
  *      had a successful read in it, and the week starts after the week of the source's first read (that first week is partial).
- *      For counts built from published stories (events) a week with 0 rows is also uncovered: Moreno Valley's events scraper read
- *      every week of August 2026 (scrape_runs ok, ~1000 items a read) yet no published event occurs in 3 Aug-6 Sep, so a read alone
- *      does not show the week was covered (owner: "Morenos evenemang i augusti ... ingen linje förrän luckan har passerat").
+ *      For counts built from published stories (events) a week with 0 rows is also uncovered (owner D1: "En vecka med 0 rader räknas
+ *      som saknad täckning"). The Moreno Valley August 2026 zeros that prompted it turned out to be series supersession (spec, open
+ *      point 1, 19 Nov); the rule stays as the owner set it.
  *  D2: one line per number, and a number without a line looks like the others (ui-html sparkNumberHtml).
  *  Beslut 7 tillägg (owner 2026-11-19): rows per week follow how often the source is read (Moreno Valley traffic: 125 reads a week
  *      in August, 13 in November), so a line compares only when the sources and the schedule are the same in all 12 weeks:
  *      the same active sources every week (sourcesConstant) and successful reads per week within ±25 % of the window's median
  *      (readsSteady). Otherwise the number shows without a line and without an insight line.
+ *  Beslut 8 (owner 2026-11-19): readsSteady applies to traffic only (incidents are short-lived, so the read count drives the row
+ *      count). Events and jobs need sourcesConstant and at least one successful read every week (readEveryWeek).
  *  D5: an insight line needs the same coverage as the line, at most one per number, no percentages or trend words, and "since <Month>"
  *      only when an earlier covered week really was higher (lower); a record for all the data we have gives no line. */
 import { localDayNumber } from './local-day';
@@ -79,6 +81,11 @@ export function readsSteady(readsByWeek: Map<number, number>, weeks: number[]): 
   const r = weeks.map((w) => readsByWeek.get(w) ?? 0);
   const m = median(r);
   return m > 0 && r.every((v) => Math.abs(v - m) <= READS_MAX_DEVIATION * m);
+}
+
+/** At least one successful read in every week of `weeks` (Beslut 8: events, jobs). */
+export function readEveryWeek(readsByWeek: Map<number, number>, weeks: number[]): boolean {
+  return weeks.every((w) => (readsByWeek.get(w) ?? 0) >= 1);
 }
 
 /** A source of a count: the week it started (its first row) and the week it stopped (a frozen source's `since`), null = not known /

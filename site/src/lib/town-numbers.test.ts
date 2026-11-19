@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   NUMBERS_WEEKS, weekOf, weekOfDay, weekStartDay, fullWeeks, countByWeek, coveredSeries, lineValues, insightLine, weeklyRow,
-  closureWeekSpans, lastFullMonth, pickRows, readWithin, readsSteady, sourcesConstant, INSIGHT_NOUNS, type NumberRow,
+  closureWeekSpans, lastFullMonth, pickRows, readWithin, readsSteady, readEveryWeek, sourcesConstant, INSIGHT_NOUNS, type NumberRow,
 } from './town-numbers';
 import { sparkNumberHtml, sparklineHtml } from './ui/ui-html';
 
@@ -181,6 +181,11 @@ describe('same sources and schedule in all 12 weeks (Beslut 7 tillägg)', () => 
     expect(readsSteady(reads(six), weeks)).toBe(true);
     const c = [...six]; c[7] = 4; // real value in the week of 19 Oct
     expect(readsSteady(reads(c), weeks)).toBe(false);
+  });
+  it('Beslut 8: jobs and events need only a read every week -- Brookings jobs 4-7 a week passes, a week without a read does not', () => {
+    expect(readEveryWeek(reads([5, 7, 5, 6, 6, 5, 6, 4, 4, 7, 6, 6]), weeks)).toBe(true);
+    const m = reads([5, 7, 5, 6, 6, 5, 6, 4, 4, 7, 6, 6]); m.delete(weeks[7]); // one changed field: no read in the week of 19 Oct
+    expect(readEveryWeek(m, weeks)).toBe(false);
   });
   it('a week without a read fails', () => {
     const m = reads([6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]); m.delete(weeks[3]);
