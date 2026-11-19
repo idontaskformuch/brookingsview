@@ -382,9 +382,10 @@ const TOWN_GATED_PAGES = [
   { path: '/farm-report/', activeFor: ['brookings_sd'] },
   { path: '/jackrabbits/', activeFor: ['brookings_sd'] },
   { path: '/game-day/', activeFor: ['brookings_sd'] },
-  { path: '/trash-recycling/', activeFor: ['brookings_sd'] },
+  // A "How do I..." page since Fas 3 (config/city-answers): Brookings' guide (K1) and Broomfield's (B2).
+  { path: '/trash-recycling/', activeFor: ['brookings_sd', 'broomfield_co'] },
   // Fas 3 "How do I..." hub: towns with answer pages in config/city-answers/index.ts (the answer pages themselves are a dynamic route).
-  { path: '/how-do-i/', activeFor: ['moreno_valley_ca', 'brookings_sd'] },
+  { path: '/how-do-i/', activeFor: ['moreno_valley_ca', 'brookings_sd', 'broomfield_co'] },
   { path: '/winter-guide/', activeFor: ['brookings_sd'] },
   { path: '/how-city-council-works/', activeFor: ['brookings_sd'] },
   { path: '/sdsu-campus-open-to-public/', activeFor: ['brookings_sd'] },
