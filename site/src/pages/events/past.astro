@@ -14,12 +14,12 @@
  *  event just after UTC midnight is still the previous evening locally in
  *  both this site's timezones (America/Chicago, America/Los_Angeles).
  *
- *  getContentByType(), not getPastStories(): a handful of very early rows
+ *  getEventArchiveStories() (was getContentByType(); same filters, no date filter), not getPastStories(): a handful of very early rows
  *  (launch-day scraper runs, 2026-07-18) have occurs_at = NULL and are
  *  invisible to any occurs_at-based query -- getPastStories' `occurs_at <
  *  now() - interval` never matches NULL, so they were silently unreachable
  *  from anywhere on the site (found while verifying this page, see
- *  NEEDS-HUMAN-REVIEW.md §26). getContentByType has no date filter, so
+ *  NEEDS-HUMAN-REVIEW.md §26). It has no date filter, so
  *  they land in the 'undated' bucket instead of vanishing. Filtered to
  *  exclude genuinely FUTURE events (still shown on events.astro's
  *  upcoming sections, not duplicated here).
@@ -28,7 +28,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import AboutThisPage from '../../components/ui/AboutThisPage.astro';
 import StoryCard from '../../components/StoryCard.astro';
 import ShareButton from '../../components/ShareButton.astro';
-import { getContentByType, getFacilities } from '../../lib/db';
+import { getEventArchiveStories, getFacilities } from '../../lib/db';
 import type { Story } from '../../lib/db';
 import { localDateParts } from '../../lib/events';
 import { siteConfig } from '../../lib/site-config';
@@ -38,7 +38,7 @@ import { isPrunedEvent } from '../../lib/old-events';
 import { listEligibleMonths, monthLabel as monthInReviewLabel, monthSlug } from '../../lib/month-in-review';
 
 const [allEvents, facilities] = await Promise.all([
-  getContentByType(['event'], 5000),
+  getEventArchiveStories(), // occurrences a series replaced included (lib/event-occurrence.mjs listedEventRows, owner 2026-11-19)
   getFacilities(),
 ]);
 // Phase 8 teaser link (research section 3) -- plain link, not a cluster
@@ -68,7 +68,7 @@ for (const e of events) {
   groups.get(key)!.push(e);
 }
 // "Oldest to newest within each month" per the intro copy below --
-// getContentByType() orders by published_at, not occurs_at.
+// getEventArchiveStories() orders by published_at, not occurs_at.
 for (const group of groups.values()) {
   group.sort((a, b) => (a.occurs_at ? new Date(a.occurs_at).getTime() : 0) - (b.occurs_at ? new Date(b.occurs_at).getTime() : 0));
 }

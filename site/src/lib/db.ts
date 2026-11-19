@@ -17,7 +17,7 @@
  * Alla frågor filtreras på town_id från configen, så samma kod betjänar nästa
  * ort utan ändring.
  */
-import { isCountedOccurrence } from './event-occurrence.mjs';
+import { isCountedOccurrence, listedEventRows } from './event-occurrence.mjs';
 import type { MeetingRow } from './meetings-view';
 import { neon } from '@neondatabase/serverless';
 import { siteConfig } from './site-config';
@@ -613,6 +613,25 @@ export async function getContentByType(sourceTypes: SourceType[], limit = 40): P
   `) as Story[];
 }
 
+/** /events/past/: every published event row as the archive lists it -- lib/event-occurrence.mjs listedEventRows() (an occurrence a
+ *  series replaced is listed on its own date, a merged cross-source duplicate is not; owner 2026-11-19). Same columns and filters as
+ *  getContentByType(['event'], ...) had, without its LIMIT and without "superseded_by_slug IS NULL". Ordered by published_at DESC. */
+export async function getEventArchiveStories(): Promise<Story[]> {
+  const hidden = await frozenHidden(); // not built, so never listed (today only rows dated after now, so nothing changes yet)
+  const rows = (await sql`
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
+           byline, image_path, image_alt, rating, ingredients, instructions,
+           venue_raw, is_recurring_series, ends_at, category_image_index, superseded_by_slug
+      FROM stories
+     WHERE town_id = ${TOWN_ID}
+       AND source_type = 'event'
+       AND published_at IS NOT NULL
+       AND slug != ALL(${hidden}::text[]) -- FROZEN_FILTER
+     ORDER BY published_at DESC
+  `) as (Story & { superseded_by_slug: string | null })[];
+  return listedEventRows(rows, siteConfig.timezone);
+}
+
 /** Month in Review (Fas 7a): published event stories whose occurs_at falls in
  *  [start, end) -- lib/month-gate.mjs monthQueryWindow(), which the module
  *  narrows to the local month. Same filters as getContentByType(), without
@@ -927,18 +946,22 @@ async function recordThisWeekImageUse(isoYearWeek: string, imageId: string): Pro
  *  getAllArtsEvents above. */
 export async function getStoriesForWeekly(sourceTypes: SourceType[]): Promise<Story[]> {
   const hidden = await frozenHidden();
-  return (await sql`
+  // Superseded rows: an event occurrence a series replaced is still listed on its day (lib/event-occurrence.mjs listedEventRows(),
+  // owner 2026-11-19); every other superseded row stays out, as before. lib/week-count.mjs counts with the same rule.
+  const rows = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
-           venue_raw, is_recurring_series, ends_at, category_image_index, featured
+           venue_raw, is_recurring_series, ends_at, category_image_index, featured, superseded_by_slug
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
        AND occurs_at IS NOT NULL
-       AND superseded_by_slug IS NULL
+       AND (superseded_by_slug IS NULL OR source_type = 'event')
        AND slug != ALL(${hidden}::text[]) -- FROZEN_FILTER
      ORDER BY occurs_at ASC
-  `) as Story[];
+  `) as (Story & { superseded_by_slug: string | null })[];
+  const listedEvents = new Set(listedEventRows(rows.filter((r) => r.source_type === 'event'), siteConfig.timezone));
+  return rows.filter((r) => (r.source_type === 'event' ? listedEvents.has(r) : true));
 }
 
 /** getWorthKnowingCandidates()'s -24h-floor rolling window doesn't fit an

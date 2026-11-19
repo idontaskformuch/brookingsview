@@ -3,10 +3,12 @@
  * sitemap filter in astro.config.mjs (which cannot import lib/db.ts or lib/site-config.ts, so this file has no such imports). Mirrors what
  * lib/this-week.ts's buildWeekDays() puts on a week: event stories and SDSU arts events through the cross-source dedup (event-dedup.mjs),
  * meetings and project updates by their local day (lib/meeting-day.mjs, aware of meetingsHaveTime), games by local start, regional games by bare date. Rows a newer recurring
- * program replaced (superseded_by_slug) and undated rows are never counted, same as getStoriesForWeekly(). Types: week-count.d.mts.
+ * program replaced (superseded_by_slug) and undated rows are never counted, same as getStoriesForWeekly(); for events "replaced" follows
+ * lib/event-occurrence.mjs listedEventRows() (an occurrence a series replaced IS counted, owner 2026-11-19). Types: week-count.d.mts.
  */
 import { buildEventFeedCore, localDateParts } from './event-dedup.mjs';
 import { meetingDayParts } from './meeting-day.mjs';
+import { listedEventRows } from './event-occurrence.mjs';
 
 /** Mirrors lib/this-week.ts THIS_WEEK_MIN_ITEMS: a week with fewer items than this is noindex and left out of the sitemap. */
 export const THIS_WEEK_MIN_ITEMS = 3;
@@ -49,9 +51,10 @@ export function isoWeekSlug({ y, m, d }) {
 export function countWeekItems(data, timezone, meetingsHaveTime) {
   const counts = new Map();
   const bump = (slug) => counts.set(slug, (counts.get(slug) ?? 0) + 1);
-  const live = (data.stories ?? []).filter((s) => s.occurs_at && !s.superseded_by_slug);
+  const dated = (data.stories ?? []).filter((s) => s.occurs_at);
+  const live = dated.filter((s) => !s.superseded_by_slug);
 
-  const eventStories = live.filter((s) => EVENT_TYPES.includes(s.source_type));
+  const eventStories = listedEventRows(dated.filter((s) => EVENT_TYPES.includes(s.source_type)), timezone);
   const feed = buildEventFeedCore([
     ...eventStories.map((story) => ({ sourceKind: 'story', occurs_at: story.occurs_at, story })),
     ...(data.artsEvents ?? []).map((event) => ({ sourceKind: 'arts', occurs_at: event.starts_at, event })),
