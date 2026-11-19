@@ -17,6 +17,7 @@
  * Alla frågor filtreras på town_id från configen, så samma kod betjänar nästa
  * ort utan ändring.
  */
+import { isCountedOccurrence } from './event-occurrence.mjs';
 import type { MeetingRow } from './meetings-view';
 import { neon } from '@neondatabase/serverless';
 import { siteConfig } from './site-config';
@@ -615,19 +616,21 @@ export async function getContentByType(sourceTypes: SourceType[], limit = 40): P
 /** Month in Review (Fas 7a): published event stories whose occurs_at falls in
  *  [start, end) -- lib/month-gate.mjs monthQueryWindow(), which the module
  *  narrows to the local month. Same filters as getContentByType(), without
- *  its LIMIT; astro.config.mjs's /month/ sitemap mirror runs the same WHERE. */
+ *  its LIMIT and with lib/event-occurrence.mjs instead of "superseded_by_slug IS NULL"; astro.config.mjs's /month/ sitemap
+ *  mirror runs the same WHERE and the same filter. */
 export async function getEventStoriesOccurringBetween(start: Date, end: Date): Promise<Story[]> {
-  return (await sql`
+  // Occurrences, not stories (lib/event-occurrence.mjs, owner 2026-11-19): a past occurrence superseded by its series still counts.
+  const rows = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
-           venue_raw, is_recurring_series, ends_at, category_image_index
+           venue_raw, is_recurring_series, ends_at, category_image_index, superseded_by_slug
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = 'event'
        AND published_at IS NOT NULL
-       AND superseded_by_slug IS NULL
        AND occurs_at >= ${start.toISOString()} AND occurs_at < ${end.toISOString()}
-  `) as Story[];
+  `) as (Story & { superseded_by_slug: string | null })[];
+  return rows.filter(isCountedOccurrence);
 }
 
 /** Month in Review: earliest published_at for a given source_type -- a
@@ -3787,17 +3790,16 @@ export async function getOkReadStarts(sourceKey: string, since: Date): Promise<{
   };
 }
 
-/** occurs_at of every published event story in [start, end): the same WHERE as getEventStoriesOccurringBetween(), only the date. */
+/** occurs_at of every event occurrence in [start, end): the same WHERE and filter as getEventStoriesOccurringBetween(), only the date. */
 export async function getEventOccurrencesBetween(start: Date, end: Date): Promise<string[]> {
   const rows = (await sql`
-    SELECT occurs_at FROM stories
+    SELECT slug, superseded_by_slug, occurs_at FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = 'event'
        AND published_at IS NOT NULL
-       AND superseded_by_slug IS NULL
        AND occurs_at >= ${start.toISOString()} AND occurs_at < ${end.toISOString()}
-  `) as { occurs_at: string }[];
-  return rows.map((r) => r.occurs_at);
+  `) as { slug: string; superseded_by_slug: string | null; occurs_at: string }[];
+  return rows.filter(isCountedOccurrence).map((r) => r.occurs_at);
 }
 
 /** Every incident of a type that can be a closure (lib/traffic.ts trafficKind decides) last seen at or after `since`, unfiltered by

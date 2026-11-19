@@ -9,6 +9,7 @@ import { statusTokensCss } from './src/lib/status-tokens.mjs';
 import { holidayLastmodEntries } from './src/config/holiday-pages/lastmod.mjs';
 import { countWeekItems, isThinWeek } from './src/lib/week-count.mjs';
 import { MONTH_IN_REVIEW_START, monthsFromStart, monthGate, monthQueryWindow } from './src/lib/month-gate.mjs';
+import { isCountedOccurrence } from './src/lib/event-occurrence.mjs';
 import { FROZEN_EVENT_SOURCES, FROZEN_HIDDEN_EVENTS_ASSET, hiddenFrozenSlugs } from './src/lib/frozen-sources.mjs';
 import { stripForeignGames } from './src/lib/game-owners.mjs';
 import { NAV_ONLY_INDEXABLE_TOWNS, pruneNavInDist } from './src/lib/nav-prune.mjs';
@@ -702,7 +703,7 @@ async function buildLastmodMap(townId, databaseUrl) {
         sql`SELECT m.meeting_date FROM meeting_decisions md JOIN meetings m ON m.id = md.meeting_id WHERE m.town_id = ${townId} AND m.meeting_date >= ${from}`,
         sql`SELECT u.entry_date, p.slug AS project_slug FROM project_updates u JOIN projects p ON p.id = u.project_id WHERE p.town_id = ${townId} AND u.entry_date >= ${from}`,
         sql`SELECT sale_date FROM property_sales WHERE town_id = ${townId} AND sale_date >= ${from.slice(0, 10)}`,
-        sql`SELECT occurs_at FROM stories WHERE town_id = ${townId} AND source_type = 'event' AND published_at IS NOT NULL AND superseded_by_slug IS NULL AND occurs_at >= ${from}`,
+        sql`SELECT slug, superseded_by_slug, occurs_at FROM stories WHERE town_id = ${townId} AND source_type = 'event' AND published_at IS NOT NULL AND occurs_at >= ${from}`,
         sql`SELECT created_at FROM traffic_incidents WHERE town_id = ${townId} AND created_at >= ${from}`,
         sql`SELECT created_at, title, company FROM jobs WHERE town_id = ${townId} AND created_at >= ${from}`,
         sql`SELECT MIN(m.meeting_date) AS floor FROM meeting_decisions md JOIN meetings m ON m.id = md.meeting_id WHERE m.town_id = ${townId}`,
@@ -715,7 +716,7 @@ async function buildLastmodMap(townId, databaseUrl) {
         decisions: { rows: decisionRows, floor: decisionsFloor.floor },
         projects: { rows: projectRows, floor: projectsFloor.floor },
         sales: { rows: salesRows },
-        events: { rows: eventRows, floor: eventsFloor.floor },
+        events: { rows: eventRows.filter(isCountedOccurrence), floor: eventsFloor.floor }, // lib/event-occurrence.mjs, like the page
         traffic: { rows: trafficRows, floor: trafficFloor.floor },
         jobs: { rows: jobRows, floor: jobsFloor.floor },
       };
