@@ -31,3 +31,24 @@ describe('K1: Brookings trash guide, same content before and after the move', ()
     expect(PAGE.description).toBe(FIXTURE.description);
   });
 });
+
+describe('K2: after 24 November the yard waste season reads as over, never as coming', () => {
+  // Source /264/Yard-Waste, read 2026-11-19: "Seasonal yard waste collection runs April 6, 2026 to November 24, 2026."
+  const render = async (iso: string, today: string) => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(iso));
+    return visibleText(await (await AstroContainer.create()).renderToString(CityAnswers, { props: { page: PAGE, today } })).text;
+  };
+  it('on 24 Nov (the last day) the season still runs', async () => {
+    const t = await render('2026-11-24T18:00:00Z', '2026-11-24');
+    expect(t).toContain('Yard waste collection runs April 6 to November 24, 2026 and does not run in winter.');
+    expect(t).not.toContain('season ended');
+  });
+  it('from 25 Nov no line speaks of 24 November as coming, and the page says the season is over', async () => {
+    const t = await render('2026-11-25T18:00:00Z', '2026-11-25');
+    expect(t).toContain('The 2026 yard waste season ended November 24.');
+    expect(t).toContain('The 2026 collection ran April 6 to November 24 and is over for the year.');
+    expect(t).toContain('Yard waste collection ended for the year on November 24, 2026');
+    expect(t).not.toMatch(/runs April 6 to November 24|ends November 24/);
+  });
+});

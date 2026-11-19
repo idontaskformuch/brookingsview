@@ -20,6 +20,8 @@ export const BROOKINGS_TRASH_SOURCES = [
 const S = BROOKINGS_TRASH_SOURCES;
 const checked = '2026-10-23';
 const checkAt = '2027-02-20';
+/** Last day of the 2026 curbside yard waste season (lib/trash-schedule.ts YARD_SEASON_2026). */
+export const YARD_SEASON_END = '2026-11-24';
 
 export const BROOKINGS_ANSWERS: AnswerPage[] = [
   {
@@ -39,7 +41,11 @@ export const BROOKINGS_ANSWERS: AnswerPage[] = [
             { th: 'South of 8th St. S.', cells: ['Monday', 'Thursday', 'Monday and Thursday'] },
             { th: 'North of 8th St. S.', cells: ['Tuesday', 'Friday', 'Tuesday and Friday'] },
           ] },
-          { kind: 'p', text: `The city's [collection map (PDF)](${BASE}/DocumentCenter/View/19360) shows the boundary if you are not sure which side you are on. Yard waste collection runs April 6 to November 24, 2026 and does not run in winter.` },
+          { kind: 'p', text: `The city's [collection map (PDF)](${BASE}/DocumentCenter/View/19360) shows the boundary if you are not sure which side you are on.` },
+          // K2: through 24 Nov the season line as before; from 25 Nov it says the season is over (source: /264/Yard-Waste, read 2026-11-19:
+          // "Seasonal yard waste collection runs April 6, 2026 to November 24, 2026"; "free of charge all year long" at the landfill).
+          { kind: 'season', to: YARD_SEASON_END, during: 'Yard waste collection runs April 6 to November 24, 2026 and does not run in winter.',
+            after: "The 2026 yard waste season ended November 24. There is no curbside yard waste collection in winter; the landfill's yard waste drop-off is free all year." },
         ],
       },
       {
@@ -82,7 +88,8 @@ export const BROOKINGS_ANSWERS: AnswerPage[] = [
             { heading: 'Brown cart: yard waste', blocks: [
               { kind: 'p', text: '**Yes:** grass clippings, leaves, flowers, weeds, stalks, vines and small twigs under half an inch across.' },
               { kind: 'p', text: '**No:** trees and branches. Take them to the landfill (free) or put them out during the spring bulky item pickup.' },
-              { kind: 'p', text: 'Adding a yard waste cart costs nothing; an optional second cart is $6.40 a month plus sales tax. Collection runs April 6 to November 24, 2026.' },
+              { kind: 'p', text: 'Adding a yard waste cart costs nothing; an optional second cart is $6.40 a month plus sales tax.' },
+              { kind: 'season', to: YARD_SEASON_END, during: 'Collection runs April 6 to November 24, 2026.', after: 'The 2026 collection ran April 6 to November 24 and is over for the year.' },
             ] },
           ] },
           { kind: 'p', text: `Not sure about an item? The city has a [What Goes Where search tool](${BASE}/928/What-Goes-Where-Search-Tool).` },

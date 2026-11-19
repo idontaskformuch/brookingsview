@@ -1,7 +1,7 @@
 ---
 /** The coming holiday weeks with Brookings' pickup rule applied (lib/trash-schedule.ts), moved verbatim from pages/trash-recycling.astro
  *  (Fas 3, K1). Holidays in the next 120 days, computed at build time in the town's zone. */
-import { upcomingHolidayShifts } from '../../lib/trash-schedule';
+import { upcomingHolidayShifts, YARD_SEASON_2026 } from '../../lib/trash-schedule';
 
 const todayUtc = (() => { const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', year: 'numeric', month: 'numeric', day: 'numeric' }).formatToParts(new Date());
   const g = (t: string) => Number(p.find((x) => x.type === t)!.value); return Date.UTC(g('year'), g('month') - 1, g('day')); })();
@@ -9,6 +9,8 @@ const southShifts = upcomingHolidayShifts(todayUtc, 120, 'south');
 const northShifts = upcomingHolidayShifts(todayUtc, 120, 'north');
 const holidayRows = southShifts.map((h, i) => ({ name: h.name, date: h.date, south: h.moves, north: northShifts[i].moves }))
   .filter((h) => h.south.length > 0 || h.north.length > 0);
+// K2: after the season's last day the note no longer speaks of 24 November as coming.
+const seasonOver = todayUtc > YARD_SEASON_2026.end;
 const fmtHoliday = (t: number) => new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(t));
 ---
 {holidayRows.length > 0 ? (
@@ -27,7 +29,9 @@ const fmtHoliday = (t: number) => new Intl.DateTimeFormat('en-US', { timeZone: '
         ))}
       </tbody>
     </table>
-    <p class="tr-note">Yard waste collection ends November 24, 2026, so yard waste changes after that date do not apply this year.</p>
+    <p class="tr-note">{seasonOver
+      ? 'Yard waste collection ended for the year on November 24, 2026, so the table lists no yard waste changes.'
+      : 'Yard waste collection ends November 24, 2026, so yard waste changes after that date do not apply this year.'}</p>
   </>
 ) : (
   <p>No collection holidays fall in the next four months.</p>
