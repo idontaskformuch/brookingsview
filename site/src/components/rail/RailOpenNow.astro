@@ -1,0 +1,40 @@
+---
+/** Rail module (owner 2026-11-20, Today's rail): places open at this moment. The build ships today's rows from the OpenStreetMap snapshot
+ *  (lib/open-tonight.ts, cafes and evening places); the browser keeps the ones whose hours include now (lib/client/open-now.ts, the same
+ *  check as Today's cafe list) and shows the module only with at least 3 open, at most 5. Without JS it stays hidden: nothing is claimed. */
+import type { OpenLateRow } from '../../lib/osm-open-late';
+import { OPEN_TONIGHT_MIN_PLACES } from '../../lib/open-tonight';
+
+interface Props { rows: OpenLateRow[]; osmChecked: string; lateHref?: string | null }
+const { rows, osmChecked, lateHref = null } = Astro.props;
+const RAIL_OPEN_NOW_MAX = 5;
+---
+<section class="rail-mod rail-open" aria-label="Open now" data-rail-open-now data-min={OPEN_TONIGHT_MIN_PLACES} data-max={RAIL_OPEN_NOW_MAX} hidden>
+  <p class="rail-open__label">Open now</p>
+  <ul class="rail-open__list">
+    {rows.map((r) => (
+      <li data-start={r.start} data-end={r.end} hidden>
+        <span class="rail-open__name">{r.website ? <a href={r.website} rel="noopener">{r.name}</a> : r.name}</span>
+        <span class="rail-open__meta">{[r.kind, r.closing].filter(Boolean).join(' · ')}</span>
+      </li>
+    ))}
+  </ul>
+  <p class="rail-open__note">Hours © <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a>, read {osmChecked}.{lateHref && <> <a href={lateHref}>Open late</a></>}</p>
+</section>
+<script>
+  import { revealOpenNow } from '../../lib/client/open-now';
+  const block = document.querySelector<HTMLElement>('[data-rail-open-now]');
+  if (block) revealOpenNow(block, Number(block.dataset.min), Number(block.dataset.max));
+</script>
+<style>
+  .rail-open { border-top: 1px solid var(--rule); padding-top: 0.75rem; }
+  .rail-open[hidden], .rail-open li[hidden] { display: none; }
+  .rail-open__label { margin: 0 0 0.375rem; font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+  .rail-open__list { list-style: none; margin: 0; padding: 0; }
+  .rail-open__list li { display: flex; flex-direction: column; padding: 0.3rem 0; }
+  .rail-open__list li + li { border-top: 1px solid var(--rule); }
+  .rail-open__name { font-family: var(--font-ui); font-size: 0.9375rem; font-weight: 600; }
+  .rail-open__name a { color: inherit; }
+  .rail-open__meta, .rail-open__note { font-family: var(--font-ui); font-size: 0.8125rem; color: var(--ink-soft); }
+  .rail-open__note { margin: 0.375rem 0 0; }
+</style>

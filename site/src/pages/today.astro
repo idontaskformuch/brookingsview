@@ -200,7 +200,7 @@ const moreLinks = enabledSections(siteConfig).filter((s) => ['cityhall', 'facili
   {moreLinks.length > 0 && (
     <p class="today-more">Also in {siteConfig.cityName}: {moreLinks.map((l, i) => <>{i > 0 && (i === moreLinks.length - 1 ? ' and ' : ', ')}<a href={l.href}>{l.label}</a></>)}.</p>
   )}
-  <RailModules slot="rail" page="today" now={now} withStatus={PAGE_RAIL.today.withStatus} />
+  <RailModules slot="rail" page="today" now={now} withStatus={PAGE_RAIL.today.withStatus} osmSnapshot={osmSnapshot} />
 </BaseLayout>
 
 <style>

@@ -112,7 +112,7 @@ describe('latestFinal + scoreLine (Moreno Valley regional_sports_games, read 202
 });
 
 // Designsystem Fas 1 (owner 2026-11-20): one page grid, a rail per page from config, the ticker at the 13px metadata minimum.
-import { PAGE_RAIL, pageRailFor } from '../config/home-rail';
+import { PAGE_RAIL, PAGE_ONLY_MODULES, pageRailFor } from '../config/home-rail';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -120,7 +120,7 @@ describe('pageRailFor', () => {
   it('only gives a page the modules its town has, with no reserve and no ad slot', () => {
     for (const townId of Object.keys(HOME_RAIL_BY_TOWN)) {
       const home = homeRailFor(townId);
-      const has = new Set([...home.modules, ...home.reserve]);
+      const has = new Set([...home.modules, ...home.reserve, ...PAGE_ONLY_MODULES]);
       for (const page of Object.keys(PAGE_RAIL) as (keyof typeof PAGE_RAIL)[]) {
         const r = pageRailFor(townId, page);
         expect(r.modules.every((m) => has.has(m))).toBe(true);
@@ -128,6 +128,14 @@ describe('pageRailFor', () => {
         expect(r.adSlot).toBeUndefined();
       }
     }
+  });
+  it('page-only modules never reach the front page rail', () => {
+    for (const r of Object.values(HOME_RAIL_BY_TOWN)) expect([...r.modules, ...r.reserve].some((m) => PAGE_ONLY_MODULES.has(m))).toBe(false);
+  });
+  // Owner 2026-11-20 after the grid: Today's rail is the next game, the next holiday, today's weather and open now; never "in numbers".
+  it("Today's rail: sport, holiday, weather today, open now -- no numbers", () => {
+    expect(PAGE_RAIL.today.modules).toEqual(['sport', 'holiday', 'weather_today', 'open_now']);
+    for (const townId of Object.keys(HOME_RAIL_BY_TOWN)) expect(pageRailFor(townId, 'today').modules).not.toContain('numbers');
   });
 });
 

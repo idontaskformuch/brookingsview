@@ -47,16 +47,10 @@ const meta = (r: OpenLateRow) => [r.kind, r.area].filter(Boolean).join(' · ');
 )}
 
 <script>
+  import { revealOpenNow } from '../lib/client/open-now';
   // Cafes: show the ones whose hours include this moment, and the list only when at least 3 are open (progressive: without JS nothing is claimed).
   const block = document.querySelector<HTMLElement>('[data-open-now]');
-  if (block) {
-    const now = Date.now();
-    const open = [...block.querySelectorAll<HTMLElement>('li')].filter((li) => {
-      const s = Date.parse(li.dataset.start ?? ''), e = Date.parse(li.dataset.end ?? '');
-      return Number.isFinite(s) && Number.isFinite(e) && s <= now && now < e;
-    });
-    if (open.length >= 3) { open.forEach((li) => { li.hidden = false; }); block.hidden = false; }
-  }
+  if (block) revealOpenNow(block, 3);
   // Open tonight: drop places that have closed since the page was built; with fewer than 3 left, remove the whole block.
   const tonight = document.querySelector<HTMLElement>('[data-open-tonight]');
   if (tonight) {

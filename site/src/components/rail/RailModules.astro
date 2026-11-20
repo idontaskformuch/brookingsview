@@ -17,10 +17,12 @@ import RailMeetings from './RailMeetings.astro';
 import RailHoliday from './RailHoliday.astro';
 import RailWeather from './RailWeather.astro';
 import RailNumbers from './RailNumbers.astro';
+import RailWeatherToday from './RailWeatherToday.astro';
+import RailOpenNow from './RailOpenNow.astro';
 import { loadTownNumbers } from '../../lib/town-numbers-data';
 import {
   getActiveTrafficIncidents, getUpcomingGames, getNextRegionalGame, getNextSdsuMarqueeEvent, getAgPrices, getEmployerJobStats,
-  getRegionalSports, getWeatherSnapshot,
+  getRegionalSports, getWeatherSnapshot, getOsmSnapshot,
 } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
 import { isSectionBuilt } from '../../lib/sections';
@@ -36,6 +38,9 @@ import { countryProfile } from '../../lib/country-profile';
 import { viewFor } from '../../lib/weather-html';
 import { formatCalendarDate } from '../../lib/db';
 import type { MeetingView } from '../../lib/meetings-view';
+import { placesFromSnapshot, decorateOpenLate } from '../../lib/osm-open-late';
+import { openTonightRows, cafeRows, isHolidayDay, openLatePageIndexable, OPEN_TONIGHT_MIN_PLACES } from '../../lib/open-tonight';
+import { areasFor } from '../../lib/areas';
 
 interface Props {
   now: Date;
@@ -52,6 +57,8 @@ interface Props {
   omit?: RailModuleKind[];
   /** Already loaded by the page (the front page), to avoid a second query. */
   meetingsData?: { meetings: MeetingView[]; todayYmd: string } | null;
+  /** Already loaded by the page (Today), to avoid a second query. */
+  osmSnapshot?: Awaited<ReturnType<typeof getOsmSnapshot>>;
 }
 const { now, withStatus = false, excludeMeetingIds = new Set(), excludeHolidaySlugs = new Set(), frontImageId = null } = Astro.props;
 const omit = new Set(Astro.props.omit ?? []);
@@ -62,7 +69,7 @@ const profile = countryProfile(siteConfig.country);
 const wants = new Set<RailModuleKind>([...cfg.modules, ...cfg.reserve]);
 
 const meetingsData = Astro.props.meetingsData !== undefined ? Astro.props.meetingsData : await loadUpcomingMeetings();
-const [traffic, games, regionalNext, sdsuNext, prices, jobStats, regional, weather, numbers] = await Promise.all([
+const [traffic, games, regionalNext, sdsuNext, prices, jobStats, regional, weather, numbers, osmSnapshot] = await Promise.all([
   wants.has('traffic') && isSectionBuilt('traffic', siteConfig) ? getActiveTrafficIncidents() : Promise.resolve([]),
   wants.has('sport') && isSectionBuilt('jackrabbits', siteConfig) ? getUpcomingGames(1) : Promise.resolve([]),
   wants.has('sport') && isSectionBuilt('sports', siteConfig) ? getNextRegionalGame() : Promise.resolve(null),
@@ -70,8 +77,9 @@ const [traffic, games, regionalNext, sdsuNext, prices, jobStats, regional, weath
   wants.has('markets') ? getAgPrices() : Promise.resolve([]),
   wants.has('workplace') && siteConfig.hasWorkplaceWatch ? getEmployerJobStats() : Promise.resolve([]),
   wants.has('sport') && isSectionBuilt('sports', siteConfig) ? getRegionalSports() : Promise.resolve([]),
-  wants.has('weather') && isSectionBuilt('weather', siteConfig) ? getWeatherSnapshot() : Promise.resolve(null),
+  (wants.has('weather') || wants.has('weather_today')) && isSectionBuilt('weather', siteConfig) ? getWeatherSnapshot() : Promise.resolve(null),
   wants.has('numbers') ? loadTownNumbers(now) : Promise.resolve([]),
+  !wants.has('open_now') ? Promise.resolve(null) : Astro.props.osmSnapshot !== undefined ? Promise.resolve(Astro.props.osmSnapshot) : getOsmSnapshot(),
 ]);
 
 // Meetings
@@ -111,10 +119,20 @@ const mover = jobStats.reduce<typeof jobStats[number] | null>((best, s) => {
 const hiringMover = mover && (mover.postings_now || mover.postings_change) ? mover : null;
 
 // Weather: the coming days from the forecast, one spare so the browser can drop a day that has passed since the build.
-const wxDays = weather
+const wxAll = weather
   ? viewFor({ periods: weather.periods, hourly: weather.hourly, fetchedAt: weather.fetchedAt },
       { unit: profile.temperatureUnit, lat: siteConfig.townCenter.lat, lon: siteConfig.townCenter.lon, tz, country: siteConfig.country }, now)
-      .days.filter((d) => d.high !== null || d.low !== null).slice(0, RAIL_WEATHER_DAYS + 1)
+      .days.filter((d) => d.high !== null || d.low !== null)
+  : [];
+const wxDays = wxAll.slice(0, RAIL_WEATHER_DAYS + 1);
+// Weather today: today and one spare (the browser drops a day that has passed since the build).
+const wxToday = wxAll.slice(0, 2);
+
+// Open now: today's rows from the OpenStreetMap snapshot (cafes, then evening places); the browser keeps the ones open at that moment.
+const osmPlaces = placesFromSnapshot(osmSnapshot ?? null, now) ?? [];
+const osmOpts = { day: today, tz, now, holiday: isHolidayDay(siteConfig.country, today) };
+const openNowRows = osmPlaces.length > 0
+  ? decorateOpenLate([...cafeRows(osmPlaces, osmOpts), ...openTonightRows(osmPlaces, osmOpts)], siteConfig.townId, areasFor(siteConfig.townId))
   : [];
 
 const plan = planRail(cfg, {
@@ -124,6 +142,8 @@ const plan = planRail(cfg, {
   sport: gameSlot !== null || lastResult !== null,
   numbers: numbers.length > 0,
   weather: wxDays.length >= RAIL_WEATHER_DAYS,
+  weather_today: wxToday.length > 0,
+  open_now: openNowRows.length >= OPEN_TONIGHT_MIN_PLACES,
   traffic: traffic.length > 0,
   workplace: hiringMover !== null,
   markets: prices.length > 0,
@@ -163,6 +183,8 @@ const plan = planRail(cfg, {
         )}
         {m === 'numbers' && <RailNumbers rows={numbers} cityName={siteConfig.cityName} />}
         {m === 'weather' && <RailWeather days={wxDays} tz={tz} />}
+        {m === 'weather_today' && <RailWeatherToday days={wxToday} tz={tz} />}
+        {m === 'open_now' && <RailOpenNow rows={openNowRows} osmChecked={osmSnapshot ? osmSnapshot.fetchedAt.slice(0, 10) : ''} lateHref={openLatePageIndexable(osmPlaces) ? '/open-late/' : null} />}
         {m === 'traffic' && <a class="rail-mod__link" href="/traffic/"><TrafficWidget incidents={traffic} /></a>}
         {m === 'workplace' && hiringMover && (
           <WorkplaceWatchWidget hiringName={hiringMover.name} hiringCount={hiringMover.postings_now} hiringDelta={hiringMover.postings_change} />

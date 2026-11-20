@@ -1,0 +1,40 @@
+---
+/** Rail module (owner 2026-11-20, Today's rail): today's high/low and condition in one block. The build ships today and one spare day
+ *  (the page is built twice a day); a small inline script drops a day that has passed, and with no day left hides the module. Never a
+ *  specific hour (the hour is the /weather/ hero's job, picked in the browser). */
+import type { DayView } from '../../lib/weather-model';
+
+interface Props { days: DayView[]; tz: string }
+const { days, tz } = Astro.props;
+const temps = (d: DayView) => [d.high !== null ? `High ${Math.round(d.high)}°` : null, d.low !== null ? `Low ${Math.round(d.low)}°` : null].filter(Boolean).join(' · ');
+---
+<section class="rail-mod rail-wxt" aria-label="Weather today" data-tz={tz}>
+  <a class="rail-wxt__head" href="/weather/">Weather today</a>
+  {days.map((d) => (
+    <p class="rail-wxt__day" data-key={d.key}>
+      <span class="rail-wxt__temps">{temps(d)}</span>
+      {d.short && <span class="rail-wxt__cond">{d.short}</span>}
+    </p>
+  ))}
+  <script is:inline>
+    (function () {
+      var s = document.currentScript && document.currentScript.parentElement; if (!s) return;
+      try {
+        var today = new Intl.DateTimeFormat('en-CA', { timeZone: s.getAttribute('data-tz'), year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        var ds = s.querySelectorAll('[data-key]');
+        for (var i = 0; i < ds.length; i++) if (ds[i].getAttribute('data-key') < today) ds[i].remove();
+        if (!s.querySelector('[data-key]')) s.hidden = true;
+      } catch (e) { /* keep the build's day */ }
+    })();
+  </script>
+</section>
+<style>
+  .rail-wxt { border-top: 1px solid var(--rule); padding-top: 0.75rem; }
+  .rail-wxt[hidden] { display: none; }
+  .rail-wxt__head { display: inline-block; margin: 0 0 0.25rem; font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; }
+  .rail-wxt__head:hover { text-decoration: underline; }
+  .rail-wxt__day { margin: 0; display: flex; flex-direction: column; gap: 0.125rem; }
+  .rail-wxt__day + .rail-wxt__day { display: none; }
+  .rail-wxt__temps { font-family: var(--font-ui); font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .rail-wxt__cond { font-family: var(--font-ui); font-size: 0.875rem; color: var(--ink-soft); }
+</style>

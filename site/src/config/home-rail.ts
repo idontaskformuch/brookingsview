@@ -14,7 +14,9 @@ export type RailModuleKind =
   | 'markets'        // farm-report prices
   | 'play'           // the arcade-game promo card
   | 'burro_bonanza'  // the Burro Bonanza promo card
-  | 'meetings_more'; // reserve: the meetings after the next one
+  | 'meetings_more'  // reserve: the meetings after the next one
+  | 'weather_today'  // page rail only: today's high/low and condition, one line (RailWeatherToday)
+  | 'open_now';      // page rail only: places open at this moment, picked in the browser from the OSM hours (RailOpenNow)
 
 export interface RailConfig {
   modules: RailModuleKind[];
@@ -48,13 +50,16 @@ export function homeRailFor(townId: string): RailConfig {
 export type RailPage = 'today';
 export interface PageRail { modules: RailModuleKind[]; /** Open the rail with Right Now (CityStatus). */ withStatus: boolean }
 export const PAGE_RAIL: Record<RailPage, PageRail> = {
-  // Today's main column already has its own Right now, weather today, meetings today, hours today, open tonight and traffic: the
-  // rail adds what is next beyond today (the next game, the next holiday page) and the town's numbers. No second Right Now.
-  today: { modules: ['sport', 'holiday', 'numbers'], withStatus: false },
+  // Owner 2026-11-20 (after the grid): the next game, the next holiday page, today's weather (high/low + condition) and open now. No
+  // "<Town> in numbers" (counts without context, and a 0 is an empty state) and no second Right Now.
+  today: { modules: ['sport', 'holiday', 'weather_today', 'open_now'], withStatus: false },
 };
+/** Modules only a page rail has (never on the front page): not intersected with the town's home rail. Each one still hides itself
+ *  without data (no weather snapshot, no fresh OpenStreetMap hours). */
+export const PAGE_ONLY_MODULES: ReadonlySet<RailModuleKind> = new Set<RailModuleKind>(['weather_today', 'open_now']);
 
 export function pageRailFor(townId: string, page: RailPage): RailConfig {
   const home = homeRailFor(townId);
-  const has = new Set<RailModuleKind>([...home.modules, ...home.reserve]);
+  const has = new Set<RailModuleKind>([...home.modules, ...home.reserve, ...PAGE_ONLY_MODULES]);
   return { modules: PAGE_RAIL[page].modules.filter((m) => has.has(m)), reserve: [], numbersNoTrend: home.numbersNoTrend };
 }
