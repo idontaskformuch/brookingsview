@@ -196,7 +196,8 @@ export function timelessGroups(page: HolidayPageData): GroupView[] {
  *  grid: the newest row check, not a span. Null when no row has `days`. */
 export const GRID_GROUP_AFTER = 6;
 export type GridCellKind = 'closed' | 'hours' | 'usual';
-export interface GridCell { kind: GridCellKind; text: string }
+/** `short`: the phone label (<40rem), where four day columns leave no room for "Usual hours" on one line (owner 2026-11-20). */
+export interface GridCell { kind: GridCellKind; text: string; short?: string }
 export interface GridRow { name: string; note?: string; cells: GridCell[] }
 export interface ClosureGridView {
   days: { iso: string; label: string }[];
@@ -219,7 +220,7 @@ export function closureGrid(page: HolidayPageData): ClosureGridView | null {
       ...(note ? { note } : {}),
       cells: isos.map((iso): GridCell => {
         const v = f.days[iso];
-        if (v === undefined) return { kind: 'usual', text: 'Usual hours' };
+        if (v === undefined) return { kind: 'usual', text: 'Usual hours', short: 'Usual' };
         return v === 'closed' ? { kind: 'closed', text: 'Closed' } : { kind: 'hours', text: v };
       }),
     };

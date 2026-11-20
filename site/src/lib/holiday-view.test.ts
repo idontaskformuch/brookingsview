@@ -147,6 +147,14 @@ describe('closures grid (Tillägg B, owner 2026-11-20)', () => {
     expect(cells('Tree Branch Recycle and RV Wastewater Disposal Facility')).toEqual(['usual:Usual hours', 'usual:Usual hours', 'usual:Usual hours', 'closed:Closed']);
     expect(JSON.stringify(g)).not.toMatch(/"Open"/);
   });
+  it('QA data.holiday-grid-phone-label: a usual cell says "Usual" on a phone card, "Usual hours" on desktop', () => {
+    // Broomfield Thanksgiving, Tree Branch (real row): three usual days. At 390px "Usual / hours" wrapped onto two lines.
+    const tb = g.groups.flatMap((x) => x.rows).find((r) => r.name === 'Tree Branch Recycle and RV Wastewater Disposal Facility')!;
+    expect(tb.cells.filter((c) => c.kind === 'usual').map((c) => [c.text, c.short])).toEqual([['Usual hours', 'Usual'], ['Usual hours', 'Usual'], ['Usual hours', 'Usual']]);
+    const src = read('../components/HolidayDayGrid.astro');
+    expect(src).toMatch(/hg__short/);
+    expect(src).toMatch(/@media \(max-width: 40rem\)[\s\S]*\.hg__long \{ display: none; \}[\s\S]*\.hg__short \{ display: inline; \}/);
+  });
   it('one "Checked" for the grid: the newest row check, not a span', () => {
     expect(g.checked).toBe('2026-11-17');
   });

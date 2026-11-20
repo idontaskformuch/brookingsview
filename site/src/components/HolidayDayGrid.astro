@@ -1,7 +1,8 @@
 ---
 /** Closures as a day grid on a holiday page (Tillägg B, owner 2026-11-20): places down, affected days across. From 40rem a
  *  grid (ARIA table, div-based like the rest of the holiday page); below it every place is a card with its days on one line.
- *  "Closed" muted, hours that differ from usual in bold, a day the source does not list = "Usual hours" in neutral ink.
+ *  "Closed" muted, hours that differ from usual in bold, a day the source does not list = "Usual hours" in neutral ink
+ *  ("Usual" on a phone card, where four day columns leave no room for two words).
  *  One "Checked" date for the whole grid (the newest row check). Data: lib/holiday-view.ts closureGrid.
  *
  *  Resident question: which places can I use on each day around the holiday? */
@@ -33,7 +34,7 @@ const n = grid.days.length;
             {r.cells.map((c, i) => (
               <div class={`hg__cell hg__cell--${c.kind}`} role="cell" data-cell={c.kind}>
                 <span class="hg__day" aria-hidden="true">{grid.days[i].label}</span>
-                <span class="hg__v">{c.text}</span>
+                <span class="hg__v">{c.short ? <><span class="hg__long">{c.text}</span><span class="hg__short">{c.short}</span></> : c.text}</span>
               </div>
             ))}
           </div>
@@ -56,6 +57,7 @@ const n = grid.days.length;
   .hg__name { display: block; font-weight: var(--ui-primary-weight); color: var(--ink); }
   .hg__note { display: block; margin-top: 0.15rem; font-size: var(--ui-meta); color: var(--ink-soft); }
   .hg__day { display: none; }
+  .hg__short { display: none; }
   .hg__cell--closed { color: var(--ink-soft); }
   .hg__cell--hours { color: var(--ink); font-weight: 700; }
   .hg__cell--usual { color: var(--ink); }
@@ -69,6 +71,9 @@ const n = grid.days.length;
     }
     .hg__place { flex: 1 0 100%; }
     .hg__cell { flex: 1 1 0; min-width: 0; }
+    /* "Usual hours" broke over two lines in four 390px columns: "Usual" there, "Usual hours" on desktop (owner 2026-11-20). */
+    .hg__long { display: none; }
+    .hg__short { display: inline; }
     .hg__day { display: block; font-size: var(--ui-meta); font-weight: 400; color: var(--ink-soft); }
   }
 </style>
