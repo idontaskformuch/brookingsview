@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
-  buildGroups, closedPlaces, countHeld, holidayOverviewLine, isTimeless, timelessGroups, detailFor, FOLD_AFTER, GROUP_HEADING, GROUP_ORDER, groupSources, holidayStatus, holidayInsights, closureGrid, regularHoursRows, statusDay,
+  buildGroups, closedPlaces, countHeld, holidayOverviewLine, isTimeless, timelessGroups, detailFor, FOLD_AFTER, GROUP_HEADING, GROUP_ORDER, groupSources, holidayStatus, holidayInsights, closureGrid, regularHoursRows, statusDay, shortHourRange,
 } from './holiday-view';
 import { occurrenceDay, resolvePageState } from './holiday-calendar';
 import { holidayPageDef } from '../config/holiday-pages/calendar';
@@ -154,6 +154,20 @@ describe('closures grid (Tillägg B, owner 2026-11-20)', () => {
     const src = read('../components/HolidayDayGrid.astro');
     expect(src).toMatch(/hg__short/);
     expect(src).toMatch(/@media \(max-width: 40rem\)[\s\S]*\.hg__long \{ display: none; \}[\s\S]*\.hg__short \{ display: inline; \}/);
+  });
+  it('QA data.holiday-grid-phone-hours: an hours range is "9–5" on a phone card, the full text on desktop', () => {
+    // Broomfield Thanksgiving real rows: at 390px "9 a.m.–5 p.m." wrapped onto two lines.
+    const rows = g.groups.flatMap((x) => x.rows);
+    const hours = (name: string) => rows.find((r) => r.name === name)!.cells.filter((c) => c.kind === 'hours').map((c) => [c.text, c.short]);
+    expect(hours('Library')).toEqual([['9 a.m.–5 p.m.', '9–5']]);
+    expect(hours('Broomfield Community Center')).toEqual([['8 a.m. group fitness only', undefined], ['8 a.m.–2 p.m.', '8–2']]);
+    expect(hours('Paul Derda Recreation Center')).toEqual([['12–6:30 p.m.', '12–6:30']]);
+    // Library row, only the time changed: a half hour keeps its minutes; a noon-crossing range whose bare numbers would
+    // read as one half of the day ("7–9") keeps a.m./p.m.; text that is not one range is untouched.
+    expect(shortHourRange('9:30 a.m.–5 p.m.')).toBe('9:30–5');
+    expect(shortHourRange('7 a.m.–9 p.m.')).toBe('7 a.m.–9 p.m.');
+    expect(shortHourRange('10 a.m.–12 p.m.')).toBe('10–12');
+    expect(shortHourRange('Closes 5 p.m.')).toBe('Closes 5 p.m.');
   });
   it('one "Checked" for the grid: the newest row check, not a span', () => {
     expect(g.checked).toBe('2026-11-17');

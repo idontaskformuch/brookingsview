@@ -214,6 +214,21 @@ export const GRID_AREA_HEADING: Record<GridArea, string> = { city: 'City service
 const GRID_AREA_ORDER: GridArea[] = ['city', 'rec', 'help'];
 const WD_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+/** Phone label for an hours cell (owner 2026-11-21): "9 a.m.–5 p.m." -> "9–5", "9:30 a.m.–5 p.m." -> "9:30–5", so it fits one
+ *  line in a 390px card. a.m./p.m. stay only where the bare numbers would read wrong: a range that crosses noon (or midnight)
+ *  with the end number above the start ("7 a.m.–9 p.m." would read as 7–9 a.m.). Anything that is not exactly one range
+ *  ("Closes 5 p.m.", "8 a.m. group fitness only") is returned unchanged. Desktop always shows the full text. */
+export function shortHourRange(v: string): string {
+  const m = /^(\d{1,2})(:\d\d)?(?: ([ap])\.m\.)?–(\d{1,2})(:\d\d)? ([ap])\.m\.$/.exec(v);
+  if (!m) return v;
+  const [, h1, m1 = '', a1, h2, m2 = '', a2] = m;
+  const start = a1 ?? a2;
+  const rank = (h: string) => Number(h) % 12; // 12 sorts before 1 within its half
+  const crosses = start !== a2;
+  if (crosses && (start === 'p' || rank(h2) > rank(h1))) return v;
+  return `${h1}${m1}–${h2}${m2}`;
+}
+
 export function closureGrid(page: HolidayPageData): ClosureGridView | null {
   const facts = page.facts.filter((f): f is ConfirmedFact & { days: Record<string, string> } => f.status === 'confirmed' && !!f.days);
   if (facts.length === 0) return null;
@@ -227,7 +242,9 @@ export function closureGrid(page: HolidayPageData): ClosureGridView | null {
       cells: isos.map((iso): GridCell => {
         const v = f.days[iso];
         if (v === undefined) return { ...(f.section === 'transit' ? REGULAR_CELL : USUAL_CELL) };
-        return v === 'closed' ? { kind: 'closed', text: 'Closed' } : { kind: 'hours', text: v };
+        if (v === 'closed') return { kind: 'closed', text: 'Closed' };
+        const short = shortHourRange(v);
+        return { kind: 'hours', text: v, ...(short !== v ? { short } : {}) };
       }),
     };
   };
