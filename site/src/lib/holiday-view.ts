@@ -233,7 +233,13 @@ export function closureGrid(page: HolidayPageData): ClosureGridView | null {
   const facts = page.facts.filter((f): f is ConfirmedFact & { days: Record<string, string> } => f.status === 'confirmed' && !!f.days);
   if (facts.length === 0) return null;
   const isos = [...new Set(facts.flatMap((f) => Object.keys(f.days)))].sort();
-  const days = isos.map((iso) => ({ iso, label: `${WD_SHORT[new Date(`${iso}T00:00:00Z`).getUTCDay()]} ${Number(iso.slice(8, 10))}` }));
+  // Days in two months (Dec 24 ... Jan 1) carry the month, or "Fri 1" next to "Fri 25" reads as December.
+  const twoMonths = new Set(isos.map((iso) => iso.slice(0, 7))).size > 1;
+  const days = isos.map((iso) => {
+    const ms = Date.parse(`${iso}T00:00:00Z`);
+    const wd = WD_SHORT[new Date(ms).getUTCDay()];
+    return { iso, label: twoMonths ? `${wd} ${formatDayShort(ms, page.locale)}` : `${wd} ${Number(iso.slice(8, 10))}` };
+  });
   const row = (f: ConfirmedFact & { days: Record<string, string> }): GridRow => {
     const note = [f.dayNote, f.clarify].filter(Boolean).join(' ');
     return {

@@ -342,6 +342,7 @@ const BROOMFIELD_FACTS: HolidayFact[] = [
     value: 'Closed Thu Dec 24, Fri Dec 25 and Fri Jan 1.',
     meta: 'FISH food bank closed Dec 24–25 and Jan 1',
     closedOn: ['2026-12-24', '2026-12-25', '2027-01-01'],
+    days: { '2026-12-24': 'closed', '2026-12-25': 'closed', '2027-01-01': 'closed' },
     clarify: 'Questions about access to food: 303-465-1600 or help@broomfieldfish.org.',
     source: BF_FISH, checkedOn: BF_FISH_CHECKED,
   },

@@ -230,6 +230,16 @@ describe('closures grid (Tillägg B, owner 2026-11-20)', () => {
   });
 });
 
+describe('Christmas closures grids (owner 2026-11-21)', () => {
+  it('Broomfield: FISH, the one confirmed closure, Dec 24, Dec 25 and Jan 1; the month is shown across the year end', () => {
+    // FISH page (read 2026-11-14): "Thursday, December 24th", "Friday, December 25th", "Friday, January 1st".
+    const g = closureGrid(buildChristmasPage('broomfield_co')!)!;
+    expect(g.days.map((d) => d.label)).toEqual(['Thu Dec 24', 'Fri Dec 25', 'Fri Jan 1']);
+    expect(g.groups).toEqual([{ heading: null, rows: [{ name: 'Broomfield FISH food bank', note: 'Questions about access to food: 303-465-1600 or help@broomfieldfish.org.', cells: [{ kind: 'closed', text: 'Closed' }, { kind: 'closed', text: 'Closed' }, { kind: 'closed', text: 'Closed' }] }] }]);
+    expect(g.legend).toBeNull();
+  });
+});
+
 describe('hero and insights', () => {
   it('status line, not a display number (Tillägg A, owner 2026-11-20): weekday, date and how far away', () => {
     // Broomfield Thanksgiving (bfThanks, Nov 26) seen on 2026-11-20: the owner's own example.
