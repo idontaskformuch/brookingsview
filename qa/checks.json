@@ -580,6 +580,11 @@
       "severity": "hard",
       "born_from": "Fas 5 källa 1 2026-11-20: the first live run of restrictions (broomfield-scrape-and-publish 11:00 UTC, scrape_runs 15197) failed 'ProgrammingError: cannot adapt type dict' -- the alerts list of dicts went to psycopg raw (upsert_records only wrapped raw_data/payload), and restriction_checks stayed empty; the parser tests never sent a row through upsert_records. Fix: BaseParser.jsonb_columns, restrictions declares ('alerts',). Regression fixture: tests/test_alert_center_restrictions.py 'parsed rows reach the database with alerts as jsonb' (real fixtures broomfield_cid8/cid9_2026-11-19; fails without the declaration, also guards [] staying a JSON array).",
       "what": "a parser's records contain a value psycopg cannot adapt (a dict or list of dicts outside raw_data/payload without a jsonb_columns declaration), so the run fails before any row is written (pytest)"
+    },
+    "scrape.page-table-triggers-build": {
+      "severity": "hard",
+      "born_from": "Fas 5 källa 1 2026-11-20: the first good restrictions run (broomfield-scrape 44745867921, 13:37 UTC) wrote restriction_checks rows 1-2, but scripts/ci_changed.py did not list the table, printed changed=false and started no build: live /safety/ kept 'Status unknown / Not checked yet'. Fix: restriction_checks in DATA_TABLES. Regression fixture: tests/test_ci_changed.py 'restriction checks counts so safety is rebuilt' (fails before the fix).",
+      "what": "a table a page shows is written by a scraper but missing from ci_changed DATA_TABLES, so new rows never rebuild the site (pytest)"
     }
   }
 }

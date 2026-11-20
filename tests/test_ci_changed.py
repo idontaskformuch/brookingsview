@@ -41,3 +41,8 @@ def test_sport_events_counts_but_its_last_seen_touch_does_not():
     assert "sport_events" in cc.DATA_TABLES and "sport_events" not in cc.CONTENT_TABLES
     assert "last_seen" in cc.VOLATILE and "first_seen" not in cc.VOLATILE
     assert "- 'last_seen'" in cc.table_sql("sport_events")
+
+
+def test_restriction_checks_counts_so_safety_is_rebuilt():
+    # 2026-11-20: broomfield-scrape run 44745867921 wrote restriction_checks rows 1-2 and printed changed=false.
+    assert "restriction_checks" in cc.DATA_TABLES and "restriction_checks" not in cc.CONTENT_TABLES

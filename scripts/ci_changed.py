@@ -33,6 +33,9 @@ DATA_TABLES = CONTENT_TABLES + [
     "events", "meetings", "jobs", "property_sales", "school_alerts", "sdsu_events", "regional_sports_games",
     "vail_news", "projects", "places", "ag_prices", "academic_calendar_dates", "employer_job_stats",
     "sport_events",
+    # 2026-11-20: the first good restrictions run (13:37 UTC) wrote 2 rows and printed changed=false, so /safety/ kept "Not checked
+    # yet". An append log: every run adds a row, so each check (twice a day) rebuilds Broomfield and moves "Last checked".
+    "restriction_checks",
 ]
 PRESETS = {"content": CONTENT_TABLES, "data": DATA_TABLES}
 VOLATILE = ["id", "snapshot_id", "created_at", "updated_at", "first_seen_at", "last_seen_at", "fetched_at", "scraped_at", "checked_at", "last_seen", "missed_runs"]
