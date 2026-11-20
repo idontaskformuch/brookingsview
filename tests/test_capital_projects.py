@@ -16,7 +16,7 @@ from scrapers import polite_fetch as pf
 from scrapers import runner
 from scrapers.parsers.capital_projects import (
     BODY_NEW, BODY_REMOVED, CapitalProjectsParser, Listed, PageResult, Stored, Unrecognised, extract_page, extracted_hash,
-    failure_streak_alert, parse_dates, parse_list, parse_timeline_line, plan_changes, summary_sentence,
+    failure_streak_alert, names_specific_day, parse_dates, visible_timeline, parse_list, parse_timeline_line, plan_changes, summary_sentence,
 )
 
 FIX = Path(__file__).parent / "fixtures"
@@ -377,3 +377,37 @@ def test_after_upsert_broken_list_writes_nothing_and_alerts_after_72_h():
     assert not [q for q, _ in conn.sql if q.startswith(("INSERT", "UPDATE projects"))]
     assert len(sent) == 1 and "more than 72 h" in sent[0]
     assert any(q.startswith("UPDATE scrape_runs SET alert_sent_at") for q, _ in conn.sql)
+
+
+# --- owner 2026-11-20 before push: free-text lines naming a specific day are hidden ------------------------------------------
+def test_police_meeting_line_hidden_season_lines_kept():
+    police = [l["text"] for l in visible_timeline(extract_page(POLICE_HTML)["timeline"])]
+    assert police == ["Construction is anticipated to start in Summer 2026 and take approximately 20 months to complete."]
+    birch = [l["text"] for l in visible_timeline(extract_page(BIRCH_HTML)["timeline"])]
+    assert birch[-1].startswith("Winter 2026: The budget, scope, prioritization and timing of the project are being re-evaluated")
+    assert len(birch) == 3
+    assert len(visible_timeline(extract_page(VARRA_HTML)["timeline"])) == 4  # phases with dates and TBD are never hidden
+
+
+@pytest.mark.parametrize("text, hidden", [
+    # The real Police meeting line, then the same line with only its date written differently (the changed thing).
+    ("A public (neighborhood) meeting is scheduled for Wednesday, May 6th from 5-6:30 pm in the Elmwood 1 Conference Room at the "
+     "Broomfield Community Center (280 Spader Way) .", True),
+    ("A public (neighborhood) meeting is scheduled for May 6 from 5-6:30 pm in the Elmwood 1 Conference Room.", True),
+    ("A public (neighborhood) meeting is scheduled for 6 May from 5-6:30 pm in the Elmwood 1 Conference Room.", True),
+    ("A public (neighborhood) meeting is scheduled for 5/6/2026 from 5-6:30 pm in the Elmwood 1 Conference Room.", True),
+    ("Winter 2026: The budget, scope, prioritization and timing of the project are being re-evaluated due to the planned "
+     "closure of Birch Elementary School.", False),
+    ("Construction is anticipated to start in Summer 2026 and take approximately 20 months to complete.", False),
+    ("Construction is anticipated to start in May 2026 and take approximately 20 months to complete.", False),  # month + year only
+])
+def test_specific_day_rule(text, hidden):
+    assert names_specific_day(parse_timeline_line(text)) is hidden
+
+
+def test_hidden_line_never_becomes_a_change():
+    # Baseline, then the real Police page: its meeting line is never stored, so it never shows as "Timeline line added".
+    _, stored = _baseline()
+    plan = plan_changes(stored, LISTED, _pages(), set())
+    police = next(r for r in plan.upserts if r["page_id"] == 4390)
+    assert police.get("unchanged") is True and plan.updates == []

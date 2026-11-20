@@ -287,6 +287,26 @@ def parse_timeline_line(text: str) -> dict:
     return out
 
 
+# Owner 2026-11-20 (before push): a free-text line (no phase dates read, not TBD) that names a specific day is not kept: a one-off
+# meeting date ("Wednesday, May 6th from 5-6:30 pm ...") goes stale and is not a phase. Lines with only a season, month or year
+# ("Winter 2026: ...", "... start in Summer 2026 ...") stay. Matches "May 6", "May 6th", "Sept. 14", "6 May", "5/6/2026".
+_MONTH_NAMES = r"(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept|Sep|Oct|Nov|Dec)"
+_SPECIFIC_DAY = re.compile(
+    r"\b" + _MONTH_NAMES + r"\.?\s+\d{1,2}(?:st|nd|rd|th)?\b(?!\d)"
+    r"|\b\d{1,2}(?:st|nd|rd|th)?\s+(?:of\s+)?" + _MONTH_NAMES + r"\b"
+    r"|\b\d{1,2}/\d{1,2}(?:/\d{2,4})?\b")
+
+
+def names_specific_day(line: dict) -> bool:
+    """True for a free-text Timeline line (no dates read, not TBD) that mentions a specific day."""
+    return line["start"] is None and not line["tbd"] and bool(_SPECIFIC_DAY.search(line["text"]))
+
+
+def visible_timeline(texts: list[str]) -> list[dict]:
+    """The Timeline lines we store and show: every line parsed, minus free-text lines that name a specific day."""
+    return [line for line in (parse_timeline_line(t) for t in texts) if not names_specific_day(line)]
+
+
 # --- the change plan (pure; the DB layer below only applies it) -----------------------------------------------------------------
 @dataclass
 class Stored:
@@ -386,7 +406,7 @@ def plan_changes(stored: dict[int, Stored], listed: list[Listed], pages: dict[in
                 row["unchanged"] = True
             else:
                 plan.reparsed += 1
-                timeline = [parse_timeline_line(t) for t in page.extracted["timeline"]]
+                timeline = visible_timeline(page.extracted["timeline"])
                 cost = cost_sentence(page.extracted["cost"])
                 row.update(unchanged=False, source_hash=h, timeline=timeline, cost_text=cost,
                            description=summary_sentence(page.extracted["info"]) or "")
