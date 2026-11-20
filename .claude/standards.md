@@ -34,9 +34,11 @@ Bricolage Grotesque (Google Fonts-bygget) har OpenType-featuren `tnum` (och `pnu
 ## Sidgrid och typografiminimum (ägarbeslut 2026-11-20, designsystem Fas 1)
 - Ett skal, en vänsterkant på alla sidor. RailLayout (huvudspalt + sidospalt) är standard; brytpunkt 62rem (992px) överallt. Under brytpunkten hamnar sidospalten under huvudinnehållet (kontroll vid 375px).
 - Metadata och tickern: minst 13px. Inga undantag.
+- Tillåtet mönster (ägarbeslut 2026-11-20): "Hero-band i fullbredd ovanför griden, för bildtunga sidor". Sidans rubrik och bildkorten ligger i `slot="band"` (BaseLayout, hela skalet 74rem, tre kolumner); resten av sidan ligger i griden under (huvudspalt 44rem + sidospalt). Referens: What's On (marquee i bandet, "Also on" i huvudspalten).
+- Eventlistor (Fas 1, 2026-11-20): EventRow (tid till vänster, titel, plats; kategori bara när listan blandar), EventCard (bildkort), DayGroup (datum en gång per dag). Raddata byggs bara i lib/event-row.ts. Ticketmaster-dag och -tid tas ur localDate/localTime, aldrig omräknat från UTC.
 
 ## Komponentbiblioteket (site/src/components/ui/)
-HeroStat (bara temperatur, matchresultat, pris), InsightLine, RangeBar, HourStrip (timmar med temperaturkurva + regnstaplar), DayRows (en rad per dag, detaljer bakom tryck), TimeStrip, Card (toppkant 4 px i kategorifärg), CompactRow (vänsterkant 3 px), Chips (>=3 per chip, >=2 chips, inga siffror), DayStrip, Pill/Badge, SectionHeader, WarningBanner, EmptyState, AboutThisPage, FallbackTile, Icon. Tokens i site/src/design/ui-tokens.css; accent från site.config. Galleri: `/_design/` (pages/[design].astro, noindex, ej i sitemap, bara byggt med BUILD_DESIGN=1).
+HeroStat (bara temperatur, matchresultat, pris), EventRow, EventCard, DayGroup, InsightLine, RangeBar, HourStrip (timmar med temperaturkurva + regnstaplar), DayRows (en rad per dag, detaljer bakom tryck), TimeStrip, Card (toppkant 4 px i kategorifärg), CompactRow (vänsterkant 3 px), Chips (>=3 per chip, >=2 chips, inga siffror), DayStrip, Pill/Badge, SectionHeader, WarningBanner, EmptyState, AboutThisPage, FallbackTile, Icon. Tokens i site/src/design/ui-tokens.css; accent från site.config. Galleri: `/_design/` (pages/[design].astro, noindex, ej i sitemap, bara byggt med BUILD_DESIGN=1).
 
 Regel: ingen sida skriver egen CSS för något biblioteket redan har. Städer får inte ha kodvägar i layouten (`townId ===`, stadsnamn, `country ===`); skillnader ligger i config. Test: lib/ui/standard-layout.test.ts.
 
