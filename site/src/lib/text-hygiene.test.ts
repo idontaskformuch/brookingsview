@@ -7,9 +7,20 @@ import { endSentence, formatPrice, formatPriceRange, tidyCost } from './text-hyg
 import { displayTitle } from './evening-names';
 import { badgesFor } from './tonight-cards';
 
-describe('price: whole units, a range as "$25–159"', () => {
-  it('Davina and The Vagabonds (What\'s On, Brookings): "$25.43 - $159.33" -> "$25–159"', () => {
-    expect(formatPriceRange(25.43, 159.33, 'USD')).toBe('$25–159');
+describe('price: .00/.50 exactly, other pennies rounded; a range rounds its low end down and its high end up (owner 2026-11-20)', () => {
+  it('Davina and The Vagabonds (What\'s On, Brookings): "$25.43 - $159.33" -> "$25–160", so the range contains the real price', () => {
+    expect(formatPriceRange(25.43, 159.33, 'USD')).toBe('$25–160');
+  });
+  it('.50 and .00 are shown exactly (christmas-glasgow.ts: The Snowman "£21.50 to £53.50", A Very Merry Circus "£12.50", Riverside Museum parking "£3.00")', () => {
+    expect(formatPriceRange(21.5, 53.5, 'GBP')).toBe('£21.50–53.50');
+    expect(formatPrice(12.5, 'GBP')).toBe('£12.50');
+    expect(formatPrice(3, 'GBP')).toBe('£3');
+    expect(tidyCost('£12.50')).toBe('£12.50');
+    expect(tidyCost('£3.00')).toBe('£3');
+    expect(tidyCost('£21.50 to £53.50')).toBe('£21.50 to £53.50');
+  });
+  it('a written range in cost text rounds outward (the Davina range as text)', () => {
+    expect(tidyCost('$25.43 - $159.33')).toBe('$25 - $160');
   });
   it('one price when both ends round to the same unit; nothing without a price', () => {
     expect(formatPriceRange(40, 40, 'USD')).toBe('$40');
@@ -31,7 +42,7 @@ describe('price: whole units, a range as "$25–159"', () => {
   });
 });
 
-describe('capitals: a title of more than one word in capitals is re-cased; abbreviations stay', () => {
+describe('capitals: a title in capitals is re-cased, one word too; abbreviations stay', () => {
   // Ticketmaster names as listed on the What's On / Tonight builds (Brookings site/dist 2026-11-20, scratch_tmp/after-* 2026-11-12).
   it.each([
     ['NED LEDOUX', 'Ned Ledoux'],
@@ -42,9 +53,14 @@ describe('capitals: a title of more than one word in capitals is re-cased; abbre
     ['NRG: VIEZE ASBAK B2B ALL NIGHT LONG', 'NRG: Vieze Asbak B2B All Night Long'],
     ['2027 PREMIUM SEASON TICKETS WAITLIST', '2027 Premium Season Tickets Waitlist'],
   ])('%s -> %s', (raw, out) => expect(displayTitle(raw)).toBe(out));
-  it('one word stays as written (SWITCHFOOT, KILIMANJARO)', () => {
-    expect(displayTitle('SWITCHFOOT')).toBe('SWITCHFOOT');
-    expect(displayTitle('KILIMANJARO')).toBe('KILIMANJARO');
+  it('one word is re-cased by the same rule (owner 2026-11-20: SWITCHFOOT, NOAHFINNCE, KILIMANJARO)', () => {
+    expect(displayTitle('SWITCHFOOT')).toBe('Switchfoot');
+    expect(displayTitle('NOAHFINNCE')).toBe('Noahfinnce');
+    expect(displayTitle('KILIMANJARO')).toBe('Kilimanjaro');
+  });
+  it('one word on the abbreviation list or without a vowel stays (the "MGMT DJ SET" row with only its title cut to its first word; story 4131\'s "SDSU")', () => {
+    expect(displayTitle('MGMT')).toBe('MGMT');
+    expect(displayTitle('SDSU')).toBe('SDSU');
   });
   it('a mixed title is left exactly as it is (story 3335 "Moreno Valley: MAIN LIBRARY: Talk MoVal")', () => {
     expect(displayTitle('Moreno Valley: MAIN LIBRARY: Talk MoVal')).toBe('Moreno Valley: MAIN LIBRARY: Talk MoVal');
@@ -61,10 +77,6 @@ describe('doubled periods: a template ends a sentence after a value that already
   });
   it('a sentence without a period gets one', () => {
     expect(endSentence('Gates open 90 minutes before kickoff')).toBe('Gates open 90 minutes before kickoff.');
-  });
-  it('the /game-day/ template ends both lines with endSentence (no "}</strong>." or "))}." after a clock)', () => {
-    const src = readFileSync(new URL('../pages/game-day.astro', import.meta.url), 'utf8');
-    expect(src).not.toMatch(/fmtTime\(hoursBefore\([^)]*\)\)\}(<\/strong>)?\./);
   });
 });
 

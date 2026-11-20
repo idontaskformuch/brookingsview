@@ -3,10 +3,10 @@
  *  canonicalVenue(): a canonical venue list per town (src/config/venue-names.json: canonical name -> spelling variants). Sources spell the
  *  same venue differently ("Oran Mor" from Ticketmaster, "Òran Mór" from OpenStreetMap, "Oran Mor Auditorium" from a venue calendar);
  *  matching ignores case, accents, a leading "The" and punctuation, and the page shows the canonical spelling.
- *  displayTitle(): a title of more than one word written entirely in capitals ("MAMA TERRA") is set in ordinary capitalisation; known
- *  abbreviations stay. Designsystem Fas 2 (owner 2026-11-20): the one re-casing rule for every event row (Ticketmaster, stories, SDSU);
- *  one word stays as written ("SWITCHFOOT"); a word of at most 4 letters stays in capitals when it reads as an abbreviation: on the list
- *  below or without a vowel ("MGMT", "MBB", "NRG"). A short word with a vowel is a word ("NED LEDOUX" -> "Ned Ledoux", not "NED Ledoux"). */
+ *  displayTitle(): a title written entirely in capitals ("MAMA TERRA", "SWITCHFOOT") is set in ordinary capitalisation; known
+ *  abbreviations stay. Designsystem Fas 2 (owner 2026-11-20): the one re-casing rule for every event row (Ticketmaster, stories, SDSU),
+ *  one word included ("SWITCHFOOT" -> "Switchfoot"); a word of at most 4 letters stays in capitals when it reads as an abbreviation: on
+ *  the list below or without a vowel ("MGMT", "MBB", "NRG"). A short word with a vowel is a word ("NED LEDOUX" -> "Ned Ledoux", not "NED Ledoux"). */
 import NAMES from '../config/venue-names.json';
 
 const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/^the /, '').replace(/[^a-z0-9]+/g, ' ').trim();
@@ -65,7 +65,7 @@ function caseWord(word: string, first: boolean): string {
 }
 
 export function displayTitle(title: string): string {
-  if (!isAllCaps(title) || !/\S\s+\S/.test(title.trim())) return title;
+  if (!isAllCaps(title)) return title;
   let first = true;
   return title.split(/(\s+)/).map((part) => {
     if (/^\s+$/.test(part) || part === '') return part;

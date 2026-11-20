@@ -139,8 +139,8 @@ describe('the same show from two sources', () => {
       ticketmaster: [tm('n', 'NOAHFINNCE', '2026-10-29T19:00:00Z', 1)],
     });
     expect(entries).toHaveLength(1);
-    // Fas 2 (owner 2026-11-20): only a title of more than one word is re-cased; the one-word name stays as listed.
-    expect(entries[0]).toMatchObject({ title: 'NOAHFINNCE', source: 'ticketmaster', labels: ['18+'] });
+    // Fas 2 (owner 2026-11-20, second decision): a one-word title in capitals is re-cased too ("NOAHFINNCE" -> "Noahfinnce").
+    expect(entries[0]).toMatchObject({ title: 'Noahfinnce', source: 'ticketmaster', labels: ['18+'] });
   });
   it('keeps different shows at the same time apart', () => {
     const entries = buildEveningEntries({ ...OPTS, feed: [own('Pub Quiz', '2026-10-29T19:00:00Z')], ticketmaster: [tm('n', 'Big Band', '2026-10-29T19:00:00Z', 1)] });
