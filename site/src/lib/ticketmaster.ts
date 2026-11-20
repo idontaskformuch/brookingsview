@@ -221,6 +221,11 @@ export interface TicketmasterEvent {
   /** Every attraction Discovery lists for the event, in its order (`_embedded.attractions[].name`). The Event JSON-LD's performer
    *  for music and comedy (lib/ticketmaster-jsonld.ts); optional so older fixtures without it read as none. */
   attractionNames?: string[];
+  /** The venue's own calendar date and clock (`dates.start.localDate` "2026-11-20" / `localTime` "20:00:00"), exactly as Ticketmaster
+   *  lists them: the day and time a row shows (lib/event-row.ts), never re-derived from the UTC dateTime (owner 2026-11-20: an evening
+   *  show must never move to the next date). null when the listing has none (time TBA). Optional: older fixtures lack them. */
+  localDate?: string | null;
+  localTime?: string | null;
 }
 
 function formatPriceRange(ranges: RawTicketmasterEvent['priceRanges']): string | null {
@@ -389,6 +394,8 @@ export function normalizeTicketmasterEvent(raw: RawTicketmasterEvent): Ticketmas
     segment: primary?.segment?.name ?? null,
     genre: primary?.genre?.name ?? null,
     attractionNames: (raw._embedded?.attractions ?? []).flatMap((a) => (a.name?.trim() ? [cleanTicketmasterTitle(a.name)] : [])),
+    localDate: raw.dates?.start?.localDate ?? null,
+    localTime: raw.dates?.start?.localTime ?? null,
   };
   return {
     sourceKind: 'ticketmaster',

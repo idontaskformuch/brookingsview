@@ -122,6 +122,14 @@ describe('rows', () => {
       .toEqual(['events', 'closures', 'jobs', 'meetings']);
     expect(pickRows([row('meetings'), null])).toEqual([]);
   });
+  // Owner 2026-11-20. Real values: Brookings events in the week of 2026-11-09 = 14 (BROOKINGS_WEEKS above); Broomfield's traffic read on
+  // 2026-11-20 05:00 UTC listed 0 incidents (state.md), i.e. "0 active road closures". Only `value` is taken from those rows.
+  it('never shows a 0 row, and hides the module when fewer than two rows are left', () => {
+    const events = { ...row('events'), value: 14 };
+    const closures = { ...row('closures'), value: 0 };
+    expect(pickRows([events, closures])).toEqual([]);
+    expect(pickRows([events, closures, row('meetings')]).map((r) => r.id)).toEqual(['events', 'meetings']);
+  });
   it('trend off (Moreno Valley closures, D3): the number stays, line and insight go', () => {
     const { weeks, counts } = window12('2026-10-12');
     const r = weeklyRow({ id: 'events', label: 'Events last week', value: 9, href: '/events/', span: 's', series: counts, weeks, trend: false, locale: 'en-US', comparable: true });

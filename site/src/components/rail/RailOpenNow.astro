@@ -1,16 +1,15 @@
 ---
 /** Rail module (owner 2026-11-20, Today's rail): places open at this moment. The build ships today's rows from the OpenStreetMap snapshot
- *  (lib/open-tonight.ts, cafes and evening places); the browser keeps the ones whose hours include now (lib/client/open-now.ts, the same
- *  check as Today's cafe list) and shows the module only with at least 3 open, at most 5. Without JS it stays hidden: nothing is claimed. */
+ *  (lib/open-tonight.ts cafeRows); the browser keeps the ones whose hours include now (lib/client/open-now.ts, the same
+ *  check as Today's cafe list) and shows the module only with at least 3 open, at most `max` (5, or 8 where it is the page's only list). Without JS it stays hidden: nothing is claimed. */
 import type { OpenLateRow } from '../../lib/osm-open-late';
 import { OPEN_TONIGHT_MIN_PLACES } from '../../lib/open-tonight';
 
-interface Props { rows: OpenLateRow[]; osmChecked: string; lateHref?: string | null }
-const { rows, osmChecked, lateHref = null } = Astro.props;
-const RAIL_OPEN_NOW_MAX = 5;
+interface Props { rows: OpenLateRow[]; osmChecked: string; lateHref?: string | null; /** At most this many (config/home-rail.ts openNowMax). */ max?: number }
+const { rows, osmChecked, lateHref = null, max = 5 } = Astro.props;
 ---
-<section class="rail-mod rail-open" aria-label="Open now" data-rail-open-now data-min={OPEN_TONIGHT_MIN_PLACES} data-max={RAIL_OPEN_NOW_MAX} hidden>
-  <p class="rail-open__label">Open now</p>
+<section class="rail-mod rail-open" aria-label="Open now" data-rail-open-now data-min={OPEN_TONIGHT_MIN_PLACES} data-max={max} hidden>
+  <p class="rail-open__label">Cafés open now</p>
   <ul class="rail-open__list">
     {rows.map((r) => (
       <li data-start={r.start} data-end={r.end} hidden>

@@ -144,7 +144,8 @@ const jsonLd = buildHolidayEventsJsonLd(page, siteConfig.timezone, countryProfil
       </ul>
     </section>
   )}
-  <RailModules slot="rail" now={new Date()} withStatus excludeHolidaySlugs={new Set([def.slug])} frontImageId={frontPhoto?.id ?? null} />
+  {/* No "<Town> in numbers" on a holiday page (owner 2026-11-20): the page answers what is open and closed that day. */}
+  <RailModules slot="rail" now={new Date()} withStatus omit={['numbers']} excludeHolidaySlugs={new Set([def.slug])} frontImageId={frontPhoto?.id ?? null} />
   </RailLayout>
 
   <AboutThisPage slot="about" sources={sources} />

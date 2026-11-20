@@ -1,14 +1,14 @@
 ---
-/** Open tonight on /today (owner 2026-11-07): the same list as the Open tonight row on /tonight (lib/open-tonight.ts), plus a daytime "Open now"
- *  list of cafes. Rendered only with rows: the caller has already applied the "at least 3 places" rule, so this component never prints an empty
- *  state. The cafe list is hidden until the browser has checked the hours against the clock and found at least 3 open at that moment. */
+/** Open tonight on /today (owner 2026-11-07): the same list as the Open tonight row on /tonight (lib/open-tonight.ts). Rendered only with
+ *  rows: the caller has already applied the "at least 3 places" rule, so this component never prints an empty state. Cafes open now are
+ *  the rail's module (components/rail/RailOpenNow.astro, owner 2026-11-20), not a list here. */
 import type { OpenLateRow } from '../lib/osm-open-late';
 
-interface Props { rows: OpenLateRow[]; cafes: OpenLateRow[]; osmChecked: string; /** Link to the evergreen Open late page, only when that page is indexable. */ lateHref?: string | null; tonightHref?: string | null; cityName: string }
-const { rows, cafes, osmChecked, lateHref = null, tonightHref = null, cityName } = Astro.props;
+interface Props { rows: OpenLateRow[]; osmChecked: string; /** Link to the evergreen Open late page, only when that page is indexable. */ lateHref?: string | null; tonightHref?: string | null; cityName: string }
+const { rows, osmChecked, lateHref = null, tonightHref = null, cityName } = Astro.props;
 const meta = (r: OpenLateRow) => [r.kind, r.area].filter(Boolean).join(' · ');
 ---
-{(rows.length > 0 || cafes.length > 0) && (
+{rows.length > 0 && (
   <section class="ot">
     {rows.length > 0 && (
       <div class="ot-block" data-open-tonight>
@@ -16,20 +16,6 @@ const meta = (r: OpenLateRow) => [r.kind, r.area].filter(Boolean).join(' · ');
         <ul class="ot-list" data-hide-ended>
           {rows.map((r) => (
             <li data-start={r.start} data-end={r.end}>
-              <span class="ot-name">{r.website ? <a href={r.website} rel="noopener">{r.name}</a> : r.name}</span>
-              <span class="ot-meta">{meta(r)}</span>
-              {r.closing && <span class="ot-time">{r.closing}</span>}
-            </li>
-          ))}
-        </ul>
-      </div>
-    )}
-    {cafes.length > 0 && (
-      <div class="ot-block" data-open-now hidden>
-        <h2>Cafés open now</h2>
-        <ul class="ot-list">
-          {cafes.map((r) => (
-            <li data-start={r.start} data-end={r.end} hidden>
               <span class="ot-name">{r.website ? <a href={r.website} rel="noopener">{r.name}</a> : r.name}</span>
               <span class="ot-meta">{meta(r)}</span>
               {r.closing && <span class="ot-time">{r.closing}</span>}
@@ -47,10 +33,6 @@ const meta = (r: OpenLateRow) => [r.kind, r.area].filter(Boolean).join(' · ');
 )}
 
 <script>
-  import { revealOpenNow } from '../lib/client/open-now';
-  // Cafes: show the ones whose hours include this moment, and the list only when at least 3 are open (progressive: without JS nothing is claimed).
-  const block = document.querySelector<HTMLElement>('[data-open-now]');
-  if (block) revealOpenNow(block, 3);
   // Open tonight: drop places that have closed since the page was built; with fewer than 3 left, remove the whole block.
   const tonight = document.querySelector<HTMLElement>('[data-open-tonight]');
   if (tonight) {

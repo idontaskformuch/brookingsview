@@ -271,3 +271,27 @@ export interface IsoWeek { isoYear: number; isoWeek: number }
 export function isWhatsOnIntroFresh(introWeek: IsoWeek, currentWeek: IsoWeek): boolean {
   return introWeek.isoYear === currentWeek.isoYear && introWeek.isoWeek === currentWeek.isoWeek;
 }
+
+/** The weekend a "This weekend" list covers (owner 2026-11-20, What's On rail): from Friday to Sunday, as calendar days "YYYY-MM-DD".
+ *  On a Friday, Saturday or Sunday it is the rest of this weekend (from today); Monday to Thursday the coming one. */
+export function weekendWindow(todayYmd: string): { from: string; to: string } {
+  const d = new Date(`${todayYmd}T12:00:00Z`);
+  const wd = d.getUTCDay(); // 0 Sun .. 6 Sat
+  const add = (n: number) => new Date(d.getTime() + n * 86_400_000).toISOString().slice(0, 10);
+  if (wd === 0) return { from: todayYmd, to: todayYmd };
+  if (wd === 5 || wd === 6) return { from: todayYmd, to: add(7 - wd) };
+  return { from: add(5 - wd), to: add(7 - wd) };
+}
+
+/** The shows of that weekend, by the venue's own date (localDate, never re-derived from UTC), soonest first; the same title at the same
+ *  venue counted once (its first date); at most `max`. Listings without a localDate are left out (no day can be claimed). */
+export function weekendShows(items: TicketmasterFeedItem[], todayYmd: string, max = 6): TicketmasterFeedItem[] {
+  const { from, to } = weekendWindow(todayYmd);
+  const seen = new Set<string>();
+  return items
+    .filter((i) => { const day = i.ticketmasterEvent.localDate; return !!day && day >= from && day <= to; })
+    .sort((a, b) => `${a.ticketmasterEvent.localDate}T${a.ticketmasterEvent.localTime ?? ''}`.localeCompare(`${b.ticketmasterEvent.localDate}T${b.ticketmasterEvent.localTime ?? ''}`)
+      || a.ticketmasterEvent.title.localeCompare(b.ticketmasterEvent.title))
+    .filter((i) => { const k = seriesKey(i.ticketmasterEvent); if (seen.has(k)) return false; seen.add(k); return true; })
+    .slice(0, max);
+}

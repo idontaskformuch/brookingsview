@@ -19,6 +19,10 @@ import RailWeather from './RailWeather.astro';
 import RailNumbers from './RailNumbers.astro';
 import RailWeatherToday from './RailWeatherToday.astro';
 import RailOpenNow from './RailOpenNow.astro';
+import RailShowsWeekend from './RailShowsWeekend.astro';
+import { getTicketmasterEventsForTown } from '../../lib/ticketmaster';
+import { weekendShows, dropEnded } from '../../lib/whats-on';
+import { rowFromTicketmaster, rowEnvFor, groupByDay } from '../../lib/event-row';
 import { loadTownNumbers } from '../../lib/town-numbers-data';
 import {
   getActiveTrafficIncidents, getUpcomingGames, getNextRegionalGame, getNextSdsuMarqueeEvent, getAgPrices, getEmployerJobStats,
@@ -26,7 +30,7 @@ import {
 } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
 import { isSectionBuilt } from '../../lib/sections';
-import { homeRailFor, pageRailFor, type RailModuleKind, type RailPage } from '../../config/home-rail';
+import { homeRailFor, pageRailFor, PAGE_RAIL, type RailModuleKind, type RailPage } from '../../config/home-rail';
 import { planRail, railMeetings, nextRailHoliday, latestFinal, scoreLine, RAIL_WEATHER_DAYS } from '../../lib/rail';
 import { loadUpcomingMeetings } from '../../lib/meetings-data';
 import { frontPageHolidays } from '../../lib/front-page-holidays';
@@ -39,7 +43,7 @@ import { viewFor } from '../../lib/weather-html';
 import { formatCalendarDate } from '../../lib/db';
 import type { MeetingView } from '../../lib/meetings-view';
 import { placesFromSnapshot, decorateOpenLate } from '../../lib/osm-open-late';
-import { openTonightRows, cafeRows, isHolidayDay, openLatePageIndexable, OPEN_TONIGHT_MIN_PLACES } from '../../lib/open-tonight';
+import { cafeRows, isHolidayDay, openLatePageIndexable, OPEN_TONIGHT_MIN_PLACES } from '../../lib/open-tonight';
 import { areasFor } from '../../lib/areas';
 
 interface Props {
@@ -69,7 +73,7 @@ const profile = countryProfile(siteConfig.country);
 const wants = new Set<RailModuleKind>([...cfg.modules, ...cfg.reserve]);
 
 const meetingsData = Astro.props.meetingsData !== undefined ? Astro.props.meetingsData : await loadUpcomingMeetings();
-const [traffic, games, regionalNext, sdsuNext, prices, jobStats, regional, weather, numbers, osmSnapshot] = await Promise.all([
+const [traffic, games, regionalNext, sdsuNext, prices, jobStats, regional, weather, numbers, osmSnapshot, tmItems] = await Promise.all([
   wants.has('traffic') && isSectionBuilt('traffic', siteConfig) ? getActiveTrafficIncidents() : Promise.resolve([]),
   wants.has('sport') && isSectionBuilt('jackrabbits', siteConfig) ? getUpcomingGames(1) : Promise.resolve([]),
   wants.has('sport') && isSectionBuilt('sports', siteConfig) ? getNextRegionalGame() : Promise.resolve(null),
@@ -80,6 +84,8 @@ const [traffic, games, regionalNext, sdsuNext, prices, jobStats, regional, weath
   (wants.has('weather') || wants.has('weather_today')) && isSectionBuilt('weather', siteConfig) ? getWeatherSnapshot() : Promise.resolve(null),
   wants.has('numbers') ? loadTownNumbers(now) : Promise.resolve([]),
   !wants.has('open_now') ? Promise.resolve(null) : Astro.props.osmSnapshot !== undefined ? Promise.resolve(Astro.props.osmSnapshot) : getOsmSnapshot(),
+  // Memoized per build (lib/ticketmaster.ts): What's On's own call already fetched it.
+  wants.has('shows_weekend') && siteConfig.hasWhatsOn && siteConfig.ticketmaster ? getTicketmasterEventsForTown(siteConfig) : Promise.resolve([]),
 ]);
 
 // Meetings
@@ -128,12 +134,16 @@ const wxDays = wxAll.slice(0, RAIL_WEATHER_DAYS + 1);
 // Weather today: today and one spare (the browser drops a day that has passed since the build).
 const wxToday = wxAll.slice(0, 2);
 
-// Open now: today's rows from the OpenStreetMap snapshot (cafes, then evening places); the browser keeps the ones open at that moment.
+// Open now: today's cafes from the OpenStreetMap snapshot (evening places are the page's own Open tonight list); the browser keeps the
+// ones open at that moment.
 const osmPlaces = placesFromSnapshot(osmSnapshot ?? null, now) ?? [];
 const osmOpts = { day: today, tz, now, holiday: isHolidayDay(siteConfig.country, today) };
-const openNowRows = osmPlaces.length > 0
-  ? decorateOpenLate([...cafeRows(osmPlaces, osmOpts), ...openTonightRows(osmPlaces, osmOpts)], siteConfig.townId, areasFor(siteConfig.townId))
-  : [];
+const openNowRows = osmPlaces.length > 0 ? decorateOpenLate(cafeRows(osmPlaces, osmOpts), siteConfig.townId, areasFor(siteConfig.townId)) : [];
+const openNowMax = (Astro.props.page ? PAGE_RAIL[Astro.props.page].openNowMax : undefined) ?? 5;
+
+// This weekend: Ticketmaster shows by the venue's own date, one DayGroup per day.
+const rowEnv = rowEnvFor(siteConfig, now);
+const weekendDays = groupByDay(weekendShows(dropEnded(tmItems, now), todayDate.toISOString().slice(0, 10)).map((i) => rowFromTicketmaster(i, rowEnv)), rowEnv);
 
 const plan = planRail(cfg, {
   meeting: nextMeeting !== null,
@@ -144,6 +154,7 @@ const plan = planRail(cfg, {
   weather: wxDays.length >= RAIL_WEATHER_DAYS,
   weather_today: wxToday.length > 0,
   open_now: openNowRows.length >= OPEN_TONIGHT_MIN_PLACES,
+  shows_weekend: weekendDays.length > 0,
   traffic: traffic.length > 0,
   workplace: hiringMover !== null,
   markets: prices.length > 0,
@@ -184,7 +195,8 @@ const plan = planRail(cfg, {
         {m === 'numbers' && <RailNumbers rows={numbers} cityName={siteConfig.cityName} />}
         {m === 'weather' && <RailWeather days={wxDays} tz={tz} />}
         {m === 'weather_today' && <RailWeatherToday days={wxToday} tz={tz} />}
-        {m === 'open_now' && <RailOpenNow rows={openNowRows} osmChecked={osmSnapshot ? osmSnapshot.fetchedAt.slice(0, 10) : ''} lateHref={openLatePageIndexable(osmPlaces) ? '/open-late/' : null} />}
+        {m === 'open_now' && <RailOpenNow rows={openNowRows} osmChecked={osmSnapshot ? osmSnapshot.fetchedAt.slice(0, 10) : ''} lateHref={openLatePageIndexable(osmPlaces) ? '/open-late/' : null} max={openNowMax} />}
+        {m === 'shows_weekend' && <RailShowsWeekend days={weekendDays} />}
         {m === 'traffic' && <a class="rail-mod__link" href="/traffic/"><TrafficWidget incidents={traffic} /></a>}
         {m === 'workplace' && hiringMover && (
           <WorkplaceWatchWidget hiringName={hiringMover.name} hiringCount={hiringMover.postings_now} hiringDelta={hiringMover.postings_change} />

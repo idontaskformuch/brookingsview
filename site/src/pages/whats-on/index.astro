@@ -26,7 +26,8 @@ import SectionRule from '../../components/SectionRule.astro';
 import EventCard from '../../components/ui/EventCard.astro';
 import EventRow from '../../components/ui/EventRow.astro';
 import DayGroup from '../../components/ui/DayGroup.astro';
-import { rowFromTicketmaster, rowEnvFor, groupByDay } from '../../lib/event-row';
+import RailModules from '../../components/rail/RailModules.astro';
+import { rowFromTicketmaster, rowEnvFor, groupByDay, labelOfDay } from '../../lib/event-row';
 import { showDate } from '../../lib/whats-on-dates';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import ShareButton from '../../components/ShareButton.astro';
@@ -112,7 +113,9 @@ const alsoOnDays = groupByDay(alsoOnRows.map((r) => rowFromTicketmaster(r.primar
 const marqueeCards = marqueeWithImages.map(({ entry, image }) => {
   const row = rowFromTicketmaster(entry.primary, rowEnv, entry.members.length, entry.members[entry.members.length - 1].occurs_at);
   const run = row.extra[0] && entry.members.length > 1 ? row.extra[0] : null;
-  const date = entry.primary.occurs_at ? showDate(entry.primary.occurs_at, rowEnv.tz, buildNow, true, rowEnv.country) : null;
+  // The venue's own date (localDate), as the row's day; the UTC instant only for a listing without one.
+  const date = row.day ? labelOfDay(row.day, buildNow, rowEnv.country, rowEnv.tz)
+    : entry.primary.occurs_at ? showDate(entry.primary.occurs_at, rowEnv.tz, buildNow, true, rowEnv.country) : null;
   return {
     row, image, when: run ?? ([date, row.time].filter(Boolean).join(' · ') || null),
     facts: [row.place[1], entry.primary.ticketmasterEvent.priceRangeText],
@@ -120,7 +123,6 @@ const marqueeCards = marqueeWithImages.map(({ entry, image }) => {
 });
 
 // The weekly AI intro block (What's On Phase 6b) is not printed: model-written text is withheld everywhere (lib/ai-text.ts, owner 2026-11-06).
-const introText: string | null = null;
 
 const canonicalUrl = new URL('/whats-on/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('whats-on', siteConfig, { label: "What's On", href: canonicalUrl });
@@ -133,57 +135,50 @@ const eventsJsonLd = buildTicketmasterListJsonLd(
 <BaseLayout title={pageMeta.title} ogSlug="section-whats-on"
   description={`Concerts, theater and touring shows within ${radiusMiles ?? 75} miles of ${placeLabel(siteConfig)} — with real distance shown, never a hidden away-game.`}
   accentColor={SECTION_THEME.events.accent}>
-  <Breadcrumbs trail={breadcrumbTrail} />
-  <header class="lede">
-    <h1>{pageMeta.h1}</h1>
-    <ShareButton title={pageMeta.title} />
-  </header>
+  {/* Hero band (owner 2026-11-20): heading and marquee full width (74rem, three columns) above the grid; "Also on" in the main column
+      with the rail beside it. */}
+  <div slot="band" class="wo-band">
+    <Breadcrumbs trail={breadcrumbTrail} />
+    <header class="lede">
+      <h1>{pageMeta.h1}</h1>
+      <ShareButton title={pageMeta.title} />
+    </header>
+    {marqueeCards.length > 0 && (
+      <>
+        <SectionRule label="Marquee" />
+        {/* LCP fix: the grid has several image cards side by side; only the first, top-left card (plain CSS grid, DOM order ===
+            paint order) is the LCP candidate, so only it gets `priority` (fetchpriority="high" on every card dilutes the signal). */}
+        <div class="marquee-grid">
+          {marqueeCards.map(({ row, image, when, facts }, i) => (
+            <EventCard title={row.title} href={row.href} rel={row.rel} image={image} where={row.place[0]} when={when}
+              datetime={row.start} facts={facts} priority={i === 0} />
+          ))}
+        </div>
+      </>
+    )}
+  </div>
 
-  {introText && (
-    <div class="whats-on-intro">
-      <p class="whats-on-intro__text">{introText}</p>
-      <p class="whats-on-intro__disclosure">AI-generated from this week's listed events, checked against the source data before publishing.</p>
-    </div>
-  )}
-
-  {ranked.length === 0 ? (
-    <p class="empty">{EMPTY_STATES.whatsOn}</p>
-  ) : (
+  {ranked.length === 0 && <p class="empty">{EMPTY_STATES.whatsOn}</p>}
+  {alsoOnDays.length > 0 && (
     <>
-      {marqueeWithImages.length > 0 && (
-        <>
-          <SectionRule label="Marquee" />
-          {/* LCP fix: the grid has several image cards side by side; only the first, top-left card (plain CSS grid, DOM order ===
-              paint order) is the LCP candidate, so only it gets `priority` (fetchpriority="high" on every card dilutes the signal). */}
-          <div class="marquee-grid">
-            {marqueeCards.map(({ row, image, when, facts }, i) => (
-              <EventCard title={row.title} href={row.href} rel={row.rel} image={image} where={row.place[0]} when={when}
-                datetime={row.start} facts={facts} priority={i === 0} />
-            ))}
-          </div>
-        </>
-      )}
-      {alsoOnDays.length > 0 && (
-        <>
-          <SectionRule label="Also on" />
-          <div class="also-on-list">
-            {alsoOnDays.map((g) => (
-              <DayGroup label={g.label || 'Date to be announced'} datetime={g.key || undefined} level={3}>
-                {g.rows.map((row) => <li><EventRow row={row} level={4} /></li>)}
-              </DayGroup>
-            ))}
-          </div>
-          {laterCount > 0 && (
-            <p class="also-on-later">Showing the next {ALSO_ON_DAYS} days.{' '}
-              {siteConfig.country === 'gb'
-                ? <a href={`https://www.ticketmaster.co.uk/discover/${siteConfig.cityName.toLowerCase()}`} rel="noopener">{laterCount} more listing{laterCount === 1 ? '' : 's'} further ahead on Ticketmaster</a>
-                : <>{laterCount} more listing{laterCount === 1 ? '' : 's'} further ahead are on Ticketmaster.</>}
-            </p>
-          )}
-        </>
+      <SectionRule label="Also on" />
+      <div class="also-on-list">
+        {alsoOnDays.map((g) => (
+          <DayGroup label={g.label || 'Date to be announced'} datetime={g.key || undefined} level={3}>
+            {g.rows.map((row) => <li><EventRow row={row} level={4} /></li>)}
+          </DayGroup>
+        ))}
+      </div>
+      {laterCount > 0 && (
+        <p class="also-on-later">Showing the next {ALSO_ON_DAYS} days.{' '}
+          {siteConfig.country === 'gb'
+            ? <a href={`https://www.ticketmaster.co.uk/discover/${siteConfig.cityName.toLowerCase()}`} rel="noopener">{laterCount} more listing{laterCount === 1 ? '' : 's'} further ahead on Ticketmaster</a>
+            : <>{laterCount} more listing{laterCount === 1 ? '' : 's'} further ahead are on Ticketmaster.</>}
+        </p>
       )}
     </>
   )}
+  <RailModules slot="rail" page="whats_on" now={buildNow} />
 
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
     buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
@@ -216,17 +211,9 @@ const eventsJsonLd = buildTicketmasterListJsonLd(
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
 .cross-link { font-size: 0.875rem; }
 .cross-link a { color: var(--navy); }
-.whats-on-intro {
-  max-width: 46rem;
-  margin: 0 0 1.5rem;
-  border: 1px solid var(--rule);
-  border-left: 4px solid var(--section-accent, var(--rule-strong));
-  border-radius: 8px;
-  padding: 1rem 1.25rem;
-}
-.whats-on-intro__text { line-height: 1.6; margin: 0 0 0.5rem; }
-.whats-on-intro__disclosure { font-size: 0.75rem; color: var(--ink-soft); margin: 0; }
-.marquee-grid { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); margin-bottom: 1.5rem; }
+.wo-band { margin-bottom: 0.5rem; }
+/* Three columns across the 74rem band; two, then one, as the screen narrows. */
+.marquee-grid { display: grid; gap: 1.5rem 2rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); margin-bottom: 1.5rem; }
 .also-on-list { display: block; }
 .also-on-later { margin: 0.75rem 0 0; color: var(--ink-soft); font-size: 0.9375rem; }
 .empty { color: var(--ink-soft); }

@@ -41,7 +41,7 @@ import OpenTonight from '../components/OpenTonight.astro';
 import RailModules from '../components/rail/RailModules.astro';
 import { PAGE_RAIL } from '../config/home-rail';
 import { placesFromSnapshot, decorateOpenLate } from '../lib/osm-open-late';
-import { openTonightRows, openTonightSection, cafeRows, isHolidayDay, openLatePageIndexable } from '../lib/open-tonight';
+import { openTonightRows, openTonightSection, isHolidayDay, openLatePageIndexable } from '../lib/open-tonight';
 import { localDayNumber } from '../lib/local-day';
 import { areasFor } from '../lib/areas';
 
@@ -78,7 +78,7 @@ const osmDay = localDayNumber(now, siteConfig.timezone);
 const osmOpts = { day: osmDay, tz: siteConfig.timezone, now, holiday: isHolidayDay(siteConfig.country, osmDay) };
 const areaData = areasFor(siteConfig.townId);
 const openTonight = openTonightSection(decorateOpenLate(openTonightRows(osm, osmOpts), siteConfig.townId, areaData), now, siteConfig.timezone);
-const openCafes = openTonightSection(decorateOpenLate(cafeRows(osm, osmOpts), siteConfig.townId, areaData), now, siteConfig.timezone);
+// Cafes open now are the rail's list (owner 2026-11-20: one list, up to 8 there), not a second one here.
 const osmChecked = osmSnapshot ? osmSnapshot.fetchedAt.slice(0, 10) : '';
 
 const noEventsThisWeek = candidates.length === 0 && todayShows3.length === 0;
@@ -190,7 +190,7 @@ const moreLinks = enabledSections(siteConfig).filter((s) => ['cityhall', 'facili
       ))}
     </section>
   )}
-  <OpenTonight rows={openTonight} cafes={openCafes} osmChecked={osmChecked} cityName={siteConfig.cityName}
+  <OpenTonight rows={openTonight} osmChecked={osmChecked} cityName={siteConfig.cityName}
     lateHref={openLatePageIndexable(osm) ? '/open-late/' : null} />
   {siteConfig.safetyNotices && <SafetyNotices townId={siteConfig.townId} timezone={siteConfig.timezone} variant="compact" />}
   {siteConfig.eveningLayer && <p class="today-tonight">Planning the evening? <a href="/tonight/">Things to do tonight in {siteConfig.cityName}</a>.</p>}

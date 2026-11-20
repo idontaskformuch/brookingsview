@@ -1,0 +1,25 @@
+---
+/** Rail module (owner 2026-11-20, What's On's rail): the weekend's Ticketmaster shows, one DayGroup per day with EventRows (the venue's own
+ *  date and time, lib/whats-on.ts weekendShows). Rendered only with rows. Data and template strings only. */
+import DayGroup from '../ui/DayGroup.astro';
+import EventRow from '../ui/EventRow.astro';
+import type { DayGroupData, EventRowData } from '../../lib/event-row';
+
+interface Props { days: DayGroupData<EventRowData>[] }
+const { days } = Astro.props;
+---
+<section class="rail-mod rail-wknd" aria-label="This weekend">
+  <p class="rail-wknd__label">This weekend</p>
+  {days.map((g) => (
+    <DayGroup label={g.label} datetime={g.key} level={3}>
+      {g.rows.map((row) => <li><EventRow row={row} level={4} /></li>)}
+    </DayGroup>
+  ))}
+</section>
+<style>
+  .rail-wknd { border-top: 1px solid var(--rule); padding-top: 0.75rem; }
+  .rail-wknd__label { margin: 0 0 0.5rem; font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+  .rail-wknd :global(.day-group) { margin-bottom: 0.75rem; }
+  .rail-wknd :global(.ev-row) { grid-template-columns: 4rem minmax(0, 1fr); gap: 0 0.75rem; }
+  .rail-wknd :global(.ev-row__title) { font-size: 0.9375rem; }
+</style>

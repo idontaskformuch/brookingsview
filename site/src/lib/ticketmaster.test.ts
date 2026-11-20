@@ -81,6 +81,8 @@ describe('normalizeTicketmasterEvent', () => {
         segment: 'Sports',
         genre: null,
         attractionNames: [],
+        localDate: '2026-10-24',
+        localTime: '14:00:00',
       },
     });
   });

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { rowFromTicketmaster, rowFromFeedItem, rowEnvFor, groupByDay, mixedCategories, dayKey } from './event-row';
+import { rowFromTicketmaster, rowFromFeedItem, rowEnvFor, groupByDay, mixedCategories, dayKey, clockFromLocalTime } from './event-row';
+import { normalizeTicketmasterEvent } from './ticketmaster';
+import { weekendWindow, weekendShows } from './whats-on';
 import { makeRowFacts } from './event-row-facts';
 import { eventClock, dayTimeKicker } from './time';
 import type { TicketmasterFeedItem } from './ticketmaster';
@@ -78,5 +80,41 @@ describe('eventClock', () => {
   it('is dayTimeKicker without the day', () => {
     expect(eventClock('2026-11-20T20:00:00Z', TZ)).toBe('2 PM');
     expect(dayTimeKicker('2026-11-20T20:00:00Z', TZ)).toBe('Fri · 2 PM');
+  });
+});
+
+// Owner 2026-11-20: a US Ticketmaster row's day and time are the venue's own localDate/localTime, never re-derived from UTC. Real row,
+// Moreno Valley /whats-on/ 2026-11-20: vvG1IZ_CkTutk8 "Kool & the Gang", Pechanga Resort Casino, dateTime 2026-11-21T04:00:00Z, ticket
+// URL ".../kool-the-gang-temecula-california-11-20-2026/...". localDate 2026-11-20 is the URL's date; localTime 20:00:00 is that dateTime
+// in Pacific time (the two fields set from the row, as Discovery sends them).
+describe('Ticketmaster local date and time (Moreno Valley, 8 PM)', () => {
+  const raw = {
+    id: 'vvG1IZ_CkTutk8', name: 'Kool & the Gang',
+    url: 'https://www.ticketmaster.com/kool-the-gang-temecula-california-11-20-2026/event/0A0064E1BF369190',
+    dates: { start: { localDate: '2026-11-20', localTime: '20:00:00', dateTime: '2026-11-21T04:00:00Z' } },
+    _embedded: { venues: [{ name: 'Pechanga Resort Casino' }] },
+  };
+  const item = normalizeTicketmasterEvent(raw as Parameters<typeof normalizeTicketmasterEvent>[0]);
+  const mv = rowEnvFor({ timezone: 'America/Los_Angeles', cityName: 'Moreno Valley', country: 'us' }, new Date('2026-11-20T16:52:00Z'));
+  it('shows 8 PM on Fri, Nov 20 (UTC is already Nov 21)', () => {
+    const r = rowFromTicketmaster(item, mv);
+    expect(r.time).toBe('8 PM');
+    expect(r.day).toBe('2026-11-20');
+    expect(groupByDay([r], mv).map((g) => [g.key, g.label])).toEqual([['2026-11-20', 'Fri, Nov 20']]);
+  });
+  it('reads no time zone at all: the same row in a UTC-zoned build still says 8 PM on Nov 20', () => {
+    const r = rowFromTicketmaster(item, { ...mv, tz: 'UTC' });
+    expect([r.time, r.day]).toEqual(['8 PM', '2026-11-20']);
+  });
+  it('a date-only listing (00:00) claims no time', () => {
+    expect(clockFromLocalTime('00:00:00', false)).toBe('');
+    expect(clockFromLocalTime('19:30:00', true)).toBe('7:30pm');
+  });
+  it('This weekend (rail): Friday to Sunday by localDate; on a Friday from today', () => {
+    expect(weekendWindow('2026-11-18')).toEqual({ from: '2026-11-20', to: '2026-11-22' });
+    expect(weekendWindow('2026-11-20')).toEqual({ from: '2026-11-20', to: '2026-11-22' });
+    expect(weekendWindow('2026-11-22')).toEqual({ from: '2026-11-22', to: '2026-11-22' });
+    expect(weekendShows([item], '2026-11-20').map((i) => i.ticketmasterEvent.id)).toEqual(['vvG1IZ_CkTutk8']);
+    expect(weekendShows([item], '2026-11-23')).toEqual([]);
   });
 });

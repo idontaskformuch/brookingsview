@@ -701,6 +701,9 @@ main { padding-block: 1.75rem 3.5rem; }
 
 <main id="main">
   <div class="shell">
+    {/* Hero band (owner 2026-11-20, standards.md): a full-width band above the grid, for image-heavy pages (What's On's marquee). The
+        page's heading goes in the band with it, so the page still reads heading first. */}
+    <slot name="band" />
     {wide ? <slot /> : (
       <RailLayout>
         <slot />

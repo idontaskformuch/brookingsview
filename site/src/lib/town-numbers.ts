@@ -158,9 +158,10 @@ export interface NumberRow {
   insight: string | null;
 }
 
-/** Rows in NUMBER_ORDER, at most NUMBERS_MAX; [] when fewer than NUMBERS_MIN (the module is hidden). */
+/** Rows in NUMBER_ORDER, at most NUMBERS_MAX; [] when fewer than NUMBERS_MIN (the module is hidden). A row whose value is 0 is never
+ *  shown (owner 2026-11-20: "0 active road closures" is an empty state, not a number). */
 export function pickRows(rows: (NumberRow | null)[]): NumberRow[] {
-  const byId = new Map(rows.filter((r): r is NumberRow => r !== null).map((r) => [r.id, r]));
+  const byId = new Map(rows.filter((r): r is NumberRow => r !== null && r.value !== 0).map((r) => [r.id, r]));
   const out = NUMBER_ORDER.map((id) => byId.get(id)).filter((r): r is NumberRow => r !== undefined).slice(0, NUMBERS_MAX);
   return out.length >= NUMBERS_MIN ? out : [];
 }

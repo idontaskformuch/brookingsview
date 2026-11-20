@@ -12,7 +12,7 @@ import { OFF_SEASON_DAYS, ymd } from './sports-season';
 
 export const RAIL_HEIGHT_REM: Record<RailModuleKind | 'status', number> = {
   status: 16, meeting: 8, holiday: 10, sport: 9, numbers: 14, weather: 9, traffic: 9, workplace: 7, markets: 10, play: 5, burro_bonanza: 5,
-  meetings_more: 12, weather_today: 5, open_now: 10,
+  meetings_more: 12, weather_today: 5, open_now: 10, shows_weekend: 14,
 };
 /** The main column's first screen at 1440x900 below the masthead, in rem (900 px minus the ~13rem masthead and section nav, rounded down). */
 export const RAIL_FIRST_SCREEN_REM = 42;

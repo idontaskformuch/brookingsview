@@ -21,6 +21,8 @@ export interface EventRowData {
   /** ISO instants (data-start / data-end: the browser's bucket and sweep scripts read them). */
   start: string | null;
   end: string | null;
+  /** The row's own calendar day "YYYY-MM-DD" when the source states it (Ticketmaster localDate); else the town day of `start`. */
+  day?: string | null;
   /** "7:30 PM" / "7pm" / "All day"; '' when no time is known (the time column stays, empty). */
   time: string;
   title: string;
@@ -73,6 +75,14 @@ export function dayLabel(start: string | Date, tz: string, now: Date, country: C
   return showDate(new Date(start).toISOString(), tz, now, true, country);
 }
 
+/** A DayGroup heading for a calendar day "YYYY-MM-DD" (noon UTC of that date, read as UTC: no zone can move it). The year rule is the
+ *  town's current year. */
+export function labelOfDay(ymd: string, now: Date, country: CountryId, tz: string): string {
+  const thisYear = dayKey(now, tz).slice(0, 4);
+  const label = showDate(`${ymd}T12:00:00Z`, 'UTC', new Date(`${thisYear}-07-01T12:00:00Z`), true, country);
+  return label;
+}
+
 /** A feed item (lib/events.ts) as a row. `facts` is lib/event-row-facts.ts makeRowFacts (title without the venue prefix, the venue). */
 export function rowFromFeedItem(item: FeedItem, env: RowEnv, facts: (item: FeedItem) => RowFacts): EventRowData {
   const f = facts(item);
@@ -108,15 +118,29 @@ export function rowFromTodayShow(show: TodayShow, cityName: string): EventRowDat
   };
 }
 
+/** "20:00:00" -> "8 PM" (us) / "8pm" (gb): Ticketmaster's own local clock, no time-zone arithmetic. '' for none, and for 00:00 (how a
+ *  date-only listing arrives: no time is claimed). */
+export function clockFromLocalTime(localTime: string | null | undefined, lowerClock: boolean): string {
+  const m = /^(\d{1,2}):(\d{2})/.exec(localTime ?? '');
+  if (!m) return '';
+  const hour = Number(m[1]), minute = Number(m[2]);
+  if (hour === 0 && minute === 0) return '';
+  const h12 = hour % 12 || 12;
+  const mm = minute ? `:${String(minute).padStart(2, '0')}` : '';
+  return lowerClock ? `${h12}${mm}${hour < 12 ? 'am' : 'pm'}` : `${h12}${mm} ${hour < 12 ? 'AM' : 'PM'}`;
+}
+
 /** A What's On listing; a collapsed run (runSize > 1) keeps its first date as the row's day and says the run in `extra` (no single
- *  time is claimed for a run). A listing with no real time (local midnight) shows none. */
+ *  time is claimed for a run). The day and time are the venue's own localDate/localTime; only a listing without them falls back to the
+ *  UTC instant in the town's zone. A listing with no real time (local midnight) shows none. */
 export function rowFromTicketmaster(item: TicketmasterFeedItem, env: RowEnv, runSize = 1, lastOccursAt: string | null = null): EventRowData {
   const e = item.ticketmasterEvent;
   const href = ticketmasterHref(e);
   const run = runSize > 1 && item.occurs_at && lastOccursAt ? runLabel(runSize, item.occurs_at, lastOccursAt, env.tz, env.now, env.country) : null;
   return {
-    start: iso(item.occurs_at), end: null,
-    time: item.occurs_at && !run ? eventClock(item.occurs_at, env.tz, null, '', env.lowerClock) : '',
+    start: iso(item.occurs_at), end: null, day: e.localDate ?? null,
+    time: run ? '' : e.localTime ? clockFromLocalTime(e.localTime, env.lowerClock)
+      : item.occurs_at && !e.localDate ? eventClock(item.occurs_at, env.tz, null, '', env.lowerClock) : '',
     title: e.title, href, rel: href ? TICKET_LINK_REL : null,
     place: [e.venueName ?? 'Venue TBA', distanceLabel(e.venueDistanceMiles, env.cityName)].filter((v): v is string => !!v),
     extra: [run, e.priceRangeText].filter((v): v is string => !!v),
@@ -133,14 +157,14 @@ export interface DayGroupData<T> { key: string; label: string; rows: T[] }
 
 /** Rows grouped under one heading per town day, in the order the rows come in (callers sort by date). Rows without a start go in a
  *  last group with an empty key and label (the caller decides how to head it). */
-export function groupByDay<T extends { start: string | null }>(rows: T[], env: Pick<RowEnv, 'tz' | 'now' | 'country'>): DayGroupData<T>[] {
+export function groupByDay<T extends { start: string | null; day?: string | null }>(rows: T[], env: Pick<RowEnv, 'tz' | 'now' | 'country'>): DayGroupData<T>[] {
   const groups: DayGroupData<T>[] = [];
   const byKey = new Map<string, DayGroupData<T>>();
   for (const r of rows) {
-    const key = r.start ? dayKey(r.start, env.tz) : '';
+    const key = r.day ?? (r.start ? dayKey(r.start, env.tz) : '');
     let g = byKey.get(key);
     if (!g) {
-      g = { key, label: r.start ? dayLabel(r.start, env.tz, env.now, env.country) : '', rows: [] };
+      g = { key, label: key ? labelOfDay(key, env.now, env.country, env.tz) : '', rows: [] };
       byKey.set(key, g);
       groups.push(g);
     }
