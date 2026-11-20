@@ -1,14 +1,14 @@
 ---
 /** "Can I have a fire / water my lawn right now?" -- the City's own fire and water restriction alerts (Fas 5 source 1, owner
  *  2026-11-19; lib/restrictions.ts). Per kind: every active alert in the City's category, its own title verbatim, newest first, at
- *  most 3, each with "In effect since" and a link to that alert; then "Last checked" and the category page. A failed or 48 h old
+ *  most 3, each with "Posted <date>" (the alert's publication date) and a link to that alert; then "Last checked" and the category page. A failed or 48 h old
  *  check reads "Status unknown, see the source", also in a page built while the data was fresh: the script below swaps in the
  *  pre-rendered unknown row at data-stale-at, no rebuild. Renders nothing for a town without siteConfig.restrictions. */
 import SectionHeader from './ui/SectionHeader.astro';
 import CompactRow from './ui/CompactRow.astro';
 import { siteConfig } from '../lib/site-config';
 import { loadRestrictionViews } from '../lib/restrictions-data';
-import { UNKNOWN_TEXT, CHECK_FREQUENCY_TEXT, sinceLine, checkedLine } from '../lib/restrictions';
+import { UNKNOWN_TEXT, CHECK_FREQUENCY_TEXT, postedLine, checkedLine } from '../lib/restrictions';
 
 const views = await loadRestrictionViews(siteConfig, new Date());
 const tz = siteConfig.timezone;
@@ -25,7 +25,7 @@ const tz = siteConfig.timezone;
             <CompactRow href={a.url ?? v.sourceUrl}>
               <span class="restrictions__row">
                 <span class="restrictions__text">{a.title}</span>
-                {sinceLine(a.sinceAt, tz) && <span class="restrictions__meta">{sinceLine(a.sinceAt, tz)}</span>}
+                {postedLine(a.sinceAt, tz) && <span class="restrictions__meta">{postedLine(a.sinceAt, tz)}</span>}
               </span>
             </CompactRow>
           </div>

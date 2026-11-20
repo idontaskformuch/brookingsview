@@ -33,7 +33,7 @@ export interface RestrictionSource { sourceUrl: string }
 export const STALE_AFTER_MS = 48 * 3600_000;
 export const MAX_SHOWN = 3;
 
-export const LABELS: Record<RestrictionKind, string> = { fire: 'Fire restrictions', water: 'Water restrictions' };
+export const LABELS: Record<RestrictionKind, string> = { fire: 'Fire alerts and restrictions', water: 'Water restrictions' };
 export const UNKNOWN_TEXT = 'Status unknown, see the source';
 export const NONE_TEXT: Record<RestrictionKind, string> = {
   fire: 'No fire restriction alert posted by the City',
@@ -90,7 +90,7 @@ export function restrictionView(kind: RestrictionKind, latest: RestrictionCheck 
 }
 
 /** "Nov 17, 2026" in the town's zone. */
-export function formatSince(iso: string, timeZone: string): string {
+export function formatPosted(iso: string, timeZone: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone });
 }
 
@@ -99,9 +99,9 @@ export function formatChecked(iso: string, timeZone: string): string {
   return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone });
 }
 
-/** "In effect since Nov 17, 2026" for one alert (template), or null without a date. */
-export function sinceLine(sinceAt: string | null, timeZone: string): string | null {
-  return sinceAt ? `In effect since ${formatSince(sinceAt, timeZone)}` : null;
+/** "Posted Nov 17, 2026" for one alert (template), or null without a date. The date is the alert's own publication date on the City's page (span.date), not when the restriction took effect (owner 2026-11-20). */
+export function postedLine(sinceAt: string | null, timeZone: string): string | null {
+  return sinceAt ? `Posted ${formatPosted(sinceAt, timeZone)}` : null;
 }
 
 /** "Last checked Nov 19, 4:00 PM" / "Last successful check ..." / "Not checked yet" (templates). */

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  restrictionView, sinceLine, checkedLine, UNKNOWN_TEXT, NONE_TEXT, STALE_AFTER_MS, MAX_SHOWN, CHECK_FREQUENCY_TEXT,
+  restrictionView, postedLine, checkedLine, UNKNOWN_TEXT, NONE_TEXT, STALE_AFTER_MS, MAX_SHOWN, CHECK_FREQUENCY_TEXT,
   type RestrictionCheck, type RestrictionAlert,
 } from './restrictions';
 import { buildRestrictionStatus } from './cityStatus';
@@ -30,13 +30,13 @@ const failed = (row: RestrictionCheck, checked_at: string): RestrictionCheck => 
 const noneRow = (row: RestrictionCheck): RestrictionCheck => ({ ...row, state: 'none', alerts: [], alert_count: 0 });
 
 describe('restrictionView', () => {
-  it('level 1 plus a red flag warning: both titles verbatim, newest first, each with its own since date', () => {
+  it('level 1 plus a red flag warning: both titles verbatim, newest first, each with its own posted date', () => {
     const v = restrictionView('fire', fire, fire, { sourceUrl: FIRE_URL }, NOW);
     expect(v).toMatchObject({ state: 'active', sourceUrl: FIRE_URL, tone: 'notice', more: null,
       text: 'Red Flag Warning; Level 1 Fire Restrictions in Effect' });
-    expect(v.alerts.map((a) => [a.title, sinceLine(a.sinceAt, TZ), a.url])).toEqual([
-      ['Red Flag Warning', 'In effect since Nov 18, 2026', RED_FLAG.url],
-      ['Level 1 Fire Restrictions in Effect', 'In effect since Nov 17, 2026', LEVEL_1.url],
+    expect(v.alerts.map((a) => [a.title, postedLine(a.sinceAt, TZ), a.url])).toEqual([
+      ['Red Flag Warning', 'Posted Nov 18, 2026', RED_FLAG.url],
+      ['Level 1 Fire Restrictions in Effect', 'Posted Nov 17, 2026', LEVEL_1.url],
     ]);
     expect(checkedLine(v, TZ)).toBe('Last checked Nov 19, 4:00 PM');
     expect(v.staleAt).toBe(new Date(Date.parse(CHECKED) + STALE_AFTER_MS).toISOString());
@@ -60,7 +60,7 @@ describe('restrictionView', () => {
   it('water drought watch', () => {
     const v = restrictionView('water', water, water, { sourceUrl: WATER_URL }, NOW);
     expect(v.text).toBe('Broomfield is Under a Drought Watch');
-    expect(sinceLine(v.alerts[0].sinceAt, TZ)).toBe('In effect since Feb 9, 2026');
+    expect(postedLine(v.alerts[0].sinceAt, TZ)).toBe('Posted Feb 9, 2026');
   });
 
   it('no restriction: only from a fresh successful check whose page said 0 (state none)', () => {
@@ -118,7 +118,7 @@ describe('"We check it ..." matches the real schedule', () => {
 describe('CityStatus restriction rows', () => {
   it('known row: the titles, links to /safety/, swaps to unknown at the 48 h mark in the browser', () => {
     const m = buildRestrictionStatus(restrictionView('fire', fire, fire, { sourceUrl: FIRE_URL }, NOW));
-    expect(m).toMatchObject({ id: 'fire_restrictions', label: 'Fire restrictions',
+    expect(m).toMatchObject({ id: 'fire_restrictions', label: 'Fire alerts and restrictions',
       value: 'Red Flag Warning; Level 1 Fire Restrictions in Effect', tone: 'notice', href: '/safety/#restrictions' });
     expect(m.swapAt).toEqual({ at: new Date(Date.parse(CHECKED) + STALE_AFTER_MS).toISOString(), value: UNKNOWN_TEXT, href: FIRE_URL });
   });
