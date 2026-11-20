@@ -62,16 +62,61 @@ function datedPhases(p: Pick<CipProject, 'timeline'>): CipPhase[] {
   return (p.timeline ?? []).filter((ph) => ph.start && ph.end);
 }
 
-export function groupOf(p: Pick<CipProject, 'timeline' | 'delisted_at'>, today: Date): CipGroup {
+/** How a project came to be 'complete': every dated phase marked "(Completed)" by the City, or the City's own summary sentence
+ *  (owner 2026-11-20). Null when the project is not 'complete'. Shown in the label: "Complete · per City summary". */
+export type CompleteSource = 'timeline' | 'summary';
+
+// Owner 2026-11-20, strict: only the City's own summary sentence under the heading counts, the whole sentence, with the project's
+// name in it. "<name> project is now complete." or "<name> ... has been / was completed". Never a phase or part ("Phase 1 is now
+// complete"), never the future or almost ("will be complete by 2027", "nearing completion").
+const NOT_WHOLE = /\b(phase|phases|part|parts|portion|partially|partly|substantially|mostly|section|segment|stage|first|initial|will|nearing|near|almost|expected|anticipated|scheduled)\b/i;
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+export function summarySaysComplete(p: Pick<CipProject, 'title' | 'description'>): boolean {
+  const name = escapeRe(p.title.trim()).replace(/\s+/g, '\\s+');
+  const nowComplete = new RegExp(`^(?:the\\s+)?${name}\\s+project\\s+is\\s+now\\s+complete\\.$`, 'i');
+  const wasCompleted = new RegExp(`${name}\\b.*\\b(?:has\\s+been|was)\\s+completed\\b`, 'i');
+  const sentences = (p.description ?? '').split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean);
+  // The negative words are checked outside the project's own name ("Phase 2 Trail" in a name would otherwise block it).
+  return sentences.some((x) => !NOT_WHOLE.test(x.replace(new RegExp(name, 'i'), '')) && (nowComplete.test(x) || wasCompleted.test(x)));
+}
+
+const ONGOING = /\b(ongoing|in progress|underway|currently)\b/i;
+
+/** Owner 2026-11-20: a Timeline line with a date after today, a TBD line, or a line saying the work is ongoing wins over "complete".
+ *  Also the QA rule (qa/checks.json cip.complete-no-future-date): no 'complete' project has a line dated after today. */
+export function timelineSaysOpen(p: Pick<CipProject, 'timeline'>, today: Date): boolean {
+  const day = isoDay(today);
+  const year = today.getUTCFullYear();
+  return (p.timeline ?? []).some((ph) =>
+    (ph.start != null && ph.start > day) || (ph.end != null && ph.end > day) || ph.tbd
+    || (!ph.completed && ONGOING.test(ph.text))
+    || [...ph.text.matchAll(/\b(20\d{2})\b/g)].some((m) => Number(m[1]) > year)); // an unread year after this one ("2027")
+}
+
+export function completeSource(p: Pick<CipProject, 'title' | 'description' | 'timeline' | 'delisted_at'>, today: Date): CompleteSource | null {
+  if (p.delisted_at || timelineSaysOpen(p, today)) return null;
+  const dated = datedPhases(p);
+  if (dated.length > 0 && dated.every((ph) => ph.completed)) return 'timeline';
+  return summarySaysComplete(p) ? 'summary' : null;
+}
+
+export function groupOf(p: Pick<CipProject, 'title' | 'description' | 'timeline' | 'delisted_at'>, today: Date): CipGroup {
   if (p.delisted_at) return 'delisted';
+  if (completeSource(p, today)) return 'complete';
   const dated = datedPhases(p);
   const tbd = (p.timeline ?? []).filter((ph) => ph.tbd);
   const readable = [...dated, ...tbd];
   if (readable.length === 0) return 'see_city';
-  if (tbd.length === 0 && dated.every((ph) => ph.completed)) return 'complete';
   const day = isoDay(today);
   const started = dated.some((ph) => ph.completed || (ph.start as string) <= day);
   return started ? 'in_progress' : 'planned';
+}
+
+/** The group label for one project: "Complete · per City summary" when the City's summary, not its timeline, made it complete. */
+export function groupLabelOf(p: Pick<CipProject, 'title' | 'description' | 'timeline' | 'delisted_at'>, today: Date): string {
+  const label = GROUPS.find((g) => g.key === groupOf(p, today))!.label;
+  return completeSource(p, today) === 'summary' ? `${label} · per City summary` : label;
 }
 
 /** The next date on the City's timeline from today: an open phase's start when it lies ahead, else its end. Null when none. */

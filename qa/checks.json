@@ -585,6 +585,11 @@
       "severity": "hard",
       "born_from": "Fas 5 källa 1 2026-11-20: the first good restrictions run (broomfield-scrape 44745867921, 13:37 UTC) wrote restriction_checks rows 1-2, but scripts/ci_changed.py did not list the table, printed changed=false and started no build: live /safety/ kept 'Status unknown / Not checked yet'. Fix: restriction_checks in DATA_TABLES. Regression fixture: tests/test_ci_changed.py 'restriction checks counts so safety is rebuilt' (fails before the fix).",
       "what": "a table a page shows is written by a scraper but missing from ci_changed DATA_TABLES, so new rows never rebuild the site (pytest)"
+    },
+    "cip.complete-no-future-date": {
+      "severity": "hard",
+      "born_from": "Owner 2026-11-20, with the summary rule for Complete (Stoneybrook Drive Retaining Wall Replacement, page 4389: 'The ... project is now complete.' and no phase marked Completed): no capital project may be shown as Complete while a Timeline line has a date after today, and a future-dated, TBD or ongoing line wins (In progress). Enforced in lib/capital-projects.ts completeSource/timelineSaysOpen. Regression fixtures: site/src/lib/capital-projects.test.ts 'QA: no real project is Complete while a Timeline line is dated after today' over the 27 real projects (site/src/lib/fixtures/cip-projects-2026-11-20.json; only Stoneybrook is Complete), plus Stoneybrook with only its description changed ('Phase 1 ... is now complete.', '... will be complete by 2027.') staying In progress.",
+      "what": "a /projects/ page or row labelled Complete while one of its Timeline lines is dated after the build date, or Complete from a summary sentence that is partial, future or lacks the project name (vitest)"
     }
   }
 }

@@ -1,0 +1,483 @@
+{
+ "_source": "projects (source_type 'cip_page', broomfield_co) as the 11:00 UTC run 2026-11-20 stored them; timeline re-read with parser v2 (54a98a5b) from the stored line texts, 112th & Uptown from tests/fixtures/capital_projects/uptown112.html (v1 stored its sub-task bullets).",
+ "projects": [
+  {
+   "slug": "10th-at-birch-intersection-improvements",
+   "title": "10th at Birch Intersection Improvements",
+   "description": "The 10th Avenue at Birch Street intersection improvements project aims to improve safety around the Birch Elementary School.",
+   "source_url": "https://www.broomfield.org/4536/10th-at-Birch-Intersection-Improvements",
+   "timeline": [
+    {
+     "text": "Final Design: May - September 2026",
+     "label": "Final Design",
+     "start": "2026-05-01",
+     "end": "2026-09-30",
+     "completed": false,
+     "tbd": false
+    },
+    {
+     "text": "Utility Coordination and Relocation: July 2026 - April 2027",
+     "label": "Utility Coordination and Relocation",
+     "start": "2026-07-01",
+     "end": "2027-04-30",
+     "completed": false,
+     "tbd": false
+    },
+    {
+     "text": "Winter 2026: The budget, scope, prioritization and timing of the project are being re-evaluated due to the planned closure of Birch Elementary School.",
+     "label": null,
+     "start": null,
+     "end": null,
+     "completed": false,
+     "tbd": false
+    }
+   ],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "112th-and-uptown-avenue-street-improvements",
+   "title": "112th & Uptown Avenue Street Improvements",
+   "description": "",
+   "source_url": "https://www.broomfield.org/3573/112th-and-Uptown-Avenue",
+   "timeline": [
+    {
+     "text": "Preliminary Items: June 2025.",
+     "label": "Preliminary Items",
+     "start": "2025-06-01",
+     "end": "2025-06-30",
+     "completed": false,
+     "tbd": false
+    },
+    {
+     "text": "Phase 1A & 1B Tasks - East End/North Side of W. 112th Ave: August thru October 2025",
+     "label": null,
+     "start": null,
+     "end": null,
+     "completed": false,
+     "tbd": false
+    },
+    {
+     "text": "Phase 2A & 2B -Outside ROW / North & South of W. 112th Avenue: October through May 2026",
+     "label": null,
+     "start": null,
+     "end": null,
+     "completed": false,
+     "tbd": false
+    },
+    {
+     "text": "Phase 3 - Misc. Closeout Tasks: May thru July 2026.",
+     "label": null,
+     "start": null,
+     "end": null,
+     "completed": false,
+     "tbd": false
+    },
+    {
+     "text": "Project Completion: Summer 2026",
+     "label": null,
+     "start": null,
+     "end": null,
+     "completed": false,
+     "tbd": false
+    }
+   ],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "120th-ave-complete-street-improvements",
+   "title": "120th Ave Complete Street Improvements",
+   "description": "",
+   "source_url": "https://www.broomfield.org/4311/120th-Ave-Local-Complete-Streets",
+   "timeline": [],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "2026-ada-curb-ramp-program",
+   "title": "2026 ADA Curb Ramp Program",
+   "description": "",
+   "source_url": "https://www.broomfield.org/4540/104173/2026-ADA-Curb-Ramp-Program?activeLiveTab=widgets#liveEditTab_widgets",
+   "timeline": [],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "airport-creek-trail-underpass",
+   "title": "Airport Creek Trail Underpass",
+   "description": "",
+   "source_url": "https://www.broomfield.org/4259/Airport-Creek-Trail-Underpass",
+   "timeline": [
+    {
+     "text": "Initial Alternatives Analysis: 2022 - completed.",
+     "label": null,
+     "start": null,
+     "end": null,
+     "completed": true,
+     "tbd": false
+    },
+    {
+     "text": "Federal grant Intergovernmental Agreement with CDOT: 2023 - completed.",
+     "label": null,
+     "start": null,
+     "end": null,
+     "completed": true,
+     "tbd": false
+    },
+    {
+     "text": "Federal grant: 2024 - completed.",
+     "label": null,
+     "start": null,
+     "end": null,
+     "completed": true,
+     "tbd": false
+    },
+    {
+     "text": "Preliminary design for the preferred alternative: 2024/2025",
+     "label": null,
+     "start": null,
+     "end": null,
+     "completed": false,
+     "tbd": false
+    },
+    {
+     "text": "Public outreach: 2025",
+     "label": null,
+     "start": null,
+     "end": null,
+     "completed": false,
+     "tbd": false
+    },
+    {
+     "text": "60% design: May 2026 - completed.",
+     "label": "60% design",
+     "start": "2026-05-01",
+     "end": "2026-05-31",
+     "completed": true,
+     "tbd": false
+    },
+    {
+     "text": "Fall 2026: The design is currently paused while the feasibility of an underpass at the planned 116th rail platform is evaluated. The budget, scope, prioritization and timing of the Airport Creek Trail Underpass will be re-evaluated if an underpass is included with the passenger rail station/platform at 116th Avenue.",
+     "label": null,
+     "start": null,
+     "end": null,
+     "completed": false,
+     "tbd": false
+    }
+   ],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "anthem-community-park-improvements",
+   "title": "Anthem Community Park Improvements",
+   "description": "",
+   "source_url": "https://www.broomfield.org/4501/Anthem-Community-Park-Improvements",
+   "timeline": [],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "arista-neighborhood-public-lighting-and-electrical-system-repairs",
+   "title": "Arista Neighborhood Public Lighting and Electrical System Repairs",
+   "description": "",
+   "source_url": "https://www.broomfield.org/4662/106196/Arista-Neighborhood-Public-Lighting-and-?activeLiveTab=widgets",
+   "timeline": [],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "broadlands-west-park-retaining-wall-replacement",
+   "title": "Broadlands West Park Retaining Wall Replacement",
+   "description": "",
+   "source_url": "https://www.broomfield.org/4553/104472/Dry-Stack-Retaining-Wall-Repair-at-Broad?activeLiveTab=widgets",
+   "timeline": [
+    {
+     "text": "Construction Quotes: End of August and Early September 2026",
+     "label": null,
+     "start": null,
+     "end": null,
+     "completed": false,
+     "tbd": false
+    },
+    {
+     "text": "Construction: Fall 2026",
+     "label": null,
+     "start": null,
+     "end": null,
+     "completed": false,
+     "tbd": false
+    }
+   ],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "broomfield-heights-stormwater-and-pedestrian-improvements",
+   "title": "Broomfield Heights Stormwater and Pedestrian Improvements",
+   "description": "",
+   "source_url": "https://www.broomfield.org/4284/Broomfield-Heights-Stormwater-and-Pedest",
+   "timeline": [],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "broomfield-police-building-expansion",
+   "title": "Broomfield Police Building Expansion",
+   "description": "The proposed building is approximately 83,000 SF, and is proposed to be located at the southeast corner of DesCombes Drive and 3rd Avenue.",
+   "source_url": "https://www.broomfield.org/4390/Broomfield-Police-Building-Expansion",
+   "timeline": [
+    {
+     "text": "Construction is anticipated to start in Summer 2026 and take approximately 20 months to complete.",
+     "label": null,
+     "start": null,
+     "end": null,
+     "completed": false,
+     "tbd": false
+    }
+   ],
+   "cost_text": "The project is anticipated to cost $81.6M.",
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "city-park-channel-at-main-street",
+   "title": "City Park Channel at Main Street",
+   "description": "",
+   "source_url": "https://www.broomfield.org/4560/City-Park-Channel",
+   "timeline": [],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "co-7-interim-bus-stops",
+   "title": "CO 7 Interim Bus Stops",
+   "description": "",
+   "source_url": "https://www.broomfield.org/4533/CO-7-Interim-Bus-Stops",
+   "timeline": [],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "co-7-interim-improvements",
+   "title": "CO-7 Interim Improvements",
+   "description": "",
+   "source_url": "https://www.broomfield.org/3570/CO7-Interim-Improvements",
+   "timeline": [],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "county-commons-teen-space",
+   "title": "County Commons Teen Space",
+   "description": "",
+   "source_url": "https://www.broomfield.org/4542/104175/County-Commons-Teen-Space?activeLiveTab=widgets#liveEditTab_widgets",
+   "timeline": [],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "kohl-st-and-daphne-st-multimodal-improvements",
+   "title": "Kohl St & Daphne St Multimodal Improvements",
+   "description": "The primary objective of this project is to improve pedestrian and bicycle safety along Kohl Street, specifically at the intersection of Daphne Street.",
+   "source_url": "https://www.broomfield.org/4561/105095/Kohl-Street-and-Daphne-Street-Multimodal?activeLiveTab=widgets#liveEditTab_widgets",
+   "timeline": [
+    {
+     "text": "December 2026: Installation of Rectangular Rapid Flashing Beacons (RRFBs) is anticipated as part of the construction work.",
+     "label": null,
+     "start": null,
+     "end": null,
+     "completed": false,
+     "tbd": false
+    }
+   ],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "markel-and-wottge-open-space-plan",
+   "title": "Markel and Wottge Open Space Plan",
+   "description": "",
+   "source_url": "https://www.broomfield.org/4312/Markel-and-Wottge-Open-Space-Plan",
+   "timeline": [],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "mesa-zone-booster-station",
+   "title": "Mesa Zone Booster Station",
+   "description": "",
+   "source_url": "https://www.broomfield.org/3574/Mesa-Zone-Water-Booster-Station",
+   "timeline": [],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "midway-boulevard-design",
+   "title": "Midway Boulevard Design",
+   "description": "",
+   "source_url": "https://www.broomfield.org/4566/105222/Midway-Boulevard-Design?activeLiveTab=widgets",
+   "timeline": [],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "nickel-street-and-industrial-lane-intersection-improvements",
+   "title": "Nickel Street and Industrial Lane Intersection Improvements",
+   "description": "",
+   "source_url": "https://www.broomfield.org/3927/Nickel-Street-and-Industrial-Lane---Inte",
+   "timeline": [],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "nissen-channel",
+   "title": "Nissen Channel",
+   "description": "",
+   "source_url": "https://www.broomfield.org/3956/Nissen-Channel",
+   "timeline": [],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "north-area-water-tanks",
+   "title": "North Area Water Tanks",
+   "description": "",
+   "source_url": "https://www.broomfield.org/3571/North-Area-Tanks---Water-and-Reuse",
+   "timeline": [],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "parking-lot-renovations",
+   "title": "Parking Lot Renovations",
+   "description": "",
+   "source_url": "https://broomfield.org/4374/2025-Parking-Lot-Renovations",
+   "timeline": [],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "redpoint-ridge-park-landscape-renovation",
+   "title": "Redpoint Ridge Park Landscape Renovation",
+   "description": "",
+   "source_url": "https://www.broomfield.org/4381/RedPointRidgeConstruction",
+   "timeline": [],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "sewer-lift-station-compliance",
+   "title": "Sewer Lift Station Compliance",
+   "description": "",
+   "source_url": "https://www.broomfield.org/3572/Sewer-Lift-Station-Compliance",
+   "timeline": [],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "stoneybrook-drive-retaining-wall-replacement",
+   "title": "Stoneybrook Drive Retaining Wall Replacement",
+   "description": "The Stoneybrook Drive Retaining Wall Replacement project is now complete.",
+   "source_url": "https://www.broomfield.org/4389/Stoneybrook-Drive-Retaining-Wall",
+   "timeline": [
+    {
+     "text": "Construction Start: November 2025",
+     "label": "Construction Start",
+     "start": "2025-11-01",
+     "end": "2025-11-30",
+     "completed": false,
+     "tbd": false
+    },
+    {
+     "text": "Construction Completion: April 2026.",
+     "label": "Construction Completion",
+     "start": "2026-04-01",
+     "end": "2026-04-30",
+     "completed": false,
+     "tbd": false
+    }
+   ],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "the-field-open-space-overlook-project",
+   "title": "The Field Open Space Overlook Project",
+   "description": "",
+   "source_url": "https://www.broomfield.org/4601/The-Field-Open-Space-Overlook",
+   "timeline": [],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  },
+  {
+   "slug": "varra-park-hillside-stabilization",
+   "title": "Varra Park Hillside Stabilization",
+   "description": "",
+   "source_url": "https://www.broomfield.org/4537/104107/Varra-Park-Hillside-Stabilization?activeLiveTab=widgets#liveEditTab_widgets",
+   "timeline": [
+    {
+     "text": "Data Gathering and Geotechnical Field Work: May - June2026",
+     "label": "Data Gathering and Geotechnical Field Work",
+     "start": "2026-05-01",
+     "end": "2026-06-30",
+     "completed": false,
+     "tbd": false
+    },
+    {
+     "text": "Preliminary Design: July - October 2026 (Completed)",
+     "label": "Preliminary Design",
+     "start": "2026-07-01",
+     "end": "2026-10-31",
+     "completed": true,
+     "tbd": false
+    },
+    {
+     "text": "Final Design: November - January 2027",
+     "label": "Final Design",
+     "start": "2026-11-01",
+     "end": "2027-01-31",
+     "completed": false,
+     "tbd": false
+    },
+    {
+     "text": "Construction: TBD",
+     "label": "Construction",
+     "start": null,
+     "end": null,
+     "completed": false,
+     "tbd": true
+    }
+   ],
+   "cost_text": null,
+   "last_checked_at": "2026-11-20T11:07:36.374504+00:00",
+   "delisted_at": null
+  }
+ ]
+}

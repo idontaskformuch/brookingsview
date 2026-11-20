@@ -11,7 +11,7 @@ import { siteConfig } from '../../lib/site-config';
 import { forCountry } from '../../lib/country-profile';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { shouldNoindexProject } from '../../lib/project-noindex';
-import { CHECK_FREQUENCY_TEXT, GROUPS, cipProjectDescription, TIMELINE_LABEL, exactNameMatch, formatCheckedDate, groupOf } from '../../lib/capital-projects';
+import { CHECK_FREQUENCY_TEXT, cipProjectDescription, TIMELINE_LABEL, exactNameMatch, formatCheckedDate, groupLabelOf } from '../../lib/capital-projects';
 
 export async function getStaticPaths() {
   const projects = await getCapitalProjects();
@@ -24,7 +24,7 @@ const locale = forCountry(siteConfig.country, 'en-US', 'en-GB');
 const fmt = (iso: string) => formatCheckedDate(iso, siteConfig.timezone, locale);
 const updates = await getCapitalProjectUpdates(project.slug);
 const noindex = shouldNoindexProject(updates.map(() => ({ outcome: 'pending' })));
-const group = GROUPS.find((g) => g.key === groupOf(project, new Date()))!;
+const groupLabel = groupLabelOf(project, new Date());
 const twin = exactNameMatch(project.title, await getProjects());
 const canonicalUrl = new URL(`/projects/${project.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = [
@@ -39,7 +39,7 @@ const description = cipProjectDescription(project.title, siteConfig.cityName);
   <Breadcrumbs trail={breadcrumbTrail} />
   <article class="cip">
     <header>
-      <p class="cip-group">{group.label}</p>
+      <p class="cip-group">{groupLabel}</p>
       <h1>{project.title}</h1>
       {project.description && <p class="cip-sum">{project.description}</p>}
     </header>

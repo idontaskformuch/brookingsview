@@ -17,7 +17,7 @@ import { resolvePageMeta } from '../../lib/page-meta';
 import { forCountry } from '../../lib/country-profile';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import {
-  CHECK_FREQUENCY_TEXT, TIMELINE_LABEL, cipIndexDescription, exactNameMatch, formatCheckedDate, groupProjects, lastChecked,
+  CHECK_FREQUENCY_TEXT, TIMELINE_LABEL, cipIndexDescription, completeSource, exactNameMatch, formatCheckedDate, groupProjects, lastChecked,
 } from '../../lib/capital-projects';
 
 const config = siteConfig.capitalProjects;
@@ -29,7 +29,8 @@ const canonicalUrl = new URL('/projects/', Astro.site ?? siteConfig.siteUrl).hre
 const breadcrumbTrail: BreadcrumbEntry[] = [{ label: 'Home', href: '/' }, { label: 'Capital projects', href: canonicalUrl }];
 const projects = await getCapitalProjects();
 const listed = projects.filter((p) => !p.delisted_at);
-const groups = groupProjects(projects, new Date());
+const today = new Date();
+const groups = groupProjects(projects, today);
 const checked = lastChecked(listed);
 const registry = await getProjects();
 const noindex = listed.length === 0;
@@ -54,6 +55,7 @@ const description = cipIndexDescription(siteConfig.cityName);
             <li>
               <CompactRow cat="civic">
                 <a class="cip-title" href={`/projects/${p.slug}/`}>{p.title}</a>
+                {completeSource(p, today) === 'summary' && <span class="cip-src">Complete · per City summary</span>}
                 {p.description && <span class="cip-sum">{p.description}</span>}
                 {p.timeline && p.timeline.length > 0 && (
                   <span class="cip-phases">
@@ -83,7 +85,7 @@ const description = cipIndexDescription(siteConfig.cityName);
     <p>
       {listed.length > 0 ? `${listed.length} projects on` : 'Projects on'} the City's list of
       <a href={config.listUrl} rel="noopener">current capital improvement projects</a>.
-      Phases and dates are the City's own words. The groups above only sort them by the City's timeline lines.
+      Phases and dates are the City's own words. The groups above only sort them by the City's timeline lines; a project is Complete "per City summary" when the City's own summary says the whole project is complete and no timeline line is dated after today.
     </p>
     <p class="cip-checked">{checked ? `Last checked ${formatCheckedDate(checked, siteConfig.timezone, locale)}.` : 'Not checked yet.'}</p>
     <p>{CHECK_FREQUENCY_TEXT} We read the City's list and each project's own page, and copy the timeline lines, the cost line
@@ -100,6 +102,7 @@ const description = cipIndexDescription(siteConfig.cityName);
 .cip-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; max-width: 48rem; }
 .cip-title { font-weight: 600; display: block; }
 .cip-sum, .cip-cost, .cip-links { display: block; color: var(--ink-soft); font-size: 0.9375rem; margin-top: 0.25rem; }
+.cip-src { display: block; font-size: 0.8125rem; color: var(--ink-soft); }
 .cip-phases { display: block; margin-top: 0.35rem; font-size: 0.9375rem; }
 .cip-label { display: block; font-size: 0.8125rem; color: var(--ink-soft); text-transform: none; }
 .cip-phase { display: block; }

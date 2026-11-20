@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { SCRAPE_CRON, SCRAPE_WORKFLOWS } from '../../../cron-dispatcher/src/schedule';
 import { ALL_CONFIGS } from './site-config';
 import {
-  CHECK_FREQUENCY_TEXT, PAGE_H1, cipIndexDescription, cipProjectDescription, exactNameMatch, groupOf, groupProjects, lastChecked, nextMilestone, type CipPhase, type CipProject,
+  CHECK_FREQUENCY_TEXT, PAGE_H1, cipIndexDescription, cipProjectDescription, completeSource, exactNameMatch, groupLabelOf, summarySaysComplete, groupOf, groupProjects, lastChecked, nextMilestone, type CipPhase, type CipProject,
 } from './capital-projects';
 import { PAGE_META_PATTERNS } from '../config/page-meta';
 import { fitDescription } from './meta-description';
@@ -60,7 +60,9 @@ describe('groups (a sort order, owner addition 2)', () => {
   });
   it('complete only when the City marks every phase "(Completed)" (Varra with all four marked, the changed field)', () => {
     const done = { ...VARRA, timeline: VARRA.timeline!.filter((p) => !p.tbd).map((p) => ({ ...p, completed: true })) };
-    expect(groupOf(done, TODAY)).toBe('complete');
+    expect(groupOf(done, new Date('2027-02-15T12:00:00Z'))).toBe('complete');
+    // QA cip.complete-no-future-date (owner 2026-11-20): Final Design ends 2027-01-31, after today, so not Complete yet even marked.
+    expect(groupOf(done, TODAY)).toBe('in_progress');
     expect(groupOf({ ...VARRA, timeline: VARRA.timeline!.map((p) => ({ ...p, completed: !p.tbd })) }, TODAY)).toBe('in_progress');
   });
   it('no line with readable dates: "Timeline: see the City\'s page" (decision C)', () => {
@@ -159,10 +161,9 @@ describe('meta descriptions (2026-11-20 battery: /projects/ and long-titled page
   });
 });
 
-describe('Stoneybrook Drive Retaining Wall Replacement (page 4389, parser v2 2026-11-20)', () => {
-  // The real lines as scrapers/parsers/capital_projects.py v2 reads them (owner (c): the closing period no longer blocks the date).
-  // The City's summary says "The Stoneybrook Drive Retaining Wall Replacement project is now complete.", but no line is marked
-  // "(Completed)", so under the owner's group rule it is In progress, not Complete. Owner question open 2026-11-20.
+describe('Complete per the City summary (owner 2026-11-20, strict)', () => {
+  // The real row (page 4389) as parser v2 reads it; its summary is the only "complete" sentence among the 27 real projects, so the
+  // two negative cases are this row with ONLY its description changed (CLAUDE.md rule 15).
   const STONEY: CipProject = {
     slug: 'stoneybrook-drive-retaining-wall-replacement', title: 'Stoneybrook Drive Retaining Wall Replacement',
     description: 'The Stoneybrook Drive Retaining Wall Replacement project is now complete.',
@@ -173,7 +174,42 @@ describe('Stoneybrook Drive Retaining Wall Replacement (page 4389, parser v2 202
     ],
     cost_text: null, last_checked_at: '2026-11-20T11:07:36Z', delisted_at: null,
   };
-  it('is In progress, not "see the City", now that both lines have dates', () => {
-    expect(groupOf(STONEY, new Date('2026-11-20T12:00:00Z'))).toBe('in_progress');
+  const TODAY = new Date('2026-11-20T12:00:00Z');
+
+  it('Stoneybrook is Complete, labelled with its source', () => {
+    expect(groupOf(STONEY, TODAY)).toBe('complete');
+    expect(completeSource(STONEY, TODAY)).toBe('summary');
+    expect(groupLabelOf(STONEY, TODAY)).toBe('Complete · per City summary');
+  });
+  it.each([
+    ['Phase 1 of the Stoneybrook Drive Retaining Wall Replacement project is now complete.'],
+    ['The Stoneybrook Drive Retaining Wall Replacement project will be complete by 2027.'],
+    ['The Stoneybrook Drive Retaining Wall Replacement project is nearing completion.'],
+    ['The retaining wall project is now complete.'], // no project name in the sentence
+  ])('not Complete: %s', (description) => {
+    expect(summarySaysComplete({ ...STONEY, description })).toBe(false);
+    expect(groupOf({ ...STONEY, description }, TODAY)).toBe('in_progress');
+  });
+  it('"has been completed" / "was completed" with the name in the same sentence counts', () => {
+    expect(summarySaysComplete({ ...STONEY, description: 'The Stoneybrook Drive Retaining Wall Replacement has been completed.' })).toBe(true);
+    expect(summarySaysComplete({ ...STONEY, description: 'Work on the Stoneybrook Drive Retaining Wall Replacement was completed in April.' })).toBe(true);
+  });
+  it('a Timeline line dated after today wins: In progress', () => {
+    const later = { ...STONEY, timeline: [STONEY.timeline![0], ph('Construction Completion: April 2027.', 'Construction Completion', '2027-04-01', '2027-04-30')] };
+    expect(groupOf(later, TODAY)).toBe('in_progress');
+    expect(groupLabelOf(later, TODAY)).toBe('In progress');
+  });
+
+  // QA cip.complete-no-future-date, against the 27 real projects of the first live run (site/src/lib/fixtures/cip-projects-2026-11-20.json).
+  const REAL = (JSON.parse(readFileSync(new URL('./fixtures/cip-projects-2026-11-20.json', import.meta.url), 'utf8')) as { projects: CipProject[] }).projects;
+  it('QA: no real project is Complete while a Timeline line is dated after today', () => {
+    expect(REAL).toHaveLength(27);
+    for (const p of REAL) {
+      if (groupOf(p, TODAY) !== 'complete') continue;
+      const day = TODAY.toISOString().slice(0, 10);
+      const future = (p.timeline ?? []).filter((ph) => (ph.start ?? '') > day || (ph.end ?? '') > day);
+      expect(future, p.slug).toEqual([]);
+    }
+    expect(REAL.filter((p) => groupOf(p, TODAY) === 'complete').map((p) => p.slug)).toEqual(['stoneybrook-drive-retaining-wall-replacement']);
   });
 });
