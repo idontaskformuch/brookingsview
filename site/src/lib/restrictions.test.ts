@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  restrictionView, postedLine, checkedLine, UNKNOWN_TEXT, NONE_TEXT, STALE_AFTER_MS, MAX_SHOWN, CHECK_FREQUENCY_TEXT,
+  restrictionView, postedLine, checkedLine, UNKNOWN_TEXT, NONE_TEXT, STALE_AFTER_MS, MAX_SHOWN, CHECK_FREQUENCY_TEXT, SECTION_TITLE, LABELS,
   type RestrictionCheck, type RestrictionAlert,
 } from './restrictions';
 import { buildRestrictionStatus } from './cityStatus';
@@ -102,6 +102,13 @@ describe('restrictionView', () => {
     expect(restrictionView('water', null, null, { sourceUrl: WATER_URL }, NOW)).toMatchObject({
       state: 'unknown', text: UNKNOWN_TEXT, sourceUrl: WATER_URL,
     });
+  });
+});
+
+describe('headings (owner 2026-11-20)', () => {
+  it('section heading; fire label = the City category name; water unchanged', () => {
+    expect(SECTION_TITLE).toBe('Fire and water restrictions and alerts');
+    expect(LABELS).toEqual({ fire: 'Fire alerts and restrictions', water: 'Water restrictions' });
   });
 });
 

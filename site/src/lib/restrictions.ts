@@ -33,6 +33,8 @@ export interface RestrictionSource { sourceUrl: string }
 export const STALE_AFTER_MS = 48 * 3600_000;
 export const MAX_SHOWN = 3;
 
+/** The section heading on /safety/ (owner 2026-11-20). */
+export const SECTION_TITLE = 'Fire and water restrictions and alerts';
 export const LABELS: Record<RestrictionKind, string> = { fire: 'Fire alerts and restrictions', water: 'Water restrictions' };
 export const UNKNOWN_TEXT = 'Status unknown, see the source';
 export const NONE_TEXT: Record<RestrictionKind, string> = {

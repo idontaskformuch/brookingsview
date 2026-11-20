@@ -8,14 +8,14 @@ import SectionHeader from './ui/SectionHeader.astro';
 import CompactRow from './ui/CompactRow.astro';
 import { siteConfig } from '../lib/site-config';
 import { loadRestrictionViews } from '../lib/restrictions-data';
-import { UNKNOWN_TEXT, CHECK_FREQUENCY_TEXT, postedLine, checkedLine } from '../lib/restrictions';
+import { SECTION_TITLE, UNKNOWN_TEXT, CHECK_FREQUENCY_TEXT, postedLine, checkedLine } from '../lib/restrictions';
 
 const views = await loadRestrictionViews(siteConfig, new Date());
 const tz = siteConfig.timezone;
 ---
 {views.length > 0 && (
-  <section id="restrictions" class="restrictions" aria-label="Fire and water restrictions" data-tz={tz}>
-    <SectionHeader title="Fire and water restrictions" />
+  <section id="restrictions" class="restrictions" aria-label={SECTION_TITLE} data-tz={tz}>
+    <SectionHeader title={SECTION_TITLE} />
     {views.map((v) => (
       <div class="restrictions__kind" data-restriction={v.kind} data-state={v.state} data-stale-at={v.staleAt ?? undefined}
         data-checked-at={v.checkedAt ?? undefined}>
