@@ -603,8 +603,13 @@
     },
     "logic.text-hygiene": {
       "severity": "soft",
-      "born_from": "Designsystem Fas 2 punkt 3 (owner 2026-11-20): What's On Brookings showed Ticketmaster prices as '$25.43 - $159.33' (Davina and The Vagabonds, build 2026-11-20), stories.meta.cost '£30.62' (story 4155), and titles in capitals ('NED LEDOUX', 'MGMT DJ SET'). Rule: lib/text-hygiene.ts formatPriceRange/formatPrice/tidyCost (whole units, '$25–159'), lib/evening-names.ts displayTitle (more than one word; a short word is kept in capitals only on the list or without a vowel) in ticketmaster.ts and event-row-facts.ts. Regression fixture: site/src/lib/text-hygiene.test.ts (fails before: module missing).",
-      "what": "a price with pennies or a ' - ' range, or a multi-word all-caps event title, reaches a row (vitest)"
+      "born_from": "Designsystem Fas 2 punkt 3 (owner 2026-11-20): What's On Brookings showed Ticketmaster prices as '$25.43 - $159.33' (Davina and The Vagabonds, build 2026-11-20), stories.meta.cost '£30.62' (story 4155), and titles in capitals ('NED LEDOUX', 'MGMT DJ SET'). Rule: lib/text-hygiene.ts formatPriceRange/formatPrice/tidyCost (owner's second decision 2026-11-20: .00/.50 exactly, other pennies rounded, a range's low end down and high end up, '$25–160'), lib/evening-names.ts displayTitle (any all-caps title, one word too; a short word is kept in capitals only on the list or without a vowel) in ticketmaster.ts and event-row-facts.ts. Regression fixture: site/src/lib/text-hygiene.test.ts (fails before: module missing).",
+      "what": "a price with pennies other than .00/.50, a ' - ' range, or an all-caps event title reaches a row (vitest)"
+    },
+    "events.teens-audience": {
+      "severity": "soft",
+      "born_from": "Found 2026-11-20 (Fas 2 punkt 3 review): the teens regex in lib/event-row-facts.ts held two backspace characters (0x08) where word boundaries were meant, so no row was ever marked for teens (story 3493 'Teen Snack Club', audience 'Teens', brookings_sd). Rule: /\\b(teens?|young adults?)\\b/i on stories.meta.audience. Regression fixture: site/src/lib/event-row-facts.test.ts 'teens' (stories 3493, 3637; fails before the fix).",
+      "what": "a story whose source audience says Teens / young adults is not marked teens in its row facts (vitest)"
     },
     "safety.restriction-unknown-not-rendered": {
       "severity": "hard",

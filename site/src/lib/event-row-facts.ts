@@ -30,7 +30,7 @@ export function makeRowFacts(ctx: FactsContext): (item: FeedItem) => RowFacts {
     const byCoords = ctx.areas && facility?.lat != null && facility?.lon != null ? nearestArea(facility.lat, facility.lon, ctx.areas.areas) : null;
     const area = byCoords ?? (ctx.areas && venue ? ctx.areas.venues[normVenue(venue)] ?? null : null);
     const byCost = isFreeByCost(story.meta?.cost);
-    const teens = /(teens?|young adults?)/i.test(story.meta?.audience ?? '');
+    const teens = /\b(teens?|young adults?)\b/i.test(story.meta?.audience ?? '');
     return { title: recase(displayTitle), venue, area, free: byCost ?? isFreeEvent(item, ctx.facilities), kids: isKidsEvent(item), teens, cat: categoryOfEvent(displayTitle, story.meta?.category) };
   };
 }

@@ -34,3 +34,15 @@ describe('row facts', () => {
     expect(f(story({ title: 'Jazz night' })).kids).toBe(false);
   });
 });
+
+describe('teens (born 2026-11-20: the regex held backspace characters where word boundaries were meant and never matched)', () => {
+  // Real rows, read-only SELECT 2026-11-20: story 3493 "Teen Snack Club" (brookings_sd), 3637 "SHADOW MOUNTAIN PARK: Library Pop-Up" (moreno_valley_ca).
+  it('the source audience "Teens" and "Children and teens ages 2 to 18" mark the row as for teens', () => {
+    const f = makeRowFacts(ctx);
+    expect(f(story({ id: 3493, title: 'Teen Snack Club', meta: { audience: 'Teens' } })).teens).toBe(true);
+    expect(f(story({ id: 3637, title: 'SHADOW MOUNTAIN PARK: Library Pop-Up', meta: { audience: 'Children and teens ages 2 to 18' } })).teens).toBe(true);
+  });
+  it('no audience is not teens', () => {
+    expect(makeRowFacts(ctx)(story({ id: 3493, title: 'Teen Snack Club' })).teens).toBe(false);
+  });
+});
