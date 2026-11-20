@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
-  buildGroups, closedPlaces, countHeld, holidayOverviewLine, isTimeless, timelessGroups, timelessHero, detailFor, FOLD_AFTER, GROUP_HEADING, GROUP_ORDER, groupSources, holidayHero, holidayInsights, regularHoursRows,
+  buildGroups, closedPlaces, countHeld, holidayOverviewLine, isTimeless, timelessGroups, detailFor, FOLD_AFTER, GROUP_HEADING, GROUP_ORDER, groupSources, holidayStatus, holidayInsights, regularHoursRows,
 } from './holiday-view';
 import { occurrenceDay } from './holiday-calendar';
 import { holidayPageDef } from '../config/holiday-pages/calendar';
@@ -123,25 +123,21 @@ describe('groups', () => {
 });
 
 describe('hero and insights', () => {
-  it('"Veterans Day is Wednesday" with the number of places closed', () => {
-    expect(closedPlaces(vet)).toBe(4);
-    expect(holidayHero(vet, 'Veterans Day', day('veterans-day', vet), '2026-11-06')).toEqual({
-      value: 4, unit: 'places closed', label: 'Veterans Day is Wednesday', sub: 'Nov 11',
-    });
+  it('status line, not a display number (Tillägg A, owner 2026-11-20): weekday, date and how far away', () => {
+    // Broomfield Thanksgiving (bfThanks, Nov 26) seen on 2026-11-20: the owner's own example.
+    expect(holidayStatus(day('thanksgiving', bfThanks), '2026-11-20')).toBe('Thursday, Nov 26 · 6 days away');
+    expect(holidayStatus(day('thanksgiving', bfThanks), '2026-11-25')).toBe('Thursday, Nov 26 · tomorrow');
+    expect(holidayStatus(day('thanksgiving', bfThanks), '2026-11-26')).toBe('Thursday, Nov 26 · today');
+    // after the day: the year, counted back, never "away"
+    expect(holidayStatus(day('thanksgiving', bfThanks), '2026-11-27')).toBe('Thursday, Nov 26, 2026 · yesterday');
+    expect(holidayStatus(day('veterans-day', vet), '2026-11-20')).toBe('Wednesday, Nov 11, 2026 · 9 days ago');
+    // Glasgow Christmas (xmas, en-GB) on 2026-11-20: the owner's "Friday, Dec 25 · 35 days away" in British order.
+    expect(holidayStatus(day('christmas', xmas), '2026-11-20', 'en-GB')).toBe('Friday 25 Dec · 35 days away');
   });
-  it('one place reads "place closed"; after the day it reads "was" and carries the year', () => {
-    const one = { ...vet, facts: vet.facts.filter((f) => f.status !== 'confirmed' || f.change !== 'closed' || f.label === 'Library') } as HolidayPageData;
-    expect(holidayHero(one, 'Veterans Day', day('veterans-day', one), '2026-11-06').unit).toBe('place closed');
-    expect(holidayHero(vet, 'Veterans Day', day('veterans-day', vet), '2026-11-12').label).toBe('Veterans Day 2026 was Wednesday');
-  });
-  it('without a count the weekday is the hero, never "0 places closed"', () => {
-    // Glasgow: Winter Wonderland is confirmed closed on 25 Dec at both sites, but the page has no count (noClosedCount, owner
-    // 2026-11-14: two places would read as if little else shuts).
-    expect(closedPlaces(xmas, '2026-12-25')).toBe(2);
-    expect(countHeld(xmas)).toBe(true);
-    const h = holidayHero(xmas, 'Christmas', day('christmas', xmas), '2026-11-06');
-    expect(h).toEqual({ value: 'Friday', label: 'Christmas is', sub: '25 Dec' });
-    expect(JSON.stringify(h)).not.toMatch(/\b0\b/);
+  it('the page prints the status line, not HeroStat with "places closed" or a bare weekday', () => {
+    const src = read('../components/HolidayPage.astro');
+    expect(src).toMatch(/data-holiday-status>\{status\}/);
+    expect(src).not.toMatch(/<HeroStat/);
   });
   it('counts places that are shut, not pickups or trains that do not run', () => {
     expect(closedPlaces(bkThanks)).toBe(3); // City offices, Landfill, McCrory Gardens (SDSU calendar, added 2026-11-14)
@@ -151,20 +147,9 @@ describe('hero and insights', () => {
     // on Thanksgiving: City offices, Combined Courts, inventHQ, Library, Broomfield Community Center, Paul Derda Recreation
     // Center, RV Waste Disposal Station, FISH food bank. The police row is `changed` (runs 24/7), not closed.
     expect(closedPlaces(bfThanks, '2026-11-26')).toBe(8);
-    // Owner 2026-11-11: no number while the city's own closures row is unconfirmed (holdsCount); with the notice in, the count shows.
+    // Owner 2026-11-11: no number while the city's own closures row is unconfirmed (holdsCount).
     expect(countHeld(bfThanks)).toBe(false);
-    expect(holidayHero(bfThanks, 'Thanksgiving', day('thanksgiving', bfThanks), '2026-11-11')).toEqual({
-      value: 8, unit: 'places closed', label: 'Thanksgiving is Thursday', sub: 'Nov 26',
-    });
-    expect(holidayHero(bfCityPending, 'Thanksgiving', day('thanksgiving', bfThanks), '2026-11-11').value).toBe('Thursday');
-    // after the day, still the weekday once (owner 2026-11-11): "Thanksgiving 2026 was / Thursday / Nov 26"; with the count,
-    // the weekday moves into the label.
-    expect(holidayHero(bfCityPending, 'Thanksgiving', day('thanksgiving', bfThanks), '2026-11-27')).toEqual({
-      value: 'Thursday', label: 'Thanksgiving 2026 was', sub: 'Nov 26',
-    });
-    expect(holidayHero(bfThanks, 'Thanksgiving', day('thanksgiving', bfThanks), '2026-11-27')).toEqual({
-      value: 8, unit: 'places closed', label: 'Thanksgiving 2026 was Thursday', sub: 'Nov 26',
-    });
+    expect(countHeld(bfCityPending)).toBe(true);
     // Moreno: the library (calendar rows, 2026-11-14); the RTA row is closed too, but a bus that does not run is not a place.
     expect(closedPlaces(mvThanks)).toBe(1);
   });
@@ -273,18 +258,17 @@ describe('standing (timeless) page', () => {
     expect(isTimeless(vet, null)).toBe(false);
   });
   it('Veterans Day after Nov 11: next date in the hero, normally closed/different rows without dates, no events', () => {
-    const hero = timelessHero('Veterans Day', next);
-    expect(hero).toEqual({ value: 'Thursday, Nov 11, 2027', label: 'Veterans Day is', sub: '' });
-    expect(`${hero.label} ${hero.value} ${hero.sub}`.match(/Thursday/g)).toHaveLength(1);
+    const hero = holidayStatus(next, '2026-11-20');
+    expect(hero).toBe('Thursday, Nov 11, 2027 · 356 days away');
     const g = timelessGroups(vet);
     expect(g.map((x) => x.heading)).toEqual(['Normally closed', 'Normally different']);
     expect(g[0].rows.map((r) => r.name)).toEqual(['City offices', 'Combined Courts', 'inventHQ', 'Library']);
-    const text = [hero.label, hero.sub, ...g.flatMap((x) => [x.heading, ...x.rows.flatMap((r) => [r.name, r.pill?.text ?? '', ...r.parts])])].join(' ');
+    const text = [hero, ...g.flatMap((x) => [x.heading, ...x.rows.flatMap((r) => [r.name, r.pill?.text ?? '', ...r.parts])])].join(' ');
     expect(text).not.toMatch(PAST);
     expect(text).not.toMatch(/Nov 11\b(?!, 2027)/);
   });
   it('regression: the dated view the standing page used to show reads as past events', () => {
-    const old = [holidayHero(vet, 'Veterans Day', day('veterans-day', vet), '2026-11-12').label,
+    const old = [
       ...buildGroups(vet, '2026-11-12', '2026-11-11').flatMap((x) => x.rows.flatMap((r) => [r.pill?.text ?? '', ...r.parts]))].join(' ');
     expect(old).toMatch(PAST);
   });

@@ -162,8 +162,6 @@ export function holidayInsights(page: HolidayPageData, over = false): string[] {
   return page.facts.flatMap((f) => (f.status === 'confirmed' && f.insight ? [f.insight] : [])).slice(0, MAX_INSIGHTS);
 }
 
-export interface HeroView { value: string | number; unit?: string; label: string; sub: string }
-
 /** The standing (timeless) page (owner 2026-11-11): the page is outside its window and its facts are for an earlier season
  *  than the next occurrence, so it must not say that anything happened. It shows what the day is, what is normally closed or
  *  different according to the source, and the next date: no past tense, no dated values, no events, no "Check before you go". */
@@ -190,24 +188,18 @@ export function timelessGroups(page: HolidayPageData): GroupView[] {
   return order.filter((c) => rows[c].length > 0).map((c) => ({ id: c, heading: TIMELESS_HEADING[c], rows: rows[c] }));
 }
 
-/** "Veterans Day is Thursday, Nov 11, 2027": the next date with its year as the value, said once (owner 2026-11-11: the
- *  weekday must not repeat under it); no count (a count belongs to one day). */
-export function timelessHero(label: string, nextDay: number, locale: HolidayLocale = 'en-US'): HeroView {
-  return { value: formatDayLong(nextDay, locale), label: `${label} is`, sub: '' };
-}
-/** "<Holiday> is <weekday>" with the number of places closed as the hero value. With no confirmed closed place the weekday
- *  itself is the hero (never "0 places closed"). `dayMs` is the holiday in the page's year (UTC midnight), `today` the
- *  local ISO date; a holiday before today reads "was" and carries its year (in the label, so the sub line stays "Nov 26":
- *  the weekday is said once, owner 2026-11-11). */
-export function holidayHero(page: HolidayPageData, label: string, dayMs: number, today: string): HeroView {
-  const past = new Date(dayMs).toISOString().slice(0, 10) < today;
-  const named = past ? `${label} ${page.year}` : label;
-  const verb = past ? 'was' : 'is';
-  const weekday = weekdayLong(dayMs);
-  const n = countHeld(page) ? 0 : closedPlaces(page, new Date(dayMs).toISOString().slice(0, 10));
-  const sub = formatDayShort(dayMs, page.locale);
-  if (n > 0) return { value: n, unit: n === 1 ? 'place closed' : 'places closed', label: `${named} ${verb} ${weekday}`, sub };
-  return { value: weekday, label: `${named} ${verb}`, sub };
+/** Status line under the holiday page's photo band (owner 2026-11-20, Tillägg A): the date and how far away it is, in normal
+ *  heading size, never a display number ("8 places closed" and "Friday" were display numbers that were not measurements).
+ *  "Thursday, Nov 26 · 6 days away" (en-GB "Friday 25 Dec · 35 days away"). The year is added when the day is not in
+ *  `today`'s year or is over, so a past day never reads as this season's; a past day counts back ("3 days ago").
+ *  `dayMs` = the day at UTC midnight, `today` = local ISO date. */
+export function holidayStatus(dayMs: number, today: string, locale: HolidayLocale = 'en-US'): string {
+  const dayIso = new Date(dayMs).toISOString().slice(0, 10);
+  const n = Math.round((dayMs - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
+  const withYear = n < 0 || dayIso.slice(0, 4) !== today.slice(0, 4);
+  const date = withYear ? formatDayLong(dayMs, locale) : `${weekdayLong(dayMs)}${locale === 'en-GB' ? ' ' : ', '}${formatDayShort(dayMs, locale)}`;
+  const when = n === 0 ? 'today' : n === 1 ? 'tomorrow' : n === -1 ? 'yesterday' : n > 0 ? `${n} days away` : `${-n} days ago`;
+  return `${date} · ${when}`;
 }
 
 /** One entry per distinct source page, in order of first use, named by the organization ("City and County of Broomfield");

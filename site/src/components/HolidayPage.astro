@@ -1,7 +1,7 @@
 ---
 /** Shared template for the holiday pages (/thanksgiving/, /veterans-day/, /christmas/), built on the ui/ library and rendered
- *  from data only (lib/holiday-page.ts for the data, lib/holiday-view.ts for the view): hero "<Holiday> is <weekday>" with
- *  the number of places closed, then the rows grouped Closed / Schedule changes / Open as usual / Good to know / Events /
+ *  from data only (lib/holiday-page.ts for the data, lib/holiday-view.ts for the view): a status line "Thursday, Nov 26 ·
+ *  6 days away" in heading size (Tillägg A 2026-11-20, no display number), then the rows grouped Closed / Schedule changes / Open as usual / Good to know / Events /
  *  Check before you go (rows not posted yet, as plain links). No tables, no repeated source or check date per row; sources once at the bottom, "Last checked" once
  *  under the heading. Owner-ordered 2026-11-04 (.claude/specs/holiday-layer.md), rebuilt 2026-11-06 (.claude/standards.md "Helgsidor").
  *
@@ -9,7 +9,6 @@
  *  what is not confirmed yet? */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import HolidayRows from './HolidayRows.astro';
-import HeroStat from './ui/HeroStat.astro';
 import RailLayout from './RailLayout.astro';
 import RailModules from './rail/RailModules.astro';
 import InsightLine from './ui/InsightLine.astro';
@@ -21,7 +20,7 @@ import {
   buildHolidayMeta, buildTimelessHolidayMeta, buildHolidayEventsJsonLd, checkedSpan, formatCheckedSpan, formatIsoDate, localToday, checkTitleLength,
   type HolidayPageData,
 } from '../lib/holiday-page';
-import { buildGroups, regularHoursRows, holidayHero, holidayInsights, groupSources, isTimeless, timelessGroups, timelessHero } from '../lib/holiday-view';
+import { buildGroups, regularHoursRows, holidayStatus, holidayInsights, groupSources, isTimeless, timelessGroups } from '../lib/holiday-view';
 import { evergreenLines, occurrenceDay, type HolidayPageState } from '../lib/holiday-calendar';
 import type { HolidayPageDef } from '../config/holiday-pages/calendar';
 import CityPhoto from './CityPhoto.astro';
@@ -62,9 +61,8 @@ const webPage = {
   dateModified: page.dataUpdatedOn,
 };
 
-const hero = timeless && state.kind === 'evergreen'
-  ? timelessHero(def.label, state.nextDay, page.locale)
-  : holidayHero(page, def.label, occurrenceDay(def, page.year), today);
+// Status line, not a display number (owner 2026-11-20, Tillägg A): "Thursday, Nov 26 · 6 days away". The standing page names the next date.
+const status = holidayStatus(timeless && state.kind === 'evergreen' ? state.nextDay : occurrenceDay(def, page.year), today, page.locale);
 const dayIso = new Date(occurrenceDay(def, page.year)).toISOString().slice(0, 10);
 const over = today > dayIso; // the season's day has passed: no present tense about it (owner 2026-11-11)
 const insights = timeless ? [] : holidayInsights(page, over);
@@ -74,7 +72,7 @@ const ungrouped = page.linkOnly.filter((l) => !l.group);
 const linkGroups = [...new Set(page.linkOnly.flatMap((l) => (l.group ? [l.group] : [])))];
 const sources = groupSources(page);
 // Photo band (Fas 1b, owner 2026-11-18, corrected the same day): always the holiday's own photo, inside the window and outside it; a season
-// photo only for a holiday with no pool (lib/city-face.ts holidayBandImage); never the front page's photo of the week. The H1 sits on the band's scrim; HeroStat below stays the page's hero.
+// photo only for a holiday with no pool (lib/city-face.ts holidayBandImage); never the front page's photo of the week. The H1 sits on the band's scrim; The status line below it is the page's lead.
 const photoWeek = weekInfoForInstant(new Date(), siteConfig.timezone);
 const photoPool = thisWeekImagesFor(siteConfig.townId);
 const frontPhoto = siteConfig.noindexSite && photoPool.length === 0
@@ -104,7 +102,7 @@ const jsonLd = buildHolidayEventsJsonLd(page, siteConfig.timezone, countryProfil
   {/* Fas 2: the same rail as the front page from 62rem, opening with Right Now; below 62rem it follows the page's own content. The band
       above stays full width. The rail never repeats this page's own holiday. */}
   <RailLayout>
-  <HeroStat value={hero.value} unit={hero.unit} label={hero.label} sub={hero.sub} tone="accent" />
+  <p class="hp-status" data-holiday-status>{status}</p>
   {insights.map((line) => <InsightLine>{line}</InsightLine>)}
   {lines && (
     <p class="hp-state">
@@ -155,6 +153,7 @@ const jsonLd = buildHolidayEventsJsonLd(page, siteConfig.timezone, countryProfil
   .hp-title h1 { margin-bottom: 0.25rem; }
   .hp-title .hp-title__h1--photo { margin: 0; color: #fff; font-size: clamp(1.5rem, 4vw, 2.5rem); line-height: 1.1; }
   .hp-title :global(.city-photo--band) { margin-bottom: 0.5rem; }
+  .hp-status { margin: 0 0 var(--ui-3); font-family: var(--font-ui); font-size: clamp(1.25rem, 3vw, 1.5rem); font-weight: 600; line-height: 1.3; color: var(--ink); font-variant-numeric: tabular-nums; }
   .hp-checked { margin: 0 0 var(--ui-3); font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
   .hp-state { margin: var(--ui-3) 0 0; font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); }
   .hp-group { margin: var(--ui-group-gap) 0 0; }
