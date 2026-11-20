@@ -34,19 +34,14 @@ export function fillTodayBuckets(doc: Document, now: Date = new Date()): number 
     bucket.hidden = hits.length === 0;
     if (hits.length === 0) return 0;
     bucket.hidden = false;
-    if (which === 'tomorrow') {
-      const c = doc.createElement('p');
-      c.className = 'today-block__count';
-      c.textContent = `${hits.length} event${hits.length === 1 ? '' : 's'}`;
-      body.appendChild(c);
-    }
+    // Rows in the day group's own list (components/ui/DayGroup.astro); every bucket says what it leaves out the same way ("+2 more").
     const ul = doc.createElement('ul');
-    ul.className = 'today-block__cards';
+    ul.className = 'day-group__rows';
     hits.slice(0, limit).forEach((e) => ul.appendChild(e.li.cloneNode(true)));
     body.appendChild(ul);
     if (hits.length > limit) {
       const more = doc.createElement('p');
-      more.className = 'today-block__more';
+      more.className = 'day-group__more';
       more.textContent = `+${hits.length - limit} more ${which === 'today' ? 'today' : which === 'tonight' ? 'tonight' : 'tomorrow'}`;
       body.appendChild(more);
     }
@@ -62,10 +57,25 @@ export function fillTodayBuckets(doc: Document, now: Date = new Date()): number 
       .slice(0, LATER_LIMIT);
     if (later && body && upcoming.length > 0) {
       body.textContent = '';
-      const ul = doc.createElement('ul');
-      ul.className = 'today-block__cards';
-      upcoming.forEach((e) => ul.appendChild(e.li.cloneNode(true)));
-      body.appendChild(ul);
+      // Several days: one date line per day (the row itself never carries a date), the rows of that day under it.
+      let day = '';
+      let ul: HTMLUListElement | null = null;
+      for (const e of upcoming) {
+        const d = e.li.dataset.day || '';
+        if (!ul || d !== day) {
+          day = d;
+          if (e.li.dataset.dayLabel) {
+            const h = doc.createElement('p');
+            h.className = 'day-group__sub';
+            h.textContent = e.li.dataset.dayLabel;
+            body.appendChild(h);
+          }
+          ul = doc.createElement('ul');
+          ul.className = 'day-group__rows';
+          body.appendChild(ul);
+        }
+        ul.appendChild(e.li.cloneNode(true));
+      }
       later.hidden = false;
     }
   }

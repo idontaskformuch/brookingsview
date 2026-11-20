@@ -160,15 +160,22 @@ export function relativeTime(
  *  purpose "how far away is this" sentence. */
 export function dayTimeKicker(date: Date | string, timeZone: string, endsAt?: Date | string | null, allDayLabel = 'All day', gb = false): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  const { hour, minute } = zonedParts(d, timeZone);
   const day = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone }).format(d);
-  if (allDayOf(d, endsAt, timeZone)) return allDayLabel ? `${day} · ${allDayLabel}` : day;
+  const clock = eventClock(d, timeZone, endsAt, allDayLabel, gb);
+  return clock ? `${day} · ${clock}` : day;
+}
+
+/** The time part of dayTimeKicker on its own, for a row under a day heading (components/ui/EventRow.astro): "7:30 PM" / "7 PM" (us),
+ *  "7:30pm" / "11am" (gb), `allDayLabel` for an all-day item ('' = no time claimed). */
+export function eventClock(date: Date | string, timeZone: string, endsAt?: Date | string | null, allDayLabel = 'All day', gb = false): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (allDayOf(d, endsAt, timeZone)) return allDayLabel;
+  const { hour, minute } = zonedParts(d, timeZone);
   const period = hour < 12 ? 'AM' : 'PM';
   const hour12 = hour % 12 || 12;
-  // gb: "Sat · 11am", the 7pm convention used everywhere else on the UK site (Q3 2026-10-28 found "11 AM" on Glasgow cards).
-  if (gb) return `${day} · ${hour12}${minute === 0 ? '' : `:${String(minute).padStart(2, '0')}`}${period.toLowerCase()}`;
-  const clock = minute === 0 ? `${hour12} ${period}` : `${hour12}:${String(minute).padStart(2, '0')} ${period}`;
-  return `${day} · ${clock}`;
+  // gb: "11am", the 7pm convention used everywhere else on the UK site (Q3 2026-10-28 found "11 AM" on Glasgow cards).
+  if (gb) return `${hour12}${minute === 0 ? '' : `:${String(minute).padStart(2, '0')}`}${period.toLowerCase()}`;
+  return minute === 0 ? `${hour12} ${period}` : `${hour12}:${String(minute).padStart(2, '0')} ${period}`;
 }
 
 /** Kicker for a recurring series ("Weekly · Wed"): its stored start is only the NEXT occurrence's date, never a real

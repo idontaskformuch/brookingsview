@@ -9,7 +9,9 @@ const SRC = join(__dirname, '..', '..');
 const LAYOUT_DIRS = ['components/ui', 'components/tonight', 'components/meetings', 'components/evening', 'components/events', 'components/rail'];
 const LAYOUT_FILES = ['components/SectionNav.astro', 'components/HolidayPage.astro', 'components/HolidayRows.astro', 'components/HolidayRow.astro', 'lib/holiday-view.ts', 'lib/tonight-cards.ts', 'lib/tonight-cards-client.ts', 'lib/ui/ui-helpers.ts', 'lib/ui/ui-html.ts', 'lib/ui/icons.ts', 'lib/event-day-view.ts', 'lib/event-row-facts.ts', 'lib/weather-model.ts', 'lib/weather-html.ts', 'lib/sun-times.ts', 'lib/traffic-hero.ts',
   // Fas 1a (2026-11-18): the front page and the town's photo.
-  'pages/index.astro', 'components/FrontPageLead.astro', 'components/CityPhoto.astro', 'components/MarqueeCard.astro', 'lib/city-face.ts',
+  'pages/index.astro', 'components/FrontPageLead.astro', 'components/CityPhoto.astro', 'lib/city-face.ts',
+  // Designsystem Fas 1 (2026-11-20): the one event row / card / day group.
+  'lib/event-row.ts',
   // Fas 2 (2026-11-19): the rail.
   'components/RailLayout.astro', 'lib/rail.ts', 'config/home-rail.ts',
   // Fas 2 hub (2026-11-19).

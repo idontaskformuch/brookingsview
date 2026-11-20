@@ -1,0 +1,32 @@
+---
+/** Designsystem Fas 1 (owner 2026-11-20): THE compact event row. Time on the left, title, place; extras (a run's dates, a series
+ *  pattern, price) after the place; category only when the list mixes them (`showCategory`, lib/event-row.ts mixedCategories). Never a
+ *  date: the DayGroup heading above says the day. Built from lib/event-row.ts EventRowData, whatever the source. data-start/data-end
+ *  stay on the element for the browser's bucket and sweep scripts. Works inside a <template> (it is a component). */
+import { CATEGORY_LABEL, type EventRowData } from '../../lib/event-row';
+
+interface Props { row: EventRowData; showCategory?: boolean; /** Heading level of the title (the DayGroup above is one level up). */ level?: 3 | 4 }
+const { row, showCategory = false, level = 3 } = Astro.props;
+const Title = `h${level}` as 'h3' | 'h4';
+const meta = [...row.place, ...row.extra];
+---
+<article class="ev-row" data-start={row.start ?? undefined} data-end={row.end ?? undefined}>
+  <span class="ev-row__time">{row.time && row.start ? <time datetime={row.start}>{row.time}</time> : row.time}</span>
+  <div class="ev-row__body">
+    {showCategory && row.category && <p class="ev-row__cat">{CATEGORY_LABEL[row.category]}</p>}
+    <Title class="ev-row__title">{row.href ? <a href={row.href} rel={row.rel ?? undefined}>{row.title}</a> : row.title}</Title>
+    {meta.length > 0 && <p class="ev-row__meta">{meta.join(' · ')}</p>}
+  </div>
+</article>
+<style is:global>
+  /* Global: /today's browser script clones rows out of a <template>, and the clones must keep the look. */
+  .ev-row { display: grid; grid-template-columns: 4.75rem minmax(0, 1fr); gap: 0 1rem; padding: 0.625rem 0; border-top: 1px solid var(--rule); }
+  .ev-row__time { font-family: var(--font-ui); font-size: 0.875rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink); padding-top: 0.125rem; white-space: nowrap; }
+  .ev-row__body { min-width: 0; }
+  .ev-row__cat { margin: 0 0 0.125rem; font-family: var(--font-ui); font-size: 0.8125rem; color: var(--ink-soft); }
+  .ev-row__title { margin: 0; font-family: var(--font-head); font-size: 1.0625rem; line-height: 1.3; overflow-wrap: anywhere; }
+  .ev-row__title a { color: var(--ink); text-decoration: none; }
+  .ev-row__title a:hover { color: var(--navy); text-decoration: underline; }
+  .ev-row__meta { margin: 0.125rem 0 0; font-family: var(--font-ui); font-size: 0.8125rem; color: var(--ink-soft); overflow-wrap: anywhere; }
+  @media (max-width: 30rem) { .ev-row { grid-template-columns: 4rem minmax(0, 1fr); gap: 0 0.75rem; } }
+</style>

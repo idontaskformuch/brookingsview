@@ -1,0 +1,32 @@
+---
+/** Designsystem Fas 1 (owner 2026-11-20): THE day block. One heading per day ("Sat, Nov 21", or a bucket name such as "Tonight"), the
+ *  rows under it in a list. Replaces the per-row date badge ("NOV 20") and "Today" on every card. `id`/`hidden` and the
+ *  data-bucket-body wrapper let /today's browser script refill a block (lib/today-buckets.ts). The rows go in the default slot as <li>. */
+interface Props {
+  label: string;
+  /** "YYYY-MM-DD" when the label is a date (machine-readable on the heading). */
+  datetime?: string;
+  level?: 2 | 3;
+  id?: string;
+  hidden?: boolean;
+}
+const { label, datetime, level = 3, id, hidden = false } = Astro.props;
+const H = `h${level}` as 'h2' | 'h3';
+---
+<section class="day-group" id={id} hidden={hidden}>
+  <H class="day-group__label">{datetime ? <time datetime={datetime}>{label}</time> : label}</H>
+  <div class="day-group__body" data-bucket-body>
+    <ul class="day-group__rows"><slot /></ul>
+    <slot name="after" />
+  </div>
+</section>
+<style is:global>
+  /* Global: /today's browser script rebuilds the list inside a day group, and scoped classes would not reach the new nodes. */
+  .day-group { margin: 0 0 1.5rem; }
+  .day-group[hidden] { display: none; }
+  .day-group__label { margin: 0 0 0.25rem; font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); }
+  .day-group__rows { list-style: none; margin: 0; padding: 0; border-bottom: 1px solid var(--rule); }
+  .day-group__rows > li { margin: 0; }
+  .day-group__sub { margin: 0.75rem 0 0.125rem; font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 600; color: var(--ink-soft); }
+  .day-group__count, .day-group__more { margin: 0.375rem 0 0; font-family: var(--font-ui); font-size: 0.8125rem; color: var(--ink-soft); }
+</style>
