@@ -79,6 +79,8 @@ for t in $TOWNS; do
   node ../scripts/verify_content_first.mjs dist 2>&1 | tail -1; step "content-first $t" "${PIPESTATUS[0]}"
   node ../scripts/verify_no_internal_notes.mjs dist 2>&1 | tail -5; step "internal-notes $t" "${PIPESTATUS[0]}"
   node ../scripts/verify_town_games.mjs dist "$t"; step "town-games $t" $?
+  # Same check as every deploy workflow (2026-11-20: glasgow-deploy failed 19-20 Nov on /how-do-i/, which no local step caught).
+  node ../scripts/verify_stub_redirects.mjs dist "$t"; step "stub-redirects $t" $?
   node ../scripts/verify_local_images.mjs dist "$t"; step "local-images $t" $?
   node ../scripts/verify_nav_links.mjs dist "$t"; step "nav-links $t" $?
   node ../scripts/verify_internal_links.mjs dist > "$LOG/internal-links-$t.log" 2>&1; step "internal-links $t" $?

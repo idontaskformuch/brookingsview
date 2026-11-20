@@ -334,6 +334,9 @@ const STATIC_GATE_REDIRECTS: Record<string, Record<string, StaticGateRedirect>> 
     '/home-sales/': { to: '/', status: 302 },
     '/home-sales/archive/': { to: '/', status: 302 },
     '/how-city-council-works/': { to: '/', status: 302 },
+    // Fas 3 hub (06802739, 2026-11-19): only towns with confirmed answer pages (config/city-answers); Glasgow has none
+    // (G1/G2 link-only), so how-do-i.astro redirects. Remove this line when Glasgow gets its first confirmed answer.
+    '/how-do-i/': { to: '/', status: 302 },
     '/jackrabbits/': { to: '/', status: 302 },
     '/jobs/': { to: '/', status: 302 },
     '/month/': { to: '/', status: 302 },

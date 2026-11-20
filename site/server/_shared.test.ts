@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { answerPagesFor } from '../src/config/city-answers';
 import {
   isoWeekSlugForInstant, previousIsoWeekSlug, timezoneForTown, townFromHostname,
   resolveStaticGateRedirect, isGoneSection, resolveWhatsOnDetailRedirect,
@@ -165,6 +166,16 @@ describe('resolveStaticGateRedirect', () => {
     expect(resolveStaticGateRedirect('/vail-resorts/', 'brookings_sd')).toEqual({ to: '/', status: 302 });
     expect(resolveStaticGateRedirect('/vail-resorts/', 'moreno_valley_ca')).toEqual({ to: '/', status: 302 });
     expect(resolveStaticGateRedirect('/vail-resorts/', 'broomfield_co')).toBeNull();
+  });
+
+  // glasgow-deploy failed 19-20 Nov (verify_stub_redirects: "/how-do-i/"): the Fas 3 hub (06802739) redirects in a town with no
+  // answer pages, but Glasgow had no Worker entry. The Worker list must follow config/city-answers for every town.
+  it('/how-do-i/ redirects exactly in the towns without answer pages', () => {
+    for (const town of ['brookings_sd', 'moreno_valley_ca', 'broomfield_co', 'glasgow']) {
+      const hasHub = answerPagesFor(town).length > 0;
+      expect(resolveStaticGateRedirect('/how-do-i/', town), town).toEqual(hasHub ? null : { to: '/', status: 302 });
+    }
+    expect(answerPagesFor('glasgow')).toEqual([]);
   });
 });
 
