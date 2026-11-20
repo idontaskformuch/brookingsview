@@ -95,4 +95,14 @@ describe.skipIf(!browser)('fillTodayBuckets in a real browser', { timeout: 30_00
     const r = await run(li, '2026-10-22T05:30:00Z', `<ul>${li}</ul>`);
     expect(r).toMatchObject({ tonightHidden: true, tonightItems: 0 });
   });
+  // Designsystem Fas 2: one entry with several times (data-occ) sits in the bucket of its first unfinished time, once. Start times are
+  // the real History Club 20s Event pair (fixtures/events-brookings-2026-11-20.json: 3 PM and 7 PM local), moved to this block's Denver
+  // day. Changed field: the first time's end, 10 PM -> 4 PM (the source says both run to 10 PM), so that the first time can be over.
+  it('an entry with two times today is one row, under Tonight once the first time is over (data-occ)', async () => {
+    const occ = JSON.stringify([{ start: '2026-10-21T21:00:00Z', end: '2026-10-21T22:00:00Z' }, { start: '2026-10-22T01:00:00Z', end: '2026-10-22T04:00:00Z' }]);
+    const li = `<li data-start="2026-10-21T21:00:00Z" data-end="2026-10-21T22:00:00Z" data-occ='${occ}'><a href="/h/">History Club 20s Event</a></li>`;
+    // 16:30 Denver: the 3 PM time is over, the 7 PM one is ahead
+    const r = await run(li, '2026-10-21T22:30:00Z');
+    expect(r).toMatchObject({ shown: 1, tonightHidden: false, tonightItems: 1, tomorrowItems: 0 });
+  });
 });

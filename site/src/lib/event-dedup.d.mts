@@ -14,6 +14,7 @@ type TitledItem =
 export function itemTitle(item: TitledItem): string;
 export function itemUrl(item: TitledItem): string | null;
 export function itemVenue(item: TitledItem): string | null;
+export function venueKey(v: string | null | undefined): string | null;
 export function localDateParts(instant: Date, timezone: string): { y: number; m: number; d: number };
 export const EVENT_SOURCES: Record<string, EventSourceConfig>;
 export function findCrossSourceMatch<T>(

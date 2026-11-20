@@ -17,7 +17,7 @@
  * bär rubrikerna, grotesken är degraderad till kickers och metadata.
  */
 import { getSignData } from '../lib/db';
-import { getTodayInstants } from '../lib/today-instants';
+import { getTodayEntries } from '../lib/today-instants';
 import { signGameText } from '../lib/sign-game';
 import { siteConfig, ALL_SITES } from '../lib/site-config';
 import { fitDescription, requireDescription } from '../lib/meta-description';
@@ -87,8 +87,8 @@ assertAccentContrast(siteConfig.townId, siteConfig.brand);
 assertStatusContrast();
 const accentColorDark = accentColor ? toDarkAccent(accentColor) : undefined;
 const sign = await getSignData();
-// "N events today" counts the same entries /today/ lists (lib/today-instants.ts), not its own query.
-const todayInstants = await getTodayInstants();
+// "N events today" = countEventsToday() over the same entries /today/ and /events/ use (lib/today-instants.ts), not its own query.
+const todayEntries = await getTodayEntries();
 const canonical = canonicalUrl
   ? new URL(canonicalUrl)
   : new URL(Astro.url.pathname, Astro.site ?? siteConfig.siteUrl);
@@ -681,9 +681,9 @@ main { padding-block: 1.75rem 3.5rem; }
       </span>
     )}
     {sign.alert && <span class="sign__item sign__item--alert" data-ends={sign.alertEndsAt ?? undefined} data-alert-slug={sign.alertSlug ?? undefined}>{sign.alert}</span>}
-    {todayInstants.length > 0 && (
+    {todayEntries.length > 0 && (
       <span class="sign__item" id="sign-events-today" hidden data-tz={siteConfig.timezone}
-        data-events={JSON.stringify(todayInstants)}></span>
+        data-events={JSON.stringify(todayEntries)}></span>
     )}
     {sign.nextGame?.starts_at && (
       <span class="sign__item" data-ends={new Date(new Date(sign.nextGame.starts_at).getTime() + 3 * 3_600_000).toISOString()}>
@@ -767,7 +767,7 @@ main { padding-block: 1.75rem 3.5rem; }
     </script>
     <script>
       import { relativeTime } from '../lib/time';
-      import { countToday, relativeDayLabel, type TimedEvent } from '../lib/local-day';
+      import { countEventsToday, relativeDayLabel, type CountableEntry } from '../lib/local-day';
       import { sweepEnded } from '../lib/hide-ended';
       document.querySelectorAll<HTMLElement>('[data-day-label]').forEach((el) => {
         const when = el.dataset.when;
@@ -781,8 +781,9 @@ main { padding-block: 1.75rem 3.5rem; }
       const signEl = document.getElementById('sign-events-today');
       if (signEl) {
         try {
-          const n = countToday(JSON.parse(signEl.dataset.events || '[]') as TimedEvent[], new Date(), signEl.dataset.tz || 'America/Chicago');
-          if (n > 0) { signEl.textContent = `${n} ${n === 1 ? 'event' : 'events'} today`; signEl.hidden = false; }
+          const c = countEventsToday(JSON.parse(signEl.dataset.events || '[]') as CountableEntry[], new Date(), signEl.dataset.tz || 'America/Chicago');
+          // Neighbouring towns are counted separately (owner 2026-11-20): "5 events today · +3 nearby".
+          if (c.town > 0) { signEl.textContent = `${c.town} ${c.town === 1 ? 'event' : 'events'} today${c.nearby > 0 ? ` · +${c.nearby} nearby` : ''}`; signEl.hidden = false; }
         } catch { /* stay hidden */ }
       }
       /* Build-time relative labels ("just now", "this morning") go stale on a

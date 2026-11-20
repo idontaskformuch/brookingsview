@@ -145,7 +145,9 @@ describe('body text that names the UTC day instead of the local one (the stored 
   });
 });
 
-describe('dedupe: same title, same local day, start within 60 minutes is one event (owner 2026-11-05, born from the live Brookings duplicate)', () => {
+// Owner 2026-11-05 merged these within 60 minutes and kept one time; Designsystem Fas 2 (owner 2026-11-20) supersedes it: the same title
+// at the same place on one day is ONE row that says every time ("7 PM & 7:30 PM"), whatever the gap; on several days it is a series.
+describe('dedupe: same title, same place, same local day is one row with every time (born from the live Brookings duplicate)', () => {
   const CHI = 'America/Chicago';
   const NOW_B = new Date('2026-11-05T18:00:00Z');
   const arts = (id: string, startIso: string, title = 'SDSU Concert Choir Fall Concert'): FeedItem => ({
@@ -159,7 +161,7 @@ describe('dedupe: same title, same local day, start within 60 minutes is one eve
     const v = run([arts('a#2026-11-06T19:00', '2026-11-07T01:00:00Z'), arts('b#2026-11-06T19:30', '2026-11-07T01:30:00Z')]);
     const fri = v.days.find((d) => d.dayKey === '2026-11-06')!;
     expect(fri.count).toBe(1);
-    expect(fri.rows[0].timeLabel).toBe('7 PM');
+    expect(fri.rows[0].timeLabel).toBe('7 PM & 7:30 PM');
     expect(fri.rows[0].merged).toHaveLength(1);
     expect(v.total).toBe(1);
   });
@@ -169,9 +171,13 @@ describe('dedupe: same title, same local day, start within 60 minutes is one eve
     expect(v.days[1].rows).toHaveLength(1);
     expect(v.days[1].rows[0].free).toBe(true);
   });
-  it('does not merge: 90 minutes apart, another local day, or another title', () => {
-    expect(run([arts('a', '2026-11-07T01:00:00Z'), arts('b', '2026-11-07T02:30:00Z')]).total).toBe(2);
-    expect(run([arts('a', '2026-11-07T01:00:00Z'), arts('b', '2026-11-08T01:00:00Z')]).total).toBe(2);
+  it('90 minutes apart is still one row with both times; another local day is a series; another title is never merged', () => {
+    const apart = run([arts('a', '2026-11-07T01:00:00Z'), arts('b', '2026-11-07T02:30:00Z')]);
+    expect(apart.total).toBe(1);
+    expect(apart.days[1].rows[0].timeLabel).toBe('7 PM & 8:30 PM');
+    const series = run([arts('a', '2026-11-07T01:00:00Z'), arts('b', '2026-11-08T01:00:00Z')]);
+    expect(series.total).toBe(1);
+    expect(series.days[1].rows[0].seriesLabel).toBe('Nov 6–7');
     expect(run([arts('a', '2026-11-07T01:00:00Z'), arts('b', '2026-11-07T01:30:00Z', 'SDSU Wind Ensemble')]).total).toBe(2);
   });
   it('title match ignores case, punctuation and &', () => {
@@ -180,7 +186,7 @@ describe('dedupe: same title, same local day, start within 60 minutes is one eve
 });
 
 describe('caps and front-page blocks', () => {
-  const mkRow = (o: Partial<import('./event-day-view').DayRow>) => ({ item: null as any, dayKey: 'd', dateLabel: '', offset: 0, timeLabel: '', allDay: false, tonight: false, recurrence: 'one_off', title: 't', venue: null, area: null, free: false, kids: false, teens: false, cat: null, start: '', end: null, merged: [], ...o }) as import('./event-day-view').DayRow;
+  const mkRow = (o: Partial<import('./event-day-view').DayRow>) => ({ item: null as any, dayKey: 'd', dateLabel: '', offset: 0, timeLabel: '', allDay: false, tonight: false, recurrence: 'one_off', title: 't', venue: null, area: null, free: false, kids: false, teens: false, cat: null, start: '', end: null, merged: [], occ: [], seriesLabel: null, ...o }) as import('./event-day-view').DayRow;
   const grp = (offset: number, rows: import('./event-day-view').DayRow[]) => ({ offset, dayKey: `k${offset}`, label: 'x', weekday: 'x', dateLabel: 'x', count: rows.length, rows });
   it('takeRows cuts in day order and reports what is hidden', async () => {
     const { takeRows } = await import('./event-day-view');

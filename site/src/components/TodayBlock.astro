@@ -52,7 +52,9 @@
  */
 import TrafficWidget from './TrafficWidget.astro';
 import HeatAdvisoryWidget from './HeatAdvisoryWidget.astro';
-import type { FeedItem } from '../lib/events';
+import type { EventEntry } from '../lib/event-entries';
+import { entryDays, joinTimes, seriesLabel } from '../lib/event-entries';
+import { eventClock } from '../lib/time';
 import EventRow from './ui/EventRow.astro';
 import DayGroup from './ui/DayGroup.astro';
 import { rowFromFeedItem, rowFromTodayShow, rowEnvFor, mixedCategories, dayKey, dayLabel, type EventRowData } from '../lib/event-row';
@@ -65,7 +67,7 @@ import { ownPageHref } from '../lib/ai-text';
 import { formatAlertUntil } from '../lib/alerts';
 import { siteConfig } from '../lib/site-config';
 import { formatClockCompact } from '../lib/country-profile';
-import { bucketOf } from '../lib/local-day';
+import { bucketOf, liveOccurrence } from '../lib/local-day';
 
 export interface Props {
   cityName: string;
@@ -86,9 +88,9 @@ export interface Props {
    *  ground-truth facility alias matching, same reasoning as StoryCard.astro's
    *  own facilities prop. */
   facilities?: Facility[];
-  /** Every event starting on the build's local day or the next two, date-sorted
-   *  (see events.ts selectBucketCandidates). The browser buckets them. */
-  candidates: FeedItem[];
+  /** The week's events, one entry per real event (lib/event-entries.ts; pages/today.astro), in order of their first unfinished time.
+   *  The browser buckets each by that time (data-occ). */
+  candidates: EventEntry[];
   /** Ticketmaster shows in the town (gb only, at most 3; lib/today-shows.ts). Bucketed in the browser like the candidates. */
   tmShows?: TodayShow[];
   /** gb: the built one-line forecast (lib/weather-format.ts forecastLine); the browser replaces it with /api/weather's when that answers. */
@@ -122,7 +124,7 @@ const BUCKET_LIMIT = 5;
 const inBucket = (start: string | null | undefined, end: string | null | undefined, which: 'today' | 'tonight') =>
   !!serverNow && !!start && bucketOf({ start, end: end ?? null }, serverNow, timezone) === which;
 const serverBucket = (which: 'today' | 'tonight') => ({
-  items: candidates.filter((item) => inBucket(item.occurs_at, item.sourceKind === 'story' ? item.story.ends_at : item.event.ends_at, which)),
+  items: candidates.filter((e) => { const o = serverNow ? liveOccurrence(e.occ, serverNow, timezone) : null; return !!o && inBucket(o.start, o.end, which); }),
   shows: tmShows.filter((s) => inBucket(s.start, s.end, which)),
 });
 const serverToday = serverBucket('today');
@@ -155,7 +157,21 @@ type AlertItem = Pick<Story, 'slug' | 'title' | 'ends_at' | 'generated_by'>;
 // day, so a row never does. A row carries its town day (data-day / data-day-label) for the "Coming up" list, which spans several days.
 const rowEnv = rowEnvFor({ timezone, cityName, country: siteConfig.country }, asOf);
 const facts = makeRowFacts({ cityName, facilities, areas: areasFor(siteConfig.townId) });
-const rowOf = (item: FeedItem): EventRowData => rowFromFeedItem(item, rowEnv, facts);
+// An entry's row is placed by its first unfinished time; several times that day read "3 PM & 7 PM", a series adds its dates ("Nov 20–21").
+const rowNow = serverNow ?? asOf;
+const rowOf = (e: EventEntry): EventRowData => {
+  const row = rowFromFeedItem(e.item, rowEnv, facts);
+  const o = liveOccurrence(e.occ, rowNow, timezone) ?? e.occ[e.occ.length - 1];
+  const day = dayKey(o.start, timezone);
+  const sameDay = e.occ.filter((x) => dayKey(x.start, timezone) === day);
+  const series = seriesLabel(entryDays(e, timezone), siteConfig.country === 'gb');
+  return {
+    ...row, start: o.start, end: o.end ?? null,
+    time: sameDay.length > 1 ? joinTimes(sameDay.map((x) => eventClock(x.start, timezone, x.end, rowEnv.allDayLabel, rowEnv.lowerClock))) : (o.start === row.start ? row.time : eventClock(o.start, timezone, o.end, rowEnv.allDayLabel, rowEnv.lowerClock)),
+    extra: series ? [series, ...row.extra] : row.extra,
+  };
+};
+const occAttr = (e: EventEntry) => (e.occ.length > 1 ? JSON.stringify(e.occ) : undefined);
 const showRows = tmShows.map((s) => rowFromTodayShow(s, cityName));
 const showCategory = mixedCategories([...candidates.map(rowOf), ...showRows]);
 const dayAttrs = (start: string | null) => (start ? { 'data-day': dayKey(start, timezone), 'data-day-label': dayLabel(start, timezone, asOf, rowEnv.country) } : {});
@@ -245,7 +261,7 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
     const shows = b.shows.slice(0, BUCKET_LIMIT - items.length);
     return (
       <DayGroup id={id} label={label} level={groupLevel} hidden={total === 0}>
-        {items.map((item) => { const row = rowOf(item); return <li {...dayAttrs(row.start)} data-start={row.start ?? undefined} data-end={row.end ?? undefined}><EventRow row={row} showCategory={showCategory} level={rowLevel} /></li>; })}
+        {items.map((item) => { const row = rowOf(item); return <li {...dayAttrs(row.start)} data-start={row.start ?? undefined} data-end={row.end ?? undefined} data-occ={occAttr(item)}><EventRow row={row} showCategory={showCategory} level={rowLevel} /></li>; })}
         {shows.map((s) => { const row = rowFromTodayShow(s, cityName); return <li {...dayAttrs(row.start)} data-start={s.start} data-end={s.end}><EventRow row={row} showCategory={showCategory} level={rowLevel} /></li>; })}
         {total > BUCKET_LIMIT && <p slot="after" class="day-group__more">+{total - BUCKET_LIMIT} more {more}</p>}
       </DayGroup>
@@ -262,7 +278,7 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
       // ISO instants (row.start/end), not the driver's Date: Astro prints a Date in the build machine's own zone.
       const row = rowOf(item);
       return (
-        <li {...dayAttrs(row.start)} data-start={row.start ?? undefined} data-end={row.end ?? undefined}>
+        <li {...dayAttrs(row.start)} data-start={row.start ?? undefined} data-end={row.end ?? undefined} data-occ={occAttr(item)}>
           <EventRow row={row} showCategory={showCategory} level={rowLevel} />
         </li>
       );

@@ -2,7 +2,7 @@
  *  components/TodayBlock.astro's script). Lives here, not inline in the
  *  component, so a test can run the real code against a real <template> in a
  *  real browser (today-buckets.test.ts). */
-import { bucketOf, hasEnded, type TimedEvent } from './local-day';
+import { bucketOf, hasEnded, liveOccurrence, type TimedEvent } from './local-day';
 
 /** The <li> children of a template's content. NOT querySelectorAll(':scope > li'):
  *  :scope matches nothing on a template's DocumentFragment in Chromium, which
@@ -20,9 +20,14 @@ export function fillTodayBuckets(doc: Document, now: Date = new Date()): number 
   const tpl = doc.getElementById('today-event-items') as HTMLTemplateElement | null;
   if (!tpl) return 0;
   const tz = tpl.dataset.tz || 'America/Chicago';
+  // An entry with several times (data-occ: "3 PM & 7 PM", or a series over days) sits in the bucket of its first unfinished time.
+  const occOf = (li: HTMLLIElement): TimedEvent[] => {
+    try { if (li.dataset.occ) return JSON.parse(li.dataset.occ) as TimedEvent[]; } catch { /* fall back to the row's own time */ }
+    return li.dataset.start ? [{ start: li.dataset.start, end: li.dataset.end || null }] : [];
+  };
   const entries = templateItems(tpl).map((li) => {
-    const ev: TimedEvent = { start: li.dataset.start || '', end: li.dataset.end || null };
-    return { li, bucket: ev.start ? bucketOf(ev, now, tz) : null };
+    const ev = liveOccurrence(occOf(li), now, tz);
+    return { li, bucket: ev ? bucketOf(ev, now, tz) : null, ev };
   });
   const fill = (id: string, which: 'today' | 'tonight' | 'tomorrow', limit: number): number => {
     const bucket = doc.getElementById(id);
@@ -52,8 +57,8 @@ export function fillTodayBuckets(doc: Document, now: Date = new Date()): number 
     const later = doc.getElementById('today-later');
     const body = later?.querySelector('[data-bucket-body]');
     const upcoming = entries
-      .filter((e) => e.bucket === null && e.li.dataset.start && !hasEnded({ start: e.li.dataset.start, end: e.li.dataset.end || null }, now, tz))
-      .sort((a, b) => Date.parse(a.li.dataset.start!) - Date.parse(b.li.dataset.start!))
+      .filter((e) => e.bucket === null && e.ev && !hasEnded(e.ev, now, tz))
+      .sort((a, b) => Date.parse(a.ev!.start) - Date.parse(b.ev!.start))
       .slice(0, LATER_LIMIT);
     if (later && body && upcoming.length > 0) {
       body.textContent = '';

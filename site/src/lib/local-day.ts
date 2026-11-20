@@ -124,10 +124,27 @@ export function bucketOf(e: TimedEvent, now: Date, timezone: string): DayBucket 
   return null;
 }
 
-/** "N events today" = exactly the entries /today/ lists under Today and Tonight right now (same bucketOf(), so the header
- *  count and the list can never disagree; a test pins it). */
-export function countToday(events: TimedEvent[], now: Date, timezone: string): number {
-  return events.filter((e) => { const b = bucketOf(e, now, timezone); return b === 'today' || b === 'tonight'; }).length;
+/** One listed event after dedup and series merging (lib/event-entries.ts): every date/time it happens, and whether it is in a
+ *  neighbouring town. Serialisable, so the header ticker counts the same shape in the browser. */
+export interface CountableEntry { occ: TimedEvent[]; nearby?: boolean }
+
+/** The occurrence a list shows right now: the first that has not ended (null = all over). */
+export function liveOccurrence(occ: TimedEvent[], now: Date, timezone: string): TimedEvent | null {
+  return occ.find((o) => !hasEnded(o, now, timezone)) ?? null;
+}
+
+/** THE "events today" (owner 2026-11-20, the only definition): events in the town, recurring series included, deduplicated (one entry
+ *  per real event, lib/event-entries.ts) and not yet ended; an entry counts when one of its occurrences is in today's Today or
+ *  Tonight bucket. Neighbouring towns are counted separately ("+3 nearby"). The ticker, /today/ and /events/ all call this. */
+export function countEventsToday(entries: CountableEntry[], now: Date, timezone: string): { town: number; nearby: number } {
+  let town = 0;
+  let nearby = 0;
+  for (const e of entries) {
+    const on = e.occ.some((o) => { const b = bucketOf(o, now, timezone); return b === 'today' || b === 'tonight'; });
+    if (!on) continue;
+    if (e.nearby) nearby++; else town++;
+  }
+  return { town, nearby };
 }
 
 export function countTonight(events: TimedEvent[], now: Date, timezone: string): number {

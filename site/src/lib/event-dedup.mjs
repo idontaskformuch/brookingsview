@@ -72,6 +72,20 @@ function hostOf(item) {
   try { return url ? new URL(url).hostname.replace(/^www\./, '') : ''; } catch { return ''; }
 }
 
+/** Two venue strings can be the same place: either is unknown, or the names (first comma part, no leading "The") are equal or one
+ *  contains the other ("The Oscar Larson Performing Arts Center" / "Oscar Larson Performing Arts Center, 1601 University Blvd").
+ *  Designsystem Fas 2 (owner 2026-11-20): a merge needs the same place, so "Gifting for Good" at McCrory Gardens and "Gifting for Good
+ *  at Ag Heritage Museum" (same 10 AM start, two calendars) stay two events. Same key as lib/event-entries.ts venueKey. */
+export function venueKey(v) {
+  const first = (v ?? '').split(',')[0];
+  const k = first.toLowerCase().replace(/&/g, ' and ').replace(/@/g, ' at ').replace(/[^a-z0-9]+/g, ' ').trim().replace(/^the /, '');
+  return k || null;
+}
+function venuesCompatible(a, b) {
+  const ka = venueKey(a), kb = venueKey(b);
+  return !ka || !kb || ka === kb || ka.includes(kb) || kb.includes(ka);
+}
+
 /** The same real event listed by two calendars under differently worded titles
  *  ("The Yule Market" / "The Yule Market Opening Day" / "Museum Shop Yule Market
  *  Opens", all 10 AM on Oct 24). Second pass of buildEventFeed(), narrower than
@@ -97,6 +111,7 @@ function mergeSameStartTitleContainment(items, alsoListedBy) {
     for (let i = 0; i < group.length; i++) {
       for (let j = i + 1; j < group.length; j++) {
         if (hostOf(group[i]) === hostOf(group[j])) continue;
+        if (!venuesCompatible(itemVenue(group[i]), itemVenue(group[j]))) continue;
         const [small, large] = tokens[i].size <= tokens[j].size ? [tokens[i], tokens[j]] : [tokens[j], tokens[i]];
         if (small.size >= 2 && [...small].every((w) => large.has(w))) parent[find(i)] = find(j);
       }

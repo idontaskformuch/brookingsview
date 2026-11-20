@@ -590,6 +590,11 @@
       "severity": "hard",
       "born_from": "Owner 2026-11-20, with the summary rule for Complete (Stoneybrook Drive Retaining Wall Replacement, page 4389: 'The ... project is now complete.' and no phase marked Completed): no capital project may be shown as Complete while a Timeline line has a date after today, and a future-dated, TBD or ongoing line wins (In progress). Enforced in lib/capital-projects.ts completeSource/timelineSaysOpen. Regression fixtures: site/src/lib/capital-projects.test.ts 'QA: no real project is Complete while a Timeline line is dated after today' over the 27 real projects (site/src/lib/fixtures/cip-projects-2026-11-20.json; only Stoneybrook is Complete), plus Stoneybrook with only its description changed ('Phase 1 ... is now complete.', '... will be complete by 2027.') staying In progress.",
       "what": "a /projects/ page or row labelled Complete while one of its Timeline lines is dated after the build date, or Complete from a summary sentence that is partial, future or lacks the project name (vitest)"
+    },
+    "logic.events-today-one-count": {
+      "severity": "soft",
+      "born_from": "Designsystem Fas 0 report 2026-11-20 (owner): Brookings showed 'N events today' 6 in the ticker, 7 on /events/, 6 listed on /today/, and duplicates on /today/. Read-only rows 2026-11-20 16:09 UTC: /events/ alone counted the recurring Playful Preschoolers (story 3536); all three listed Grace Fromknect Recital + Grace Fromknect & Ava Gibbs Recital (both SDSU 2 PM, same calendar so never merged) and History Club 20s Event twice (3 PM + 7 PM); /today/ listed the CNS brunch twice (8 + 9 AM Nov 21). Rule: lib/local-day.ts countEventsToday over lib/event-entries.ts buildEntries (via events-town-view.ts buildTownEntries), the one definition. Regression fixture: site/src/lib/fixtures/events-brookings-2026-11-20.json driven by site/src/lib/event-entries.test.ts (fails before: module missing; with the old pipelines the counts are 6/7/6).",
+      "what": "ticker, /today/ and /events/ do not give the same events-today count for the fixture rows, or a same-day duplicate / multi-date series of the fixture is listed more than once (vitest)"
     }
   }
 }

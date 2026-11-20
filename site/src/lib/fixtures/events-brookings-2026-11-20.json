@@ -1,0 +1,307 @@
+{
+ "_source": "Read-only SELECT 2026-11-20 16:09 UTC, SITE_CITY=brookings_sd: getUpcomingStories([event],200) + getUpcomingArtsEvents(60), rows starting Nov 20-27 local. Verbatim except stories.body and meta keys other than cost/recurrence/age dropped.",
+ "now": "2026-11-20T16:09:16.584Z",
+ "stories": [
+  {
+   "id": "3536",
+   "slug": "event-series-ebb2d1cfdc108c9b",
+   "title": "Playful Preschoolers",
+   "source_type": "event",
+   "source_url": "https://visitbrookingssd.com/event/playful-preschoolers-13/2026-08-28/",
+   "occurs_at": "2026-11-20T14:30:00.000Z",
+   "ends_at": null,
+   "venue_raw": "521 4th St, Brookings, SD 57006",
+   "is_recurring_series": true,
+   "generated_by": "ai:claude-haiku-4-5-20251001",
+   "meta": null
+  },
+  {
+   "id": "4204",
+   "slug": "event-330024",
+   "title": "Arts at The Oscar",
+   "source_type": "event",
+   "source_url": "https://visitbrookingssd.com/event/arts-at-the-oscar-2/",
+   "occurs_at": "2026-11-20T23:30:00.000Z",
+   "ends_at": "2026-11-21T04:00:00.000Z",
+   "venue_raw": "Oscar Larson Performing Arts Center, 1601 University Boulevard, Brookings, SD, 57007",
+   "is_recurring_series": false,
+   "generated_by": "template",
+   "meta": null
+  },
+  {
+   "id": "4205",
+   "slug": "event-330025",
+   "title": "Gifting for Good at Ag Heritage Museum",
+   "source_type": "event",
+   "source_url": "https://visitbrookingssd.com/event/gifting-for-good-at-ag-heritage-museum/",
+   "occurs_at": "2026-11-21T16:00:00.000Z",
+   "ends_at": "2026-11-21T23:00:00.000Z",
+   "venue_raw": "South Dakota Agricultural Heritage Museum, 977 11th Street, Brookings, SD, 57007, United States",
+   "is_recurring_series": false,
+   "generated_by": "template",
+   "meta": {
+    "cost": "Free"
+   }
+  },
+  {
+   "id": "4131",
+   "slug": "event-325664",
+   "title": "SDSU Football vs Indiana State",
+   "source_type": "event",
+   "source_url": "https://visitbrookingssd.com/event/sdsu-football-vs-indiana-state-2/",
+   "occurs_at": "2026-11-21T20:00:00.000Z",
+   "ends_at": "2026-11-21T23:00:00.000Z",
+   "venue_raw": "Dana J. Dykhouse Stadium, 1396 Stadium Rd, Brookings, SD, 57006, United States",
+   "is_recurring_series": false,
+   "generated_by": "ai:claude-sonnet-5",
+   "meta": null
+  },
+  {
+   "id": "4262",
+   "slug": "event-332805",
+   "title": "Spice Club: Coriander",
+   "source_type": "event",
+   "source_url": "https://brookingslibrary.libcal.com/event/18024444",
+   "occurs_at": "2026-11-23T06:00:00.000Z",
+   "ends_at": "2026-11-24T06:00:00.000Z",
+   "venue_raw": "Brookings Public Library",
+   "is_recurring_series": false,
+   "generated_by": "template",
+   "meta": null
+  },
+  {
+   "id": "3324",
+   "slug": "event-series-d717064367fadbd5",
+   "title": "Brookings: Trivia Tuesday",
+   "source_type": "event",
+   "source_url": "https://visitbrookingssd.com/event/trivia-tuesday-5/2026-08-11/",
+   "occurs_at": "2026-11-25T01:30:00.000Z",
+   "ends_at": null,
+   "venue_raw": "Wooden Legs Brewing Company, 309 5th Street, Ste 100, Brookings, SD, 57006",
+   "is_recurring_series": true,
+   "generated_by": "ai:claude-haiku-4-5-20251001",
+   "meta": null
+  },
+  {
+   "id": "4168",
+   "slug": "event-327356",
+   "title": "Squishy Lab Camp",
+   "source_type": "event",
+   "source_url": "https://visitbrookingssd.com/event/squishy-lab-camp/",
+   "occurs_at": "2026-11-25T15:00:00.000Z",
+   "ends_at": "2026-11-25T23:00:00.000Z",
+   "venue_raw": "521 4th St, Brookings, SD 57006",
+   "is_recurring_series": false,
+   "generated_by": "ai:claude-sonnet-5",
+   "meta": null
+  },
+  {
+   "id": "3519",
+   "slug": "event-series-bab905fc30a08cc1",
+   "title": "EBC Trivia Night",
+   "source_type": "event",
+   "source_url": "https://visitbrookingssd.com/event/ebc-trivia-night-2-2-2-2/2026-08-19/",
+   "occurs_at": "2026-11-26T01:00:00.000Z",
+   "ends_at": null,
+   "venue_raw": "Eponymous Brewing Company, 126 Main Ave, Brookings, SD, 57006, United States",
+   "is_recurring_series": true,
+   "generated_by": "ai:claude-haiku-4-5-20251001",
+   "meta": null
+  }
+ ],
+ "arts": [
+  {
+   "external_event_id": "/events/2026/11/gifting-good#2026-11-20T10:00:00-06:00",
+   "title": "Gifting for Good",
+   "teaser": "Get your holiday shopping done early and shop local at mission-driven gift shops throughout Brookings from Thursday, November 19 to Saturday, November 21.  Participating gift shops also include the…",
+   "location": "McCrory Gardens Education and Visitor Center",
+   "starts_at": "2026-11-20T16:00:00.000Z",
+   "ends_at": "2026-11-20T23:00:00.000Z",
+   "categories": [
+    "Special Events"
+   ],
+   "primary_category": "Special Events",
+   "event_url": "https://www.sdstate.edu/events/2026/11/gifting-good"
+  },
+  {
+   "external_event_id": "/events/2026/11/grace-fromknect-recital#2026-11-20T14:00:00-06:00",
+   "title": "Grace Fromknect Recital",
+   "teaser": null,
+   "location": "The Oscar Larson Performing Arts Center",
+   "starts_at": "2026-11-20T20:00:00.000Z",
+   "ends_at": "2026-11-20T20:50:00.000Z",
+   "categories": [
+    "Music"
+   ],
+   "primary_category": "Music",
+   "event_url": "https://www.sdstate.edu/events/2026/11/grace-fromknect-recital"
+  },
+  {
+   "external_event_id": "/events/2026/11/grace-fromknect-ava-gibbs-recital#2026-11-20T14:00:00-06:00",
+   "title": "Grace Fromknect & Ava Gibbs Recital",
+   "teaser": null,
+   "location": "The Oscar Larson Performing Arts Center",
+   "starts_at": "2026-11-20T20:00:00.000Z",
+   "ends_at": "2026-11-20T20:50:00.000Z",
+   "categories": [
+    "Music"
+   ],
+   "primary_category": "Music",
+   "event_url": "https://www.sdstate.edu/events/2026/11/grace-fromknect-ava-gibbs-recital"
+  },
+  {
+   "external_event_id": "/events/2026/11/history-club-20s-event#2026-11-20T15:00:00-06:00",
+   "title": "History Club 20s Event",
+   "teaser": null,
+   "location": "University Student Union",
+   "starts_at": "2026-11-20T21:00:00.000Z",
+   "ends_at": "2026-11-21T04:00:00.000Z",
+   "categories": [
+    "Health/Wellness",
+    "Special Events"
+   ],
+   "primary_category": "Special Events",
+   "event_url": "https://www.sdstate.edu/events/2026/11/history-club-20s-event"
+  },
+  {
+   "external_event_id": "/events/2026/11/arts-oscar#2026-11-20T17:30:00-06:00",
+   "title": "Arts at The Oscar",
+   "teaser": null,
+   "location": "The Oscar Larson Performing Arts Center",
+   "starts_at": "2026-11-20T23:30:00.000Z",
+   "ends_at": "2026-11-21T04:00:00.000Z",
+   "categories": [
+    "Theatre/Dance"
+   ],
+   "primary_category": "Theatre/Dance",
+   "event_url": "https://www.sdstate.edu/events/2026/11/arts-oscar"
+  },
+  {
+   "external_event_id": "/events/2026/11/history-club-20s-event#2026-11-20T19:00:00-06:00",
+   "title": "History Club 20s Event",
+   "teaser": null,
+   "location": "University Student Union",
+   "starts_at": "2026-11-21T01:00:00.000Z",
+   "ends_at": "2026-11-21T04:00:00.000Z",
+   "categories": [
+    "Health/Wellness",
+    "Special Events"
+   ],
+   "primary_category": "Special Events",
+   "event_url": "https://www.sdstate.edu/events/2026/11/history-club-20s-event"
+  },
+  {
+   "external_event_id": "/events/2026/11/natural-sciences-cns-scholarship-fellowship-brunch#2026-11-21T08:00:00-06:00",
+   "title": "College of Natural Sciences (CNS) Scholarship & Fellowship Brunch",
+   "teaser": null,
+   "location": "University Student Union",
+   "starts_at": "2026-11-21T14:00:00.000Z",
+   "ends_at": "2026-11-21T18:00:00.000Z",
+   "categories": [
+    "Special Events"
+   ],
+   "primary_category": "Special Events",
+   "event_url": "https://www.sdstate.edu/events/2026/11/natural-sciences-cns-scholarship-fellowship-brunch"
+  },
+  {
+   "external_event_id": "/events/2026/11/natural-sciences-cns-scholarship-fellowship-brunch#2026-11-21T09:00:00-06:00",
+   "title": "College of Natural Sciences (CNS) Scholarship & Fellowship Brunch",
+   "teaser": null,
+   "location": "University Student Union",
+   "starts_at": "2026-11-21T15:00:00.000Z",
+   "ends_at": "2026-11-21T18:00:00.000Z",
+   "categories": [
+    "Special Events"
+   ],
+   "primary_category": "Special Events",
+   "event_url": "https://www.sdstate.edu/events/2026/11/natural-sciences-cns-scholarship-fellowship-brunch"
+  },
+  {
+   "external_event_id": "/events/2026/11/gifting-good#2026-11-21T10:00:00-06:00",
+   "title": "Gifting for Good",
+   "teaser": "Get your holiday shopping done early and shop local at mission-driven gift shops throughout Brookings from Thursday, November 19 to Saturday, November 21.  Participating gift shops also include the…",
+   "location": "McCrory Gardens Education and Visitor Center",
+   "starts_at": "2026-11-21T16:00:00.000Z",
+   "ends_at": "2026-11-21T23:00:00.000Z",
+   "categories": [
+    "Special Events"
+   ],
+   "primary_category": "Special Events",
+   "event_url": "https://www.sdstate.edu/events/2026/11/gifting-good"
+  },
+  {
+   "external_event_id": "/events/2026/11/madilynn-hallan-senior-recital#2026-11-22T16:00:00-06:00",
+   "title": "Madilynn Hallan Senior Recital",
+   "teaser": null,
+   "location": "The Oscar Larson Performing Arts Center",
+   "starts_at": "2026-11-22T22:00:00.000Z",
+   "ends_at": "2026-11-22T23:00:00.000Z",
+   "categories": [
+    "Music"
+   ],
+   "primary_category": "Music",
+   "event_url": "https://www.sdstate.edu/events/2026/11/madilynn-hallan-senior-recital"
+  },
+  {
+   "external_event_id": "/events/2026/11/theodore-nilson-senior-recital#2026-11-22T19:00:00-06:00",
+   "title": "Theodore Nilson Senior Recital",
+   "teaser": null,
+   "location": "The Oscar Larson Performing Arts Center",
+   "starts_at": "2026-11-23T01:00:00.000Z",
+   "ends_at": "2026-11-23T02:00:00.000Z",
+   "categories": [
+    "Music"
+   ],
+   "primary_category": "Music",
+   "event_url": "https://www.sdstate.edu/events/2026/11/theodore-nilson-senior-recital"
+  },
+  {
+   "external_event_id": "/events/2026/11/jacob-stevens-senior-showcase#2026-11-22T19:00:00-06:00",
+   "title": "Jacob Stevens Senior Showcase",
+   "teaser": null,
+   "location": "The Oscar Larson Performing Arts Center",
+   "starts_at": "2026-11-23T01:00:00.000Z",
+   "ends_at": "2026-11-23T02:00:00.000Z",
+   "categories": [
+    "Theatre/Dance"
+   ],
+   "primary_category": "Theatre/Dance",
+   "event_url": "https://www.sdstate.edu/events/2026/11/jacob-stevens-senior-showcase"
+  },
+  {
+   "external_event_id": "/events/2026/11/olli-wreath-making-class#2026-11-23T14:00:00-06:00",
+   "title": "OLLI Wreath-making Class",
+   "teaser": null,
+   "location": "McCrory Gardens Education and Visitor Center",
+   "starts_at": "2026-11-23T20:00:00.000Z",
+   "ends_at": "2026-11-23T22:00:00.000Z",
+   "categories": [
+    "Workshops/Training"
+   ],
+   "primary_category": null,
+   "event_url": "https://www.sdstate.edu/events/2026/11/olli-wreath-making-class"
+  },
+  {
+   "external_event_id": "/events/2026/11/mccrory-gardens-closed-thanksgiving-break#2026-11-26T10:00:00-06:00",
+   "title": "McCrory Gardens Closed - Thanksgiving Break",
+   "teaser": null,
+   "location": "McCrory Gardens Education and Visitor Center",
+   "starts_at": "2026-11-26T16:00:00.000Z",
+   "ends_at": "2026-11-26T23:00:00.000Z",
+   "categories": [],
+   "primary_category": null,
+   "event_url": "https://www.sdstate.edu/events/2026/11/mccrory-gardens-closed-thanksgiving-break"
+  },
+  {
+   "external_event_id": "/events/2026/11/mccrory-gardens-closed-thanksgiving-break#2026-11-27T10:00:00-06:00",
+   "title": "McCrory Gardens Closed - Thanksgiving Break",
+   "teaser": null,
+   "location": "McCrory Gardens Education and Visitor Center",
+   "starts_at": "2026-11-27T16:00:00.000Z",
+   "ends_at": "2026-11-27T23:00:00.000Z",
+   "categories": [],
+   "primary_category": null,
+   "event_url": "https://www.sdstate.edu/events/2026/11/mccrory-gardens-closed-thanksgiving-break"
+  }
+ ]
+}

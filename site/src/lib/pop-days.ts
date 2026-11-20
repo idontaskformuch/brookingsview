@@ -11,6 +11,7 @@ import { TICKET_LINK_REL } from './whats-on';
 
 /** What the date-tile list prints for one row. A DayRow is one (its link comes from `item`); a big show is built straight into one (its link is `href`). */
 export type PopRow = Pick<DayRow, 'dayKey' | 'timeLabel' | 'title' | 'venue' | 'area' | 'free' | 'kids' | 'teens' | 'cat' | 'start' | 'end' | 'recurrence'>
+  & Partial<Pick<DayRow, 'seriesLabel'>>
   & { /** Where the date tile starts when that is earlier than `start` (a week row that repeats over several days; `start`/`end` stay the LAST occurrence, which is what decides when the row is over). */ tileFrom?: string; item?: FeedItem; href?: string; /** rel for an external `href` when it is not plain "noopener" (a ticket page: TICKET_LINK_REL). */ rel?: string; note?: string; /** "Denver · 15 mi" on its own line under the meta line (/tonight on towns with cityLabels; the title is the tooltip saying it is a straight-line distance). */ label?: CityLabel; tags?: string[]; /** Extra attributes on the row's <li> (the page's own hooks, e.g. data-group, data-card for /tonight's filters). */ attrs?: Record<string, string | undefined> };
 export interface PopDay { dayKey: string; rows: PopRow[] }
 

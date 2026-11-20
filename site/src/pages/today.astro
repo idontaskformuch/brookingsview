@@ -26,7 +26,10 @@ import { meetingTitle } from '../lib/meetings-view';
 import { bucketOf } from '../lib/local-day';
 import SectionHeader from '../components/ui/SectionHeader.astro';
 import CompactRow from '../components/ui/CompactRow.astro';
-import { buildEventFeed, todayUtcMidnight, selectWeekCandidates } from '../lib/events';
+import { todayUtcMidnight, dayIndex } from '../lib/events';
+import { buildTownEntries, countableEntries } from '../lib/events-town-view';
+import { shownOccurrence } from '../lib/event-entries';
+import { countEventsToday } from '../lib/local-day';
 import { siteConfig } from '../lib/site-config';
 import { metaDescription } from '../lib/meta-description';
 import { placeAbbr, forCountry } from '../lib/country-profile';
@@ -62,9 +65,16 @@ const temperature = currentPeriod?.temp ?? null;
 // FRONT_PAGE_NOW (an ISO instant) is only for checking the layout on a chosen day in a local build; CI never sets it.
 const now = process.env.FRONT_PAGE_NOW ? new Date(process.env.FRONT_PAGE_NOW) : new Date();
 const today = todayUtcMidnight(siteConfig.timezone);
-const { items } = buildEventFeed(upcomingEvents, artsEvents, siteConfig.timezone);
-// The week's non-recurring events: the browser buckets today / tonight / tomorrow from them and, when those are empty, lists the nearest as "Coming up".
-const candidates = selectWeekCandidates(items, today, siteConfig.timezone);
+// The week's events as entries (one per real event, recurring series included; Designsystem Fas 2, lib/events-town-view.ts
+// buildTownEntries -- the same pipeline as the ticker and /events/). The browser buckets today / tonight / tomorrow from each entry's
+// first unfinished time and, when those are empty, lists the nearest as "Coming up".
+const townEntries = buildTownEntries(upcomingEvents, artsEvents, facilities, now);
+const candidates = [...townEntries.here, ...townEntries.nearby]
+  .map((e) => ({ e, o: shownOccurrence(e, now, siteConfig.timezone) }))
+  .filter(({ o }) => { const d = dayIndex(o.start, today, siteConfig.timezone); return d >= 0 && d <= 6; })
+  .sort((a, b) => Date.parse(a.o.start) - Date.parse(b.o.start))
+  .slice(0, 40)
+  .map(({ e }) => e);
 // Glasgow: up to 3 Ticketmaster shows in the city itself join Tonight/Tomorrow (owner 2026-10-28).
 const todayShows3 = siteConfig.country === 'gb' && siteConfig.hasWhatsOn
   ? selectTodayShows(await getTicketmasterEventsForTown(siteConfig), new Date(), siteConfig.timezone, siteConfig.townId, siteConfig.cityName)
@@ -106,8 +116,8 @@ const inTodayOrTonight = (start: string | null | undefined, end: string | null |
   const b = start ? bucketOf({ start, end: end ?? null }, now, siteConfig.timezone) : null;
   return b === 'today' || b === 'tonight';
 };
-const eventsToday = candidates.some((i) => inTodayOrTonight(i.occurs_at, i.sourceKind === 'story' ? i.story.ends_at : i.event.ends_at))
-  || todayShows3.some((s) => inTodayOrTonight(s.start, s.end));
+const todayCount = countEventsToday(countableEntries(townEntries), now, siteConfig.timezone);
+const eventsToday = todayCount.town + todayCount.nearby > 0 || todayShows3.some((s) => inTodayOrTonight(s.start, s.end));
 const verdict = todayCfg ? todayIndexVerdict(todayCfg, {
   weather: weatherLines.length > 0,
   meetings: meetingsToday.some((m) => !m.cancelled && !m.postponed),

@@ -4,7 +4,8 @@
  *  nothing reads a date out of the story text (the stored AI text of a 19:00 Pacific event can name the UTC day, see
  *  bodyNamesWrongDay). Day arithmetic goes through localDateParts/dayIndex in events.ts, the one primitive every events page shares. */
 import { localDateParts, utcMidnight, dayIndex, type FeedItem } from './events';
-import { isAllDay, localHourOf, TONIGHT_FROM_HOUR } from './local-day';
+import { isAllDay, localHourOf, TONIGHT_FROM_HOUR, countEventsToday, eventEndsAt, type TimedEvent } from './local-day';
+import { buildEntries, shownOccurrence, entryDays, joinTimes, seriesLabel, countable, normTitle, type EventEntry } from './event-entries';
 import type { Story } from './db';
 import type { Category } from './ui/ui-helpers';
 import { shortDateOfDay, shortWeekdayOfDay } from './calendar-strings';
@@ -13,10 +14,8 @@ import { shortDateOfDay, shortWeekdayOfDay } from './calendar-strings';
 export const DAY_WINDOW = 7;
 /** The day strip is a navigation aid; with fewer events in the window it is noise (standard layout: fewer than 5 hides it). */
 export const DAYSTRIP_MIN_EVENTS = 5;
-/** Same normalised title + same local day + starts this close = one event listed twice (owner 2026-11-05: SDSU Concert Choir Fall Concert, 19:00 and 19:30). */
-export const DEDUPE_MINUTES = 60;
-
-export const normTitle = (t: string) => t.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
+// Dedup and series merging are lib/event-entries.ts (Designsystem Fas 2, owner 2026-11-20); the old ±60 min same-title pass is gone.
+export { normTitle };
 
 export type Recurrence = 'one_off' | 'weekly' | 'monthly' | 'regular';
 
@@ -51,8 +50,12 @@ export interface DayRow {
   cat: Category | null;
   start: string;
   end: string | null;
-  /** the same event listed again by another source (same title, same local day, start within DEDUPE_MINUTES): merged into this row */
+  /** the other listings of the same event (lib/event-entries.ts): merged into this row */
   merged: FeedItem[];
+  /** every time the event happens (several times a day, or a series over several days) */
+  occ: TimedEvent[];
+  /** a series over several days: "Nov 20–21" / "3 dates, Nov 20–22"; null for one day */
+  seriesLabel: string | null;
 }
 
 export interface DayGroup {
@@ -144,7 +147,11 @@ function dayLabelFor(offset: number, day: Date, country: 'us' | 'gb'): string {
   return shortWeekdayOfDay(day, country);
 }
 
-export function buildEventsView(items: FeedItem[], { now, timezone, gb, facts }: Options): EventsView {
+const isEntry = (x: FeedItem | EventEntry): x is EventEntry => 'occ' in x;
+
+/** `items` are feed items (deduplicated here, lib/event-entries.ts buildEntries) or entries already built by the caller. */
+export function buildEventsView(input: FeedItem[] | EventEntry[], { now, timezone, gb, facts }: Options): EventsView {
+  const entries: EventEntry[] = input.length > 0 && isEntry(input[0]) ? (input as EventEntry[]) : buildEntries(input as FeedItem[], timezone);
   const today = utcMidnight(localDateParts(now, timezone));
   const country = gb ? 'gb' : 'us';
   const days: DayGroup[] = Array.from({ length: DAY_WINDOW }, (_, offset) => {
@@ -160,32 +167,35 @@ export function buildEventsView(items: FeedItem[], { now, timezone, gb, facts }:
     };
   });
   const furtherOut: DayRow[] = [];
-  const kept: DayRow[] = [];
 
-  const sorted = items
-    .filter((i) => i.occurs_at)
-    .sort((a, b) => new Date(a.occurs_at!).getTime() - new Date(b.occurs_at!).getTime());
-  for (const item of sorted) {
-    const start = iso(item.occurs_at!);
+  const placed = entries
+    .map((e) => ({ e, o: shownOccurrence(e, now, timezone) }))
+    .sort((a, b) => Date.parse(a.o.start) - Date.parse(b.o.start));
+  for (const { e, o } of placed) {
+    const { item } = e;
+    const start = o.start;
     const offset = dayIndex(start, today, timezone);
     if (offset < 0) continue;
-    const end = item.sourceKind === 'story' && item.story.ends_at ? iso(item.story.ends_at) : null;
     const f = facts(item);
     const local = localDateParts(new Date(start), timezone);
+    const days_ = entryDays(e, timezone);
+    const sameDay = e.occ.filter((x) => dayIndex(x.start, today, timezone) === offset);
+    const series = seriesLabel(days_, gb);
+    const last = e.occ[e.occ.length - 1];
+    const others = e.merged.map((m) => facts(m));
     const row: DayRow = {
       item, dayKey: dayKeyOf(local), offset,
       dateLabel: shortDateOfDay(utcMidnight(local), country),
-      timeLabel: clockLabel(start, end, timezone, gb),
-      allDay: isAllDay({ start, end }, timezone),
+      timeLabel: sameDay.length > 1 ? joinTimes(sameDay.map((x) => clockLabel(x.start, x.end, timezone, gb))) : clockLabel(start, o.end, timezone, gb),
+      allDay: isAllDay(o, timezone),
       tonight: offset === 0 && localHourOf(new Date(start), timezone) >= TONIGHT_FROM_HOUR,
       recurrence: item.sourceKind === 'story' ? recurrenceKind(item.story) : 'one_off',
-      title: f.title, venue: f.venue, area: f.area, free: f.free, kids: f.kids, teens: !!f.teens, cat: f.cat ?? null,
-      start, end, merged: [],
+      title: f.title, venue: f.venue ?? others.find((x) => x.venue)?.venue ?? null, area: f.area ?? others.find((x) => x.area)?.area ?? null,
+      free: f.free || others.some((x) => x.free), kids: f.kids || others.some((x) => x.kids), teens: !!f.teens, cat: f.cat ?? null,
+      // A row stays on the page until the event's last time is over (the browser's sweep reads `end`).
+      start, end: e.occ.length > 1 ? eventEndsAt(last, timezone).toISOString() : (o.end ?? null),
+      merged: e.merged, occ: e.occ, seriesLabel: series,
     };
-    const twin = kept.find((k) => k.dayKey === row.dayKey && normTitle(k.title) === normTitle(row.title)
-      && Math.abs(new Date(k.start).getTime() - new Date(start).getTime()) <= DEDUPE_MINUTES * 60_000);
-    if (twin) { twin.merged.push(item); twin.free = twin.free || row.free; twin.kids = twin.kids || row.kids; twin.venue = twin.venue ?? row.venue; twin.area = twin.area ?? row.area; continue; }
-    kept.push(row);
     if (offset >= DAY_WINDOW) { furtherOut.push(row); continue; }
     days[offset].rows.push(row);
     days[offset].count++;
@@ -196,7 +206,8 @@ export function buildEventsView(items: FeedItem[], { now, timezone, gb, facts }:
     days,
     furtherOut,
     total: days.reduce((n, d) => n + d.count, 0) + furtherOut.length,
-    todayCount: todayRows.length,
+    // THE count (lib/local-day.ts countEventsToday); the caller passes one zone at a time, so every entry here counts as `town`.
+    todayCount: countEventsToday(entries.map((e) => countable(e)), now, timezone).town,
     tonightCount: todayRows.filter((r) => r.tonight).length,
     freeToday: todayRows.filter((r) => r.free).length,
     nextDay: days.slice(1).find((d) => d.count > 0) ?? null,

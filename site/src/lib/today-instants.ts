@@ -1,21 +1,19 @@
-/** Start/end instants of the events /today/ can list (same feed, same candidate selection), for the header's
- *  "N events today" (BaseLayout). Counting these through countToday() makes the number equal the list by construction. */
-import { getUpcomingStories, getUpcomingArtsEvents } from './db';
-import { buildEventFeed, todayUtcMidnight, selectBucketCandidates } from './events';
-import { siteConfig } from './site-config';
+/** The entries the header ticker counts ("N events today · +M nearby", BaseLayout): the SAME pipeline as /today/ and /events/
+ *  (events-town-view.ts buildTownEntries), counted in the browser by lib/local-day.ts countEventsToday() -- the one definition
+ *  (Designsystem Fas 2, owner 2026-11-20). Only entries with a time in the next three town days travel to the page. */
+import { getUpcomingStories, getUpcomingArtsEvents, getFacilities } from './db';
+import { buildTownEntries, countableEntries } from './events-town-view';
+import type { CountableEntry } from './local-day';
 
-let cached: Promise<{ start: string; end: string | null }[]> | null = null;
+const SOON_MS = 3 * 86_400_000;
+let cached: Promise<CountableEntry[]> | null = null;
 
-export function getTodayInstants(): Promise<{ start: string; end: string | null }[]> {
+export function getTodayEntries(): Promise<CountableEntry[]> {
   cached ??= (async () => {
-    const [stories, arts] = await Promise.all([getUpcomingStories(['event'], 200), getUpcomingArtsEvents(60)]);
-    const { items } = buildEventFeed(stories, arts, siteConfig.timezone);
-    return selectBucketCandidates(items, todayUtcMidnight(siteConfig.timezone), siteConfig.timezone)
-      .filter((i) => i.occurs_at)
-      .map((i) => {
-        const end = i.sourceKind === 'story' ? i.story.ends_at : i.event.ends_at;
-        return { start: new Date(i.occurs_at!).toISOString(), end: end ? new Date(end).toISOString() : null };
-      });
+    const [stories, arts, facilities] = await Promise.all([getUpcomingStories(['event'], 200), getUpcomingArtsEvents(60), getFacilities()]);
+    const now = new Date();
+    return countableEntries(buildTownEntries(stories, arts, facilities, now))
+      .filter((e) => e.occ.some((o) => Date.parse(o.start) - now.getTime() < SOON_MS));
   })();
   return cached;
 }

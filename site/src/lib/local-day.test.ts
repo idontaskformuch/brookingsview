@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bucketOf, countToday, countTonight, eventEndsAt, hasEnded, isAllDay, localDayNumber, localMidnightIso, relativeDayLabel, withoutEnded } from './local-day';
+import { bucketOf, countEventsToday, countTonight, eventEndsAt, hasEnded, isAllDay, localDayNumber, localMidnightIso, relativeDayLabel, withoutEnded } from './local-day';
 
 const CHI = 'America/Chicago';
 const LA = 'America/Los_Angeles';
@@ -86,8 +86,8 @@ describe('counts and relative labels', () => {
     { start: '2026-10-21T00:30:00Z' },                              // 7:30 PM tonight
     { start: '2026-10-21T15:00:00Z' },                              // tomorrow
   ];
-  it('countToday / countTonight skip ended events', () => {
-    expect(countToday(events, now, CHI)).toBe(2);
+  it('countEventsToday / countTonight skip ended events', () => {
+    expect(countEventsToday(events.map((e) => ({ occ: [e] })), now, CHI)).toEqual({ town: 2, nearby: 0 });
     expect(countTonight(events, now, CHI)).toBe(1);
   });
   it('relativeDayLabel counts town-local days', () => {
@@ -174,12 +174,20 @@ describe('"N events today" and the Today list are the same set', () => {
     { start: '2026-10-21T00:00:00Z' },                              // 7 PM -> Tonight
     { start: '2026-10-21T15:00:00Z' },                              // tomorrow
   ];
-  it('countToday equals the entries bucketed today or tonight, at every minute of the day', () => {
+  const one = events.map((e) => ({ occ: [e] }));
+  it('countEventsToday equals the entries bucketed today or tonight, at every minute of the day', () => {
     for (let m = 0; m < 24 * 60; m += 53) {
       const t = new Date(Date.parse('2026-10-20T05:00:00Z') + m * 60_000);
       const listed = events.filter((e) => ['today', 'tonight'].includes(bucketOf(e, t, CHI) ?? '')).length;
-      expect(countToday(events, t, CHI)).toBe(listed);
+      expect(countEventsToday(one, t, CHI).town).toBe(listed);
     }
-    expect(countToday(events, now, CHI)).toBe(4);
+    expect(countEventsToday(one, now, CHI).town).toBe(4);
+  });
+  it('an entry with several times counts once; nearby entries are counted apart', () => {
+    const twice = { occ: [events[1], events[4]] }; // on now + 7 PM tonight: one event, two times
+    expect(countEventsToday([twice], now, CHI)).toEqual({ town: 1, nearby: 0 });
+    expect(countEventsToday([twice, { occ: [events[2]], nearby: true }], now, CHI)).toEqual({ town: 1, nearby: 1 });
+    // a series whose today time is over still counts while a later time today is ahead, and not at all when only tomorrow is left
+    expect(countEventsToday([{ occ: [events[0], events[5]] }], now, CHI)).toEqual({ town: 0, nearby: 0 });
   });
 });
