@@ -11,7 +11,7 @@ import { siteConfig } from '../../lib/site-config';
 import { forCountry } from '../../lib/country-profile';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { shouldNoindexProject } from '../../lib/project-noindex';
-import { CHECK_FREQUENCY_TEXT, GROUPS, TIMELINE_LABEL, exactNameMatch, formatCheckedDate, groupOf } from '../../lib/capital-projects';
+import { CHECK_FREQUENCY_TEXT, GROUPS, cipProjectDescription, TIMELINE_LABEL, exactNameMatch, formatCheckedDate, groupOf } from '../../lib/capital-projects';
 
 export async function getStaticPaths() {
   const projects = await getCapitalProjects();
@@ -32,7 +32,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   { label: 'Capital projects', href: '/projects/' },
   { label: project.title, href: canonicalUrl },
 ];
-const description = `${project.title}: the City of ${siteConfig.cityName}'s timeline for this capital improvement project, word for word, and the changes we have seen to it.`;
+const description = cipProjectDescription(project.title, siteConfig.cityName);
 ---
 <BaseLayout title={`${project.title} — ${siteConfig.siteName}`} canonicalUrl={canonicalUrl} ogSlug="section-city-hall"
   description={description} noindex={noindex}>

@@ -17,7 +17,7 @@ import { resolvePageMeta } from '../../lib/page-meta';
 import { forCountry } from '../../lib/country-profile';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import {
-  CHECK_FREQUENCY_TEXT, TIMELINE_LABEL, exactNameMatch, formatCheckedDate, groupProjects, lastChecked,
+  CHECK_FREQUENCY_TEXT, TIMELINE_LABEL, cipIndexDescription, exactNameMatch, formatCheckedDate, groupProjects, lastChecked,
 } from '../../lib/capital-projects';
 
 const config = siteConfig.capitalProjects;
@@ -33,7 +33,7 @@ const groups = groupProjects(projects, new Date());
 const checked = lastChecked(listed);
 const registry = await getProjects();
 const noindex = listed.length === 0;
-const description = `The City of ${siteConfig.cityName}'s current capital improvement projects, each with its phases and dates exactly as the City lists them, grouped by where the timeline stands.`;
+const description = cipIndexDescription(siteConfig.cityName);
 ---
 <BaseLayout title={pageMeta.title} canonicalUrl={canonicalUrl} wide ogSlug="section-city-hall" description={description} noindex={noindex}>
   <Breadcrumbs trail={breadcrumbTrail} />
@@ -41,11 +41,6 @@ const description = `The City of ${siteConfig.cityName}'s current capital improv
     <h1>{pageMeta.h1}</h1>
     <ShareButton title={pageMeta.title} />
   </header>
-  <p class="cip-lede">
-    {listed.length > 0 ? `${listed.length} projects on` : 'Projects on'} the City's list of
-    <a href={config.listUrl} rel="noopener">current capital improvement projects</a>.
-    Phases and dates are the City's own words. The groups below only sort them by the City's timeline lines.
-  </p>
 
   {groups.length === 0 ? (
     <EmptyState href={config.listUrl} linkLabel="See the City's list">We have not read the City's list yet.</EmptyState>
@@ -85,6 +80,11 @@ const description = `The City of ${siteConfig.cityName}'s current capital improv
 
   <AboutThisPage slot="about" sources={[{ name: `City of ${siteConfig.cityName}: Current Capital Improvement Projects`, href: config.listUrl }]}
 >
+    <p>
+      {listed.length > 0 ? `${listed.length} projects on` : 'Projects on'} the City's list of
+      <a href={config.listUrl} rel="noopener">current capital improvement projects</a>.
+      Phases and dates are the City's own words. The groups above only sort them by the City's timeline lines.
+    </p>
     <p class="cip-checked">{checked ? `Last checked ${formatCheckedDate(checked, siteConfig.timezone, locale)}.` : 'Not checked yet.'}</p>
     <p>{CHECK_FREQUENCY_TEXT} We read the City's list and each project's own page, and copy the timeline lines, the cost line
     and at most one short sentence exactly as written. When a line changes, the project's page here records the change with the
@@ -96,7 +96,6 @@ const description = `The City of ${siteConfig.cityName}'s current capital improv
 
 <style>
 .cip-head { max-width: 44rem; }
-.cip-lede { max-width: 44rem; color: var(--ink-soft); }
 .cip-group { margin-top: 1.5rem; }
 .cip-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; max-width: 48rem; }
 .cip-title { font-weight: 600; display: block; }

@@ -9,6 +9,7 @@
  *    a phase whose end date has passed without that mark keeps the project "In progress", the line shown as the City wrote it.
  *  - A project whose timeline has no line we can read dates from goes in its own group: "Timeline: see the City's page" (decision C).
  *  - Today's date decides the groups at build time; the stored dates come from the parser, which never guesses one. */
+import { DESCRIPTION_MAX } from './meta-description';
 
 export interface CipPhase {
   text: string;
@@ -113,4 +114,27 @@ export function exactNameMatch<T extends { title: string }>(title: string, regis
 /** "Nov 20, 2026" in the town's time zone (a check time or the day a project left the list). */
 export function formatCheckedDate(iso: string, timeZone: string, locale = 'en-US'): string {
   return new Date(iso).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric', timeZone });
+}
+
+/** Meta descriptions (2026-11-20, first live battery: /projects/ and long-titled project pages were cut with "…"). Each ends on a whole
+ *  sentence within DESCRIPTION_MAX: the longest template that fits is used, so fitDescription never has to cut a word. */
+export function cipIndexDescription(cityName: string): string {
+  return firstThatFits([
+    `The City of ${cityName}'s current capital improvement projects, each phase and date exactly as the City lists them, sorted by where the timeline stands.`,
+    `The City of ${cityName}'s current capital improvement projects, each phase and date exactly as the City lists them.`,
+    `The City's current capital improvement projects, each phase and date exactly as the City lists them.`,
+  ]);
+}
+
+export function cipProjectDescription(title: string, cityName: string): string {
+  return firstThatFits([
+    `${title}: the City of ${cityName}'s timeline for this capital improvement project, word for word, and the changes we have seen to it.`,
+    `${title}: the City's timeline for this project, word for word, and every change we have seen.`,
+    `${title}: the City's timeline, word for word, and every change we have seen.`,
+    `The City's timeline for this capital improvement project, word for word, and every change we have seen.`,
+  ]);
+}
+
+function firstThatFits(texts: string[]): string {
+  return texts.find((t) => t.length <= DESCRIPTION_MAX) ?? texts[texts.length - 1];
 }

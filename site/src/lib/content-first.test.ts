@@ -14,6 +14,15 @@ describe('findIntroText', () => {
     expect(findIntroText(html, '/facilities/')).toHaveLength(1);
   });
 
+  it("capital projects (2026-11-20 battery): a project page shows the City's own summary under the H1, the list page has no lede", () => {
+    // Real Broomfield rows from the first live run: Stoneybrook Drive Retaining Wall Replacement's description, and the list page's
+    // old lede (27 projects), which moved to About this page.
+    const detail = page(`<article class="cip"><header><p class="cip-group">Timeline: see the City's page</p><h1>Stoneybrook Drive Retaining Wall Replacement</h1><p class="cip-sum">The Stoneybrook Drive Retaining Wall Replacement project is now complete.</p></header><section><h2>Timeline</h2><ul><li>a</li></ul></section></article>`);
+    expect(findIntroText(detail, '/projects/stoneybrook-drive-retaining-wall-replacement/')).toEqual([]);
+    const lede = `<p class="cip-lede">27 projects on the City's list of <a href="https://www.broomfield.org/3763/Current-Capital-Improvement-Projects">current capital improvement projects</a>. Phases and dates are the City's own words. The groups below only sort them by the City's timeline lines.</p>`;
+    expect(findIntroText(page(`<header class="cip-head"><h1>Ongoing capital projects (per the City)</h1></header>${lede}<section class="cip-group"><ul><li>a</li></ul></section>`), '/projects/')).toHaveLength(1);
+  });
+
   it('passes when the content follows the H1 and the explanation sits in the about section', () => {
     const html = page(`<header><h1>Places</h1></header><ul><li>a</li></ul><section class="ui-about" data-about-this-page><h2>About this page</h2><p>${LONG}</p></section>`);
     expect(findIntroText(html, '/facilities/')).toEqual([]);

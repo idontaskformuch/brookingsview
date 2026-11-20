@@ -7,9 +7,10 @@ import { describe, expect, it } from 'vitest';
 import { SCRAPE_CRON, SCRAPE_WORKFLOWS } from '../../../cron-dispatcher/src/schedule';
 import { ALL_CONFIGS } from './site-config';
 import {
-  CHECK_FREQUENCY_TEXT, PAGE_H1, exactNameMatch, groupOf, groupProjects, lastChecked, nextMilestone, type CipPhase, type CipProject,
+  CHECK_FREQUENCY_TEXT, PAGE_H1, cipIndexDescription, cipProjectDescription, exactNameMatch, groupOf, groupProjects, lastChecked, nextMilestone, type CipPhase, type CipProject,
 } from './capital-projects';
 import { PAGE_META_PATTERNS } from '../config/page-meta';
+import { fitDescription } from './meta-description';
 
 const ph = (text: string, label: string | null, start: string | null, end: string | null, completed = false, tbd = false): CipPhase =>
   ({ text, label, start, end, completed, tbd });
@@ -129,5 +130,31 @@ describe('config, schedule and gating', () => {
   it('the H1 is the owner\'s wording', () => {
     expect(PAGE_META_PATTERNS.projects.h1Pattern).toBe(PAGE_H1);
     expect(PAGE_H1).toBe('Ongoing capital projects (per the City)');
+  });
+});
+
+describe('meta descriptions (2026-11-20 battery: /projects/ and long-titled pages were cut with "…")', () => {
+  // Every title the first live run (11:00 UTC 2026-11-20) wrote for Broomfield, verbatim from projects (source_type 'cip_page').
+  const TITLES = ['10th at Birch Intersection Improvements', '112th & Uptown Avenue Street Improvements',
+    '120th Ave Complete Street Improvements', '2026 ADA Curb Ramp Program', 'Airport Creek Trail Underpass',
+    'Anthem Community Park Improvements', 'Arista Neighborhood Public Lighting and Electrical System Repairs',
+    'Broadlands West Park Retaining Wall Replacement', 'Broomfield Heights Stormwater and Pedestrian Improvements',
+    'Broomfield Police Building Expansion', 'CO 7 Interim Bus Stops', 'CO-7 Interim Improvements', 'City Park Channel at Main Street',
+    'County Commons Teen Space', 'Kohl St & Daphne St Multimodal Improvements', 'Markel and Wottge Open Space Plan',
+    'Mesa Zone Booster Station', 'Midway Boulevard Design', 'Nickel Street and Industrial Lane Intersection Improvements',
+    'Nissen Channel', 'North Area Water Tanks', 'Parking Lot Renovations', 'Redpoint Ridge Park Landscape Renovation',
+    'Sewer Lift Station Compliance', 'Stoneybrook Drive Retaining Wall Replacement', 'The Field Open Space Overlook Project',
+    'Varra Park Hillside Stabilization'];
+  const whole = (d: string) => d.length <= 160 && d.endsWith('.') && fitDescription(d) === d;
+
+  it('the list page ends on a whole sentence for every town', () => {
+    for (const c of Object.values(ALL_CONFIGS)) expect(whole(cipIndexDescription(c.cityName)), c.cityName).toBe(true);
+  });
+  it('every real project page names its project and ends on a whole sentence, the longest title included', () => {
+    for (const t of TITLES) {
+      const d = cipProjectDescription(t, 'Broomfield');
+      expect(whole(d), d).toBe(true);
+      expect(d.startsWith(`${t}:`), d).toBe(true);
+    }
   });
 });
