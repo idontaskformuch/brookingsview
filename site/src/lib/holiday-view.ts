@@ -234,16 +234,25 @@ export function closureGrid(page: HolidayPageData): ClosureGridView | null {
 
 /** Status line under the holiday page's photo band (owner 2026-11-20, Tillägg A): the date and how far away it is, in normal
  *  heading size, never a display number ("8 places closed" and "Friday" were display numbers that were not measurements).
- *  "Thursday, Nov 26 · 6 days away" (en-GB "Friday 25 Dec · 35 days away"). The year is added when the day is not in
- *  `today`'s year or is over, so a past day never reads as this season's; a past day counts back ("3 days ago").
+ *  "Thursday, Nov 26 · 6 days away" (en-GB "Friday 25 Dec · 35 days away"); a past day counts back ("Wednesday, Nov 11 ·
+ *  9 days ago", owner 2026-11-20). The year is added only when the day is not in `today`'s year.
  *  `dayMs` = the day at UTC midnight, `today` = local ISO date. */
 export function holidayStatus(dayMs: number, today: string, locale: HolidayLocale = 'en-US'): string {
   const dayIso = new Date(dayMs).toISOString().slice(0, 10);
   const n = Math.round((dayMs - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
-  const withYear = n < 0 || dayIso.slice(0, 4) !== today.slice(0, 4);
+  const withYear = dayIso.slice(0, 4) !== today.slice(0, 4);
   const date = withYear ? formatDayLong(dayMs, locale) : `${weekdayLong(dayMs)}${locale === 'en-GB' ? ' ' : ', '}${formatDayShort(dayMs, locale)}`;
   const when = n === 0 ? 'today' : n === 1 ? 'tomorrow' : n === -1 ? 'yesterday' : n > 0 ? `${n} days away` : `${-n} days ago`;
   return `${date} · ${when}`;
+}
+
+/** Which day the status line names (owner 2026-11-20): after the holiday the passed day ("9 days ago") stays until the page
+ *  has data for the next year; only then does it switch to the next date and count down. `seasonDay` = the day of the page's
+ *  data season, `nextYear`/`nextDay` = the next occurrence (null inside the window). Data older than the season just passed
+ *  shows the next date, so a page never counts back over a year. */
+export function statusDay(seasonDay: number, pageYear: number, nextYear: number | null, nextDay: number | null): number {
+  if (nextYear === null || nextDay === null || nextYear <= pageYear) return seasonDay;
+  return nextYear === pageYear + 1 ? seasonDay : nextDay;
 }
 
 /** One entry per distinct source page, in order of first use, named by the organization ("City and County of Broomfield");

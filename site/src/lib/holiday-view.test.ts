@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
-  buildGroups, closedPlaces, countHeld, holidayOverviewLine, isTimeless, timelessGroups, detailFor, FOLD_AFTER, GROUP_HEADING, GROUP_ORDER, groupSources, holidayStatus, holidayInsights, closureGrid, regularHoursRows,
+  buildGroups, closedPlaces, countHeld, holidayOverviewLine, isTimeless, timelessGroups, detailFor, FOLD_AFTER, GROUP_HEADING, GROUP_ORDER, groupSources, holidayStatus, holidayInsights, closureGrid, regularHoursRows, statusDay,
 } from './holiday-view';
-import { occurrenceDay } from './holiday-calendar';
+import { occurrenceDay, resolvePageState } from './holiday-calendar';
 import { holidayPageDef } from '../config/holiday-pages/calendar';
 import { buildVeteransDayPage } from '../config/holiday-pages/veterans-day';
 import { buildThanksgivingPage } from '../config/holiday-pages/thanksgiving';
@@ -174,9 +174,10 @@ describe('hero and insights', () => {
     expect(holidayStatus(day('thanksgiving', bfThanks), '2026-11-20')).toBe('Thursday, Nov 26 · 6 days away');
     expect(holidayStatus(day('thanksgiving', bfThanks), '2026-11-25')).toBe('Thursday, Nov 26 · tomorrow');
     expect(holidayStatus(day('thanksgiving', bfThanks), '2026-11-26')).toBe('Thursday, Nov 26 · today');
-    // after the day: the year, counted back, never "away"
-    expect(holidayStatus(day('thanksgiving', bfThanks), '2026-11-27')).toBe('Thursday, Nov 26, 2026 · yesterday');
-    expect(holidayStatus(day('veterans-day', vet), '2026-11-20')).toBe('Wednesday, Nov 11, 2026 · 9 days ago');
+    // after the day: counted back, never "away"; the year only when the day is in another year than today
+    expect(holidayStatus(day('thanksgiving', bfThanks), '2026-11-27')).toBe('Thursday, Nov 26 · yesterday');
+    expect(holidayStatus(day('veterans-day', vet), '2026-11-20')).toBe('Wednesday, Nov 11 · 9 days ago');
+    expect(holidayStatus(day('thanksgiving', bfThanks), '2027-01-04')).toBe('Thursday, Nov 26, 2026 · 39 days ago');
     // Glasgow Christmas (xmas, en-GB) on 2026-11-20: the owner's "Friday, Dec 25 · 35 days away" in British order.
     expect(holidayStatus(day('christmas', xmas), '2026-11-20', 'en-GB')).toBe('Friday 25 Dec · 35 days away');
   });
@@ -303,7 +304,25 @@ describe('standing (timeless) page', () => {
     expect(isTimeless(vet, 2026)).toBe(false);
     expect(isTimeless(vet, null)).toBe(false);
   });
-  it('Veterans Day after Nov 11: next date in the hero, normally closed/different rows without dates, no events', () => {
+  it('QA data.holiday-status-passed-day: Broomfield Veterans Day (2026 data) on 2026-11-20 names the passed day until 2027 data is in', () => {
+    // owner 2026-11-20: "Wednesday, Nov 11 · 9 days ago" until the page has next year's closures; then the next date and countdown.
+    // Before the fix the standing page's status named the next date ("Thursday, Nov 11, 2027 · 356 days away").
+    const def = holidayPageDef('veterans-day')!;
+    const s = resolvePageState(def, vet.year, Date.parse('2026-11-20T19:00:00Z'), 'America/Denver');
+    expect(s.kind).toBe('evergreen');
+    const ev = s as Extract<typeof s, { kind: 'evergreen' }>;
+    expect(ev.nextYear).toBe(2027);
+    const shown = statusDay(occurrenceDay(def, vet.year), vet.year, ev.nextYear, ev.nextDay);
+    expect(holidayStatus(shown, '2026-11-20')).toBe('Wednesday, Nov 11 · 9 days ago');
+    // the same page once its data is for 2027 (only page.year changed): the next date and countdown
+    expect(holidayStatus(statusDay(occurrenceDay(def, 2027), 2027, ev.nextYear, ev.nextDay), '2026-11-20')).toBe('Thursday, Nov 11, 2027 · 356 days away');
+    // data two seasons old never counts back over a year: the next date
+    expect(statusDay(occurrenceDay(def, 2025), 2025, ev.nextYear, ev.nextDay)).toBe(ev.nextDay);
+    // inside the window (no next occurrence): the season's day
+    expect(statusDay(occurrenceDay(def, 2026), 2026, null, null)).toBe(occurrenceDay(def, 2026));
+    expect(read('../components/HolidayPage.astro')).toMatch(/holidayStatus\(\s*statusDay\(/);
+  });
+  it('Veterans Day after Nov 11: normally closed/different rows without dates, no events', () => {
     const hero = holidayStatus(next, '2026-11-20');
     expect(hero).toBe('Thursday, Nov 11, 2027 · 356 days away');
     const g = timelessGroups(vet);

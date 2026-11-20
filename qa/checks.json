@@ -431,6 +431,11 @@
         "born_from": "Broomfield AdSense audit 2026-11-11 (F9): the /thanksgiving/ hero said \"2 places closed\" on Thanksgiving, counting Tree Branch Recycle, which closes Sat Nov 28. Regression fixture: site/src/lib/holiday-view.test.ts 'counts places that are shut' (the hero value 1 fails on the old count).",
         "what": "the holiday hero's places-closed number is not the count of confirmed closed rows whose closedOn includes the holiday (closedPlaces in lib/holiday-view.ts; vitest in every deploy's test job)"
     },
+    "data.holiday-status-passed-day": {
+        "severity": "hard",
+        "born_from": "Owner review 2026-11-20 (Tillägg A): after the holiday the status line jumped to next year's date (Broomfield /veterans-day/ on 2026-11-20 read \"Thursday, Nov 11, 2027 · 356 days away\" while the page still held the 2026 closures); the owner wants the passed day (\"Wednesday, Nov 11 · 9 days ago\") until next year's data is in. Regression fixture: site/src/lib/holiday-view.test.ts 'QA data.holiday-status-passed-day' (config/holiday-pages Broomfield Veterans Day 2026, today 2026-11-20; fails before the fix).",
+        "what": "a holiday page's status line names another day than its data season's day while the next occurrence is the year after the data, or counts back over a year (statusDay + holidayStatus in lib/holiday-view.ts; vitest in every deploy's test job)"
+    },
     "data.holiday-hours-dates": {
         "severity": "hard",
         "born_from": "Found 2026-11-15 while transcribing Glasgow's Winter Wonderland hours (owner: fix with a QA check and fixture): the St Enoch Square regular-hours row on /christmas/ said \"6 to 20 Dec\" for a run the FAQ gives as 6 November to 20 December (evidence .claude/evidence/glasgow-christmas-2026-11/ww-faq.txt line 60). Regression fixture: site/src/lib/holiday-season.test.ts 'QA data.holiday-hours-dates' (the row as committed before the fix fails; the page as it is passes).",

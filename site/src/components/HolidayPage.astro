@@ -22,7 +22,7 @@ import {
   buildHolidayMeta, buildTimelessHolidayMeta, buildHolidayEventsJsonLd, checkedSpan, formatCheckedSpan, formatIsoDate, localToday, checkTitleLength,
   type HolidayPageData,
 } from '../lib/holiday-page';
-import { buildGroups, regularHoursRows, holidayStatus, holidayInsights, closureGrid, groupSources, isTimeless, timelessGroups } from '../lib/holiday-view';
+import { buildGroups, regularHoursRows, holidayStatus, statusDay, holidayInsights, closureGrid, groupSources, isTimeless, timelessGroups } from '../lib/holiday-view';
 import { evergreenLines, occurrenceDay, type HolidayPageState } from '../lib/holiday-calendar';
 import type { HolidayPageDef } from '../config/holiday-pages/calendar';
 import CityPhoto from './CityPhoto.astro';
@@ -63,8 +63,12 @@ const webPage = {
   dateModified: page.dataUpdatedOn,
 };
 
-// Status line, not a display number (owner 2026-11-20, Tillägg A): "Thursday, Nov 26 · 6 days away". The standing page names the next date.
-const status = holidayStatus(timeless && state.kind === 'evergreen' ? state.nextDay : occurrenceDay(def, page.year), today, page.locale);
+// Status line, not a display number (owner 2026-11-20, Tillägg A): "Thursday, Nov 26 · 6 days away". After the day it names the passed
+// day ("9 days ago") until next year's data is in; then the next date (statusDay, owner 2026-11-20).
+const status = holidayStatus(
+  statusDay(occurrenceDay(def, page.year), page.year, state.kind === 'evergreen' ? state.nextYear : null, state.kind === 'evergreen' ? state.nextDay : null),
+  today, page.locale,
+);
 const dayIso = new Date(occurrenceDay(def, page.year)).toISOString().slice(0, 10);
 const over = today > dayIso; // the season's day has passed: no present tense about it (owner 2026-11-11)
 const insights = timeless ? [] : holidayInsights(page, over);
