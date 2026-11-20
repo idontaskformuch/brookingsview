@@ -3,6 +3,8 @@
  *  grid (ARIA table, div-based like the rest of the holiday page); below it every place is a card with its days on one line.
  *  "Closed" muted, hours that differ from usual in bold, a day the source does not list = "Usual hours" in neutral ink
  *  ("Usual" on a phone card, where four day columns leave no room for two words).
+ *  Transit rows say "Regular schedule" ("Regular") instead. Above the grid "Usual = no change announced by the source." when
+ *  a cell says "Usual hours" (owner 2026-11-20).
  *  One "Checked" date for the whole grid (the newest row check). Data: lib/holiday-view.ts closureGrid.
  *
  *  Resident question: which places can I use on each day around the holiday? */
@@ -17,6 +19,7 @@ const n = grid.days.length;
 <section class="hp-group hg-wrap" id="closures" aria-label="Closures by day" data-closure-grid>
   <SectionHeader title="Closures" />
   <p class="hg-checked">Checked <time datetime={grid.checked}>{formatIsoDate(grid.checked, false, locale)}</time></p>
+  {grid.legend && <p class="hg-legend" data-grid-legend>{grid.legend}</p>}
   <div class="hg" role="table" aria-label="Closures by day" style={`--hg-days:${n}`}>
     <div class="hg__head" role="row">
       <span role="columnheader">Place</span>
@@ -46,6 +49,7 @@ const n = grid.days.length;
 
 <style>
   .hg-checked { margin: 0 0 var(--ui-3); font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); }
+  .hg-legend { margin: calc(-1 * var(--ui-2)) 0 var(--ui-3); font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); }
   .hg { font-family: var(--font-ui); font-variant-numeric: tabular-nums; }
   .hg__head, .hg__row, .hg__grouprow {
     display: grid; grid-template-columns: minmax(0, 2.2fr) repeat(var(--hg-days), minmax(0, 1fr)); gap: var(--ui-3);

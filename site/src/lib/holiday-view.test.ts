@@ -171,7 +171,7 @@ describe('closures grid (Tillägg B, owner 2026-11-20)', () => {
     const mg = closureGrid(mvThanks)!;
     expect(mg.days.map((d) => d.label)).toEqual(['Wed 25', 'Thu 26', 'Fri 27']);
     expect(mg.groups[0].rows.map((r) => [r.name, r.cells.map((c) => `${c.kind}:${c.text}`)])).toEqual([
-      ['RTA buses', ['usual:Usual hours', 'closed:Closed', 'usual:Usual hours']],
+      ['RTA buses', ['usual:Regular schedule', 'closed:Closed', 'usual:Regular schedule']],
       ['Library (all locations)', ['hours:Closes 5 p.m.', 'closed:Closed', 'closed:Closed']],
     ]);
     expect(mg.checked).toBe('2026-11-14');
@@ -187,6 +187,25 @@ describe('closures grid (Tillägg B, owner 2026-11-20)', () => {
     expect(bg.groups[0].rows.find((r) => r.name === 'Landfill')!.note).toBe('Sat Nov 28 is the last Saturday open for the season.');
     expect(bg.checked).toBe('2026-10-24');
     expect(buildGroups(bkThanks, '2026-11-20', '2026-11-26').find((x) => x.id === 'closed')?.rows.map((r) => r.name) ?? []).not.toContain('City offices');
+  });
+  it('transit rows (section, not name) say "Regular schedule" / "Regular" (owner 2026-11-20)', () => {
+    // Moreno Thanksgiving, RTA buses (Nov 12 release): "Buses run on a regular schedule Wed Nov 25 and Fri Nov 27."
+    const rta = closureGrid(mvThanks)!.groups[0].rows.find((r) => r.name === 'RTA buses')!;
+    expect(rta.cells.filter((c) => c.kind === 'usual').map((c) => [c.text, c.short])).toEqual([['Regular schedule', 'Regular'], ['Regular schedule', 'Regular']]);
+    // The same real row with only `section` changed to 'closures': the label follows the type, not the name "RTA buses".
+    const asClosure = { ...mvThanks, facts: mvThanks.facts.map((f) => (f.label === 'RTA buses' ? { ...f, section: 'closures' as const } : f)) };
+    const r2 = closureGrid(asClosure)!.groups[0].rows.find((r) => r.name === 'RTA buses')!;
+    expect(r2.cells.map((c) => c.text)).toEqual(['Usual hours', 'Closed', 'Usual hours']);
+  });
+  it('legend "Usual = no change announced by the source." above the grid only when a cell says Usual hours', () => {
+    // Brookings: City offices Fri 27 is usual (the City Holidays page lists only Thanksgiving Day, re-read 2026-11-20).
+    expect(closureGrid(bkThanks)!.legend).toBe('Usual = no change announced by the source.');
+    expect(closureGrid(bfThanks)!.legend).toBe('Usual = no change announced by the source.');
+    // Moreno: the library row names every day and RTA says "Regular schedule": no Usual cell, no legend.
+    expect(closureGrid(mvThanks)!.legend).toBeNull();
+    const src = read('../components/HolidayDayGrid.astro');
+    expect(src.indexOf('grid.legend')).toBeGreaterThan(-1);
+    expect(src.indexOf('grid.legend')).toBeLessThan(src.indexOf('role="table"'));
   });
   it('the template renders the grid without a <table>, with day labels for the phone cards', () => {
     const src = read('../components/HolidayDayGrid.astro');

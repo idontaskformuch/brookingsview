@@ -68,6 +68,7 @@ function brookingsFacts(moves: BrookingsTrashMoves): HolidayFact[] {
     },
     {
       // Only what the page says about the day itself (owner 2026-11-15): administrative offices closed on the holiday.
+      // Re-read 2026-11-20: the list names "Thanksgiving Day" only, nothing about Fri Nov 27 -> Fri stays Usual in the grid.
       section: 'closures', status: 'confirmed', change: 'closed', label: 'City offices',
       value: 'Closed Thu Nov 26.',
       meta: 'City offices closed Nov 26',

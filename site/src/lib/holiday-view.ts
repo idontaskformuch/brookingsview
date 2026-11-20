@@ -196,14 +196,20 @@ export function timelessGroups(page: HolidayPageData): GroupView[] {
  *  grid: the newest row check, not a span. Null when no row has `days`. */
 export const GRID_GROUP_AFTER = 6;
 export type GridCellKind = 'closed' | 'hours' | 'usual';
-/** `short`: the phone label (<40rem), where four day columns leave no room for "Usual hours" on one line (owner 2026-11-20). */
+/** `short`: the phone label (<40rem), where four day columns leave no room for "Usual hours" on one line (owner 2026-11-20).
+ *  A transit row (section 'transit', set in the data, never read from the name) says "Regular schedule" / "Regular" instead. */
 export interface GridCell { kind: GridCellKind; text: string; short?: string }
 export interface GridRow { name: string; note?: string; cells: GridCell[] }
 export interface ClosureGridView {
   days: { iso: string; label: string }[];
   groups: { heading: string | null; rows: GridRow[] }[];
   checked: string;
+  /** The line above the grid, "Usual = no change announced by the source.", only when a cell says "Usual hours" (owner 2026-11-20). */
+  legend: string | null;
 }
+export const GRID_LEGEND = 'Usual = no change announced by the source.';
+const USUAL_CELL: GridCell = { kind: 'usual', text: 'Usual hours', short: 'Usual' };
+const REGULAR_CELL: GridCell = { kind: 'usual', text: 'Regular schedule', short: 'Regular' };
 export const GRID_AREA_HEADING: Record<GridArea, string> = { city: 'City services', rec: 'Recreation', help: 'Food & help' };
 const GRID_AREA_ORDER: GridArea[] = ['city', 'rec', 'help'];
 const WD_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -220,7 +226,7 @@ export function closureGrid(page: HolidayPageData): ClosureGridView | null {
       ...(note ? { note } : {}),
       cells: isos.map((iso): GridCell => {
         const v = f.days[iso];
-        if (v === undefined) return { kind: 'usual', text: 'Usual hours', short: 'Usual' };
+        if (v === undefined) return { ...(f.section === 'transit' ? REGULAR_CELL : USUAL_CELL) };
         return v === 'closed' ? { kind: 'closed', text: 'Closed' } : { kind: 'hours', text: v };
       }),
     };
@@ -230,7 +236,8 @@ export function closureGrid(page: HolidayPageData): ClosureGridView | null {
     ? GRID_AREA_ORDER.map((a) => ({ heading: GRID_AREA_HEADING[a], rows: facts.filter((f) => area(f) === a).map(row) })).filter((g) => g.rows.length > 0)
     : [{ heading: null, rows: facts.map(row) }];
   const checked = facts.map((f) => f.checkedOn).sort().reverse()[0];
-  return { days, groups, checked };
+  const legend = groups.some((g) => g.rows.some((r) => r.cells.some((c) => c.text === USUAL_CELL.text))) ? GRID_LEGEND : null;
+  return { days, groups, checked, legend };
 }
 
 /** Status line under the holiday page's photo band (owner 2026-11-20, Tillägg A): the date and how far away it is, in normal
