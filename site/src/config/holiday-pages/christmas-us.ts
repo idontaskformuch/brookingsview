@@ -273,6 +273,10 @@ const MORENO_FACTS: HolidayFact[] = [
     clarify: 'The Customer Information Center, (951) 565-5002, is closed Dec 25 and Jan 1.',
     meta: 'No RTA buses Dec 25 and Jan 1',
     closedOn: ['2026-12-25', '2027-01-01'],
+    // Day grid (owner 2026-11-21): Dec 24 is "Regular schedule" (transit row, as the source says); Dec 31 has no column of its
+    // own, so its free rides go under the name. Sat Dec 26 / Jan 2 run the usual weekend schedule: no column.
+    days: { '2026-12-25': 'closed', '2027-01-01': 'closed' },
+    dayNote: 'Free rides after 2:30 p.m. Thu Dec 31.',
     source: MV_RTA, checkedOn: MV_RECHECKED,
   },
   {
@@ -283,6 +287,7 @@ const MORENO_FACTS: HolidayFact[] = [
     value: 'Closed Thu Dec 24, Fri Dec 25 and Fri Jan 1.',
     meta: 'Library closed Dec 24–25 and Jan 1',
     closedOn: ['2026-12-24', '2026-12-25', '2027-01-01'],
+    days: { '2026-12-24': 'closed', '2026-12-25': 'closed', '2027-01-01': 'closed' },
     source: MV_LIBRARY_CALENDAR, checkedOn: MV_LIBRARY_CALENDAR_READ,
   },
   {

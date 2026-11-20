@@ -251,6 +251,18 @@ describe('Christmas closures grids (owner 2026-11-21)', () => {
     expect(rows[0].note).toBe('Closed "in most cases", the city says.');
     expect(g.legend).toBe('Usual = no change announced by the source.');
   });
+  it('Moreno: RTA (transit: Regular schedule Dec 24, as the source says) and the Library; no Usual cell, no legend', () => {
+    const g = closureGrid(buildChristmasPage('moreno_valley_ca')!)!;
+    expect(g.days.map((d) => d.label)).toEqual(['Thu Dec 24', 'Fri Dec 25', 'Fri Jan 1']);
+    const rows = g.groups.flatMap((x) => x.rows);
+    expect(rows.map((r) => [r.name, r.cells.map((c) => c.text)])).toEqual([
+      ['RTA buses', ['Regular schedule', 'Closed', 'Closed']],
+      ['Library (all locations)', ['Closed', 'Closed', 'Closed']],
+    ]);
+    // RTA 2026-2027 Holiday Schedule: "free rides after 2:30 p.m. on Dec 31" has no column, so it stands under the name.
+    expect(rows[0].note).toBe('Free rides after 2:30 p.m. Thu Dec 31. The Customer Information Center, (951) 565-5002, is closed Dec 25 and Jan 1.');
+    expect(g.legend).toBeNull();
+  });
 });
 
 describe('hero and insights', () => {
