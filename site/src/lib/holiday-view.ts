@@ -6,7 +6,7 @@
  *  confirmed yet. Layout: .claude/standards.md "Helgsidor". */
 import {
   eventWhenWhere, formatIsoDate, isEventPast, lastChecked, listWords, regularHours,
-  type CheckAt, type ConfirmedFact, type HolidayChange, type HolidayEvent, type HolidayFact, type HolidayLocale, type HolidayPageData, type LastYear, type Source,
+  type CheckAt, type ConfirmedFact, type GridArea, type HolidayChange, type HolidayEvent, type HolidayFact, type HolidayLocale, type HolidayPageData, type LastYear, type Source,
 } from './holiday-page';
 import { formatDayLong, formatDayShort, occurrenceDay, weekdayLong } from './holiday-calendar';
 import { driveLabel, driveMinutes } from './evening-items';
@@ -121,6 +121,7 @@ export function buildGroups(page: HolidayPageData, today: string, dayIso?: strin
   const rows: Record<GroupId, RowView[]> = { closed: [], changed: [], open: [], info: [], events: [], nearby: [], unconfirmed: [] };
   for (const f of page.facts) {
     if (f.section === 'hours') continue;
+    if (f.status === 'confirmed' && f.days) continue; // shown in the closures grid (closureGrid)
     const id: GroupId = f.status === 'unconfirmed' ? 'unconfirmed' : (f.change ?? 'info');
     rows[id].push(factRow(f, page, newest, over));
   }
@@ -186,6 +187,49 @@ export function timelessGroups(page: HolidayPageData): GroupView[] {
     rows[f.change].push({ name: f.label, pill: PILL[f.change], parts: f.standing ? [f.standing] : [] });
   }
   return order.filter((c) => rows[c].length > 0).map((c) => ({ id: c, heading: TIMELESS_HEADING[c], rows: rows[c] }));
+}
+
+/** Closures grid (Tillägg B, owner 2026-11-20): one row per place with `days`, one column per affected day (the union of the
+ *  rows' days, in order). A cell is 'closed' (muted), 'hours' (bold: differs from usual) or 'usual' (a day the source does
+ *  not list for that place: its usual hours, which for some places means closed that weekday, so it never says "Open").
+ *  More than GRID_GROUP_AFTER places -> grouped City services / Recreation / Food & help. One "Checked" date for the
+ *  grid: the newest row check, not a span. Null when no row has `days`. */
+export const GRID_GROUP_AFTER = 6;
+export type GridCellKind = 'closed' | 'hours' | 'usual';
+export interface GridCell { kind: GridCellKind; text: string }
+export interface GridRow { name: string; note?: string; cells: GridCell[] }
+export interface ClosureGridView {
+  days: { iso: string; label: string }[];
+  groups: { heading: string | null; rows: GridRow[] }[];
+  checked: string;
+}
+export const GRID_AREA_HEADING: Record<GridArea, string> = { city: 'City services', rec: 'Recreation', help: 'Food & help' };
+const GRID_AREA_ORDER: GridArea[] = ['city', 'rec', 'help'];
+const WD_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+export function closureGrid(page: HolidayPageData): ClosureGridView | null {
+  const facts = page.facts.filter((f): f is ConfirmedFact & { days: Record<string, string> } => f.status === 'confirmed' && !!f.days);
+  if (facts.length === 0) return null;
+  const isos = [...new Set(facts.flatMap((f) => Object.keys(f.days)))].sort();
+  const days = isos.map((iso) => ({ iso, label: `${WD_SHORT[new Date(`${iso}T00:00:00Z`).getUTCDay()]} ${Number(iso.slice(8, 10))}` }));
+  const row = (f: ConfirmedFact & { days: Record<string, string> }): GridRow => {
+    const note = [f.dayNote, f.clarify].filter(Boolean).join(' ');
+    return {
+      name: f.label,
+      ...(note ? { note } : {}),
+      cells: isos.map((iso): GridCell => {
+        const v = f.days[iso];
+        if (v === undefined) return { kind: 'usual', text: 'Usual hours' };
+        return v === 'closed' ? { kind: 'closed', text: 'Closed' } : { kind: 'hours', text: v };
+      }),
+    };
+  };
+  const area = (f: ConfirmedFact): GridArea => f.area ?? (f.section === 'help' ? 'help' : 'city');
+  const groups = facts.length > GRID_GROUP_AFTER
+    ? GRID_AREA_ORDER.map((a) => ({ heading: GRID_AREA_HEADING[a], rows: facts.filter((f) => area(f) === a).map(row) })).filter((g) => g.rows.length > 0)
+    : [{ heading: null, rows: facts.map(row) }];
+  const checked = facts.map((f) => f.checkedOn).sort().reverse()[0];
+  return { days, groups, checked };
 }
 
 /** Status line under the holiday page's photo band (owner 2026-11-20, Tillägg A): the date and how far away it is, in normal

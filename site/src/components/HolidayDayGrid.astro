@@ -1,0 +1,74 @@
+---
+/** Closures as a day grid on a holiday page (Tillägg B, owner 2026-11-20): places down, affected days across. From 40rem a
+ *  grid (ARIA table, div-based like the rest of the holiday page); below it every place is a card with its days on one line.
+ *  "Closed" muted, hours that differ from usual in bold, a day the source does not list = "Usual hours" in neutral ink.
+ *  One "Checked" date for the whole grid (the newest row check). Data: lib/holiday-view.ts closureGrid.
+ *
+ *  Resident question: which places can I use on each day around the holiday? */
+import SectionHeader from './ui/SectionHeader.astro';
+import { formatIsoDate, type HolidayLocale } from '../lib/holiday-page';
+import type { ClosureGridView } from '../lib/holiday-view';
+
+interface Props { grid: ClosureGridView; locale?: HolidayLocale }
+const { grid, locale = 'en-US' } = Astro.props;
+const n = grid.days.length;
+---
+<section class="hp-group hg-wrap" id="closures" aria-label="Closures by day" data-closure-grid>
+  <SectionHeader title="Closures" />
+  <p class="hg-checked">Checked <time datetime={grid.checked}>{formatIsoDate(grid.checked, false, locale)}</time></p>
+  <div class="hg" role="table" aria-label="Closures by day" style={`--hg-days:${n}`}>
+    <div class="hg__head" role="row">
+      <span role="columnheader">Place</span>
+      {grid.days.map((d) => <span role="columnheader"><time datetime={d.iso}>{d.label}</time></span>)}
+    </div>
+    {grid.groups.map((g) => (
+      <div class="hg__body" role="rowgroup">
+        {g.heading && <div class="hg__grouprow" role="row"><span role="rowheader" class="hg__grouph">{g.heading}</span></div>}
+        {g.rows.map((r) => (
+          <div class="hg__row" role="row" data-grid-row>
+            <div class="hg__place" role="rowheader">
+              <span class="hg__name">{r.name}</span>
+              {r.note && <span class="hg__note">{r.note}</span>}
+            </div>
+            {r.cells.map((c, i) => (
+              <div class={`hg__cell hg__cell--${c.kind}`} role="cell" data-cell={c.kind}>
+                <span class="hg__day" aria-hidden="true">{grid.days[i].label}</span>
+                <span class="hg__v">{c.text}</span>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    ))}
+  </div>
+</section>
+
+<style>
+  .hg-checked { margin: 0 0 var(--ui-3); font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); }
+  .hg { font-family: var(--font-ui); font-variant-numeric: tabular-nums; }
+  .hg__head, .hg__row, .hg__grouprow {
+    display: grid; grid-template-columns: minmax(0, 2.2fr) repeat(var(--hg-days), minmax(0, 1fr)); gap: var(--ui-3);
+  }
+  .hg__head { font-size: var(--ui-meta); font-weight: var(--ui-primary-weight); color: var(--ink-soft); padding: 0 0 var(--ui-2); border-bottom: 1px solid var(--rule-strong); }
+  .hg__grouprow > span { grid-column: 1 / -1; }
+  .hg__grouph { display: block; padding: var(--ui-4) 0 var(--ui-1); font-size: var(--ui-meta); font-weight: var(--ui-primary-weight); text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); }
+  .hg__row { padding: var(--ui-3) 0; border-bottom: 1px solid var(--rule); align-items: start; }
+  .hg__name { display: block; font-weight: var(--ui-primary-weight); color: var(--ink); }
+  .hg__note { display: block; margin-top: 0.15rem; font-size: var(--ui-meta); color: var(--ink-soft); }
+  .hg__day { display: none; }
+  .hg__cell--closed { color: var(--ink-soft); }
+  .hg__cell--hours { color: var(--ink); font-weight: 700; }
+  .hg__cell--usual { color: var(--ink); }
+
+  /* Phone: one card per place, its days on one line (owner: "varje plats blir ett kort med dagarna på en rad"). */
+  @media (max-width: 40rem) {
+    .hg__head { display: none; }
+    .hg__row {
+      display: flex; flex-wrap: wrap; gap: var(--ui-2) var(--ui-3); margin: 0 0 var(--ui-2); padding: var(--ui-3);
+      border: 1px solid var(--rule); border-radius: var(--ui-radius); background: var(--surface, var(--paper-raised));
+    }
+    .hg__place { flex: 1 0 100%; }
+    .hg__cell { flex: 1 1 0; min-width: 0; }
+    .hg__day { display: block; font-size: var(--ui-meta); font-weight: 400; color: var(--ink-soft); }
+  }
+</style>

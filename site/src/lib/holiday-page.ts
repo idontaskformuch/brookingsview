@@ -101,7 +101,17 @@ export interface ConfirmedFact extends FactBase {
   /** Season pages (lib/holiday-season.ts): the days (YYYY-MM-DD) this row is about; it is shown as a card under each of them,
    *  with `value` as its big line. A row about one place on several days is one row per distinct value. */
   on?: string[];
+  /** Day grid (Tillägg B, owner 2026-11-20): what the place does on each affected day, written from `value` by hand, never
+   *  parsed from it. 'closed' or the hours that day ("9 a.m.–5 p.m.", "8 a.m. fitness classes only"); a day not listed is the
+   *  place's usual hours. Rows with `days` are shown in the page's closures grid instead of the Closed list. */
+  days?: Record<string, 'closed' | string>;
+  /** Grid only: the short line under the place's name (which buildings, a phone number). */
+  dayNote?: string;
+  /** Grid only, used when the grid has more than GRID_GROUP_AFTER places: its group. Default: section 'help' -> help, else city. */
+  area?: GridArea;
 }
+
+export type GridArea = 'city' | 'rec' | 'help';
 
 /** Not confirmed for this year. `source` is the page that was read (and said nothing, or not enough). */
 export type UnconfirmedFact = FactBase & {

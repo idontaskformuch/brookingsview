@@ -9,6 +9,7 @@
  *  what is not confirmed yet? */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import HolidayRows from './HolidayRows.astro';
+import HolidayDayGrid from './HolidayDayGrid.astro';
 import RailLayout from './RailLayout.astro';
 import RailModules from './rail/RailModules.astro';
 import InsightLine from './ui/InsightLine.astro';
@@ -20,7 +21,7 @@ import {
   buildHolidayMeta, buildTimelessHolidayMeta, buildHolidayEventsJsonLd, checkedSpan, formatCheckedSpan, formatIsoDate, localToday, checkTitleLength,
   type HolidayPageData,
 } from '../lib/holiday-page';
-import { buildGroups, regularHoursRows, holidayStatus, holidayInsights, groupSources, isTimeless, timelessGroups } from '../lib/holiday-view';
+import { buildGroups, regularHoursRows, holidayStatus, holidayInsights, closureGrid, groupSources, isTimeless, timelessGroups } from '../lib/holiday-view';
 import { evergreenLines, occurrenceDay, type HolidayPageState } from '../lib/holiday-calendar';
 import type { HolidayPageDef } from '../config/holiday-pages/calendar';
 import CityPhoto from './CityPhoto.astro';
@@ -67,6 +68,8 @@ const dayIso = new Date(occurrenceDay(def, page.year)).toISOString().slice(0, 10
 const over = today > dayIso; // the season's day has passed: no present tense about it (owner 2026-11-11)
 const insights = timeless ? [] : holidayInsights(page, over);
 const groups = timeless ? timelessGroups(page) : buildGroups(page, today, dayIso);
+// Closures grid (Tillägg B): rows with `days` leave the Closed list and show here, one column per affected day.
+const grid = timeless ? null : closureGrid(page);
 const hours = regularHoursRows(page);
 const ungrouped = page.linkOnly.filter((l) => !l.group);
 const linkGroups = [...new Set(page.linkOnly.flatMap((l) => (l.group ? [l.group] : [])))];
@@ -110,6 +113,8 @@ const jsonLd = buildHolidayEventsJsonLd(page, siteConfig.timezone, countryProfil
       {!timeless && lines.next}
     </p>
   )}
+
+  {grid && <HolidayDayGrid grid={grid} locale={page.locale} />}
 
   {groups.map((g) => (
     <section class="hp-group" aria-label={g.heading}>

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
-  buildGroups, closedPlaces, countHeld, holidayOverviewLine, isTimeless, timelessGroups, detailFor, FOLD_AFTER, GROUP_HEADING, GROUP_ORDER, groupSources, holidayStatus, holidayInsights, regularHoursRows,
+  buildGroups, closedPlaces, countHeld, holidayOverviewLine, isTimeless, timelessGroups, detailFor, FOLD_AFTER, GROUP_HEADING, GROUP_ORDER, groupSources, holidayStatus, holidayInsights, closureGrid, regularHoursRows,
 } from './holiday-view';
 import { occurrenceDay } from './holiday-calendar';
 import { holidayPageDef } from '../config/holiday-pages/calendar';
@@ -73,7 +73,9 @@ describe('groups', () => {
       const order = g.map((x) => GROUP_ORDER.indexOf(x.id));
       expect(order, name).toEqual([...order].sort((a, b) => a - b));
       for (const x of g) expect(x.rows.length, `${name}/${x.id}`).toBeGreaterThan(0);
-      const rowCount = g.reduce((n, x) => n + x.rows.length, 0);
+      // rows with `days` are in the closures grid instead (Tillägg B): together nothing is lost
+      const gridRows = closureGrid(page)?.groups.reduce((n, x) => n + x.rows.length, 0) ?? 0;
+      const rowCount = g.reduce((n, x) => n + x.rows.length, 0) + gridRows;
       expect(rowCount, name).toBe(page.facts.filter((f) => f.section !== 'hours').length + page.events.length);
       expect(regularHoursRows(page).length, name).toBe(page.facts.filter((f) => f.section === 'hours').length);
     }
@@ -122,6 +124,50 @@ describe('groups', () => {
   });
 });
 
+describe('closures grid (Tillägg B, owner 2026-11-20)', () => {
+  // Broomfield Thanksgiving (bfThanks): the city's Nov 16 notice + Tree Branch + FISH, `days` written from each row's value.
+  const g = closureGrid(bfThanks)!;
+  it('one column per affected day, from the data', () => {
+    expect(g.days.map((d) => d.label)).toEqual(['Wed 25', 'Thu 26', 'Fri 27', 'Sat 28']);
+  });
+  it('more than 6 places -> City services / Recreation / Food & help', () => {
+    expect(g.groups.map((x) => [x.heading, x.rows.map((r) => r.name)])).toEqual([
+      ['City services', ['City offices', 'Combined Courts', 'inventHQ', 'Library', 'Depot Museum', 'RV Waste Disposal Station', 'Tree Branch Recycle and RV Wastewater Disposal Facility']],
+      ['Recreation', ['Broomfield Community Center', 'Paul Derda Recreation Center']],
+      ['Food & help', ['Broomfield FISH food bank']],
+    ]);
+  });
+  it('cells: Closed / hours that day / usual hours, never a made-up "Open"', () => {
+    const cells = (name: string) => g.groups.flatMap((x) => x.rows).find((r) => r.name === name)!.cells.map((c) => `${c.kind}:${c.text}`);
+    // "Open 9 a.m.–5 p.m. Wed Nov 25. Closed Thu Nov 26 and Fri Nov 27."
+    expect(cells('Library')).toEqual(['hours:9 a.m.–5 p.m.', 'closed:Closed', 'closed:Closed', 'usual:Usual hours']);
+    // "Closed Thu Nov 26, open for 8 a.m. group fitness classes only. Open 8 a.m.–2 p.m. Fri Nov 27."
+    expect(cells('Broomfield Community Center')).toEqual(['usual:Usual hours', 'hours:8 a.m. group fitness only', 'hours:8 a.m.–2 p.m.', 'usual:Usual hours']);
+    // Tree Branch is shut Thu/Fri every week (Wed + Sat only): "Usual hours", not "Open".
+    expect(cells('Tree Branch Recycle and RV Wastewater Disposal Facility')).toEqual(['usual:Usual hours', 'usual:Usual hours', 'usual:Usual hours', 'closed:Closed']);
+    expect(JSON.stringify(g)).not.toMatch(/"Open"/);
+  });
+  it('one "Checked" for the grid: the newest row check, not a span', () => {
+    expect(g.checked).toBe('2026-11-17');
+  });
+  it('grid rows leave the Closed list; the police row (changed, no days) stays in Schedule changes', () => {
+    const groups = buildGroups(bfThanks, '2026-11-20', '2026-11-26');
+    expect(groups.find((x) => x.id === 'closed')).toBeUndefined();
+    expect(groups.find((x) => x.id === 'changed')!.rows.map((r) => r.name)).toContain('Police Department Building and Detention Center');
+  });
+  it('a page without `days` has no grid and keeps its Closed list (Brookings, Moreno)', () => {
+    expect(closureGrid(bkThanks)).toBeNull();
+    expect(buildGroups(bkThanks, '2026-11-20', '2026-11-26').some((x) => x.id === 'closed')).toBe(true);
+  });
+  it('the template renders the grid without a <table>, with day labels for the phone cards', () => {
+    const src = read('../components/HolidayDayGrid.astro');
+    expect(src).not.toMatch(/<table|<td\b|<th\b/);
+    expect(src).toMatch(/role="table"/);
+    expect(src).toMatch(/@media \(max-width: 40rem\)/);
+    expect(read('../components/HolidayPage.astro')).toMatch(/<HolidayDayGrid grid=\{grid\}/);
+  });
+});
+
 describe('hero and insights', () => {
   it('status line, not a display number (Tillägg A, owner 2026-11-20): weekday, date and how far away', () => {
     // Broomfield Thanksgiving (bfThanks, Nov 26) seen on 2026-11-20: the owner's own example.
@@ -137,7 +183,7 @@ describe('hero and insights', () => {
   it('the page prints the status line, not HeroStat with "places closed" or a bare weekday', () => {
     const src = read('../components/HolidayPage.astro');
     expect(src).toMatch(/data-holiday-status>\{status\}/);
-    expect(src).not.toMatch(/<HeroStat/);
+    expect(src).not.toMatch(/<HeroStatb/);
   });
   it('counts places that are shut, not pickups or trains that do not run', () => {
     expect(closedPlaces(bkThanks)).toBe(3); // City offices, Landfill, McCrory Gardens (SDSU calendar, added 2026-11-14)
