@@ -24,7 +24,7 @@ import {
 } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
 import { isSectionBuilt } from '../../lib/sections';
-import { homeRailFor, type RailModuleKind } from '../../config/home-rail';
+import { homeRailFor, pageRailFor, type RailModuleKind, type RailPage } from '../../config/home-rail';
 import { planRail, railMeetings, nextRailHoliday, latestFinal, scoreLine, RAIL_WEATHER_DAYS } from '../../lib/rail';
 import { loadUpcomingMeetings } from '../../lib/meetings-data';
 import { frontPageHolidays } from '../../lib/front-page-holidays';
@@ -39,6 +39,8 @@ import type { MeetingView } from '../../lib/meetings-view';
 
 interface Props {
   now: Date;
+  /** Which page's rail (config/home-rail.ts PAGE_RAIL); omitted = the front page's rail (HOME_RAIL_BY_TOWN). */
+  page?: RailPage;
   /** Open the rail with Right Now (holiday pages; the front page has it as its own grid item). */
   withStatus?: boolean;
   /** Meetings and holiday pages the page already shows. */
@@ -53,7 +55,7 @@ interface Props {
 }
 const { now, withStatus = false, excludeMeetingIds = new Set(), excludeHolidaySlugs = new Set(), frontImageId = null } = Astro.props;
 const omit = new Set(Astro.props.omit ?? []);
-const base = homeRailFor(siteConfig.townId);
+const base = Astro.props.page ? pageRailFor(siteConfig.townId, Astro.props.page) : homeRailFor(siteConfig.townId);
 const cfg = { ...base, modules: base.modules.filter((m) => !omit.has(m)), reserve: base.reserve.filter((m) => !omit.has(m)) };
 const tz = siteConfig.timezone;
 const profile = countryProfile(siteConfig.country);

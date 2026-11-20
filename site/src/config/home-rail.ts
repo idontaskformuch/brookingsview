@@ -40,3 +40,21 @@ export function homeRailFor(townId: string): RailConfig {
   if (!c) throw new Error(`homeRailFor: no config/home-rail.ts entry for town "${townId}"`);
   return c;
 }
+
+/** Designsystem Fas 1 (owner 2026-11-20): every page has the same rail column, and each page picks its modules here. A page's list is
+ *  intersected with the town's home rail (modules + reserve), so a town that has no such module (no sports data, no promo card) never
+ *  gets it; towns differ only through HOME_RAIL_BY_TOWN, never here. No reserve fill and no ad slot outside the front page. A page
+ *  that is not listed has no rail (its main column stays at --measure-main, same left edge). */
+export type RailPage = 'today';
+export interface PageRail { modules: RailModuleKind[]; /** Open the rail with Right Now (CityStatus). */ withStatus: boolean }
+export const PAGE_RAIL: Record<RailPage, PageRail> = {
+  // Today's main column already has its own Right now, weather today, meetings today, hours today, open tonight and traffic: the
+  // rail adds what is next beyond today (the next game, the next holiday page) and the town's numbers. No second Right Now.
+  today: { modules: ['sport', 'holiday', 'numbers'], withStatus: false },
+};
+
+export function pageRailFor(townId: string, page: RailPage): RailConfig {
+  const home = homeRailFor(townId);
+  const has = new Set<RailModuleKind>([...home.modules, ...home.reserve]);
+  return { modules: PAGE_RAIL[page].modules.filter((m) => has.has(m)), reserve: [], numbersNoTrend: home.numbersNoTrend };
+}

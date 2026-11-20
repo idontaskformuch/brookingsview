@@ -38,6 +38,8 @@ import { selectTodayShows } from '../lib/today-shows';
 import { forecastLine } from '../lib/weather-format';
 import { enabledSections } from '../lib/nav-sections';
 import OpenTonight from '../components/OpenTonight.astro';
+import RailModules from '../components/rail/RailModules.astro';
+import { PAGE_RAIL } from '../config/home-rail';
 import { placesFromSnapshot, decorateOpenLate } from '../lib/osm-open-late';
 import { openTonightRows, openTonightSection, cafeRows, isHolidayDay, openLatePageIndexable } from '../lib/open-tonight';
 import { localDayNumber } from '../lib/local-day';
@@ -198,6 +200,7 @@ const moreLinks = enabledSections(siteConfig).filter((s) => ['cityhall', 'facili
   {moreLinks.length > 0 && (
     <p class="today-more">Also in {siteConfig.cityName}: {moreLinks.map((l, i) => <>{i > 0 && (i === moreLinks.length - 1 ? ' and ' : ', ')}<a href={l.href}>{l.label}</a></>)}.</p>
   )}
+  <RailModules slot="rail" page="today" now={now} withStatus={PAGE_RAIL.today.withStatus} />
 </BaseLayout>
 
 <style>

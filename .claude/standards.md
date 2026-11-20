@@ -12,7 +12,7 @@ Gäller alla fyra sajter. Källa: ägarens handoff 2026-11-05 (.claude/specs/pre
 
 ## Del A: designprinciperna (ordagrant)
 
-1. **En hjälte per vy.** Varje sida och sektion har ETT dominerande element: nu-temperaturen, nästa möte, "in 26 min". Det är 2-3x större än allt annat. Resten underordnas.
+1. **En tydlig fokuspunkt per vy, i form av en statusmening i rubrikstorlek. Display-siffror bara när värdet självt är svaret och är ett mått.** (Ägarbeslut 2026-11-20; ersätter "En hjälte per vy". HeroStat används bara för temperatur, matchresultat och pris. Accentfärg/rött bara för varningar.)
 2. **Tre nivåer, inte fler.** Hjälte, primär (titel/värde) och meta. Storlek, vikt och färg skiljer dem. Om allt är lika viktigt är inget viktigt.
 3. **Visualisera mönster, lista inte.** Spann blir range-bars, förlopp tidslinjer eller sparklines, andelar mätare. En rad med siffror är sista utvägen.
 4. **Slå ihop upprepning.** Samma värde flera gånger i rad visas en gång ("Cloudy all week", "Every Tuesday"). Upprepade etiketter blir rubriker.
@@ -31,8 +31,12 @@ Gäller alla fyra sajter. Källa: ägarens handoff 2026-11-05 (.claude/specs/pre
 ## Typsnitt (mätt 2026-11-05)
 Bricolage Grotesque (Google Fonts-bygget) har OpenType-featuren `tnum` (och `pnum`); standardsiffrorna är proportionella (advance 320-656), så `font-variant-numeric: tabular-nums` behövs och fungerar. Ingen ny sans behövs. Data och meta: `--font-ui` + tabular-nums. `--font-data` (Plex Mono) används inte längre i datarader. Rubriker: Newsreader.
 
+## Sidgrid och typografiminimum (ägarbeslut 2026-11-20, designsystem Fas 1)
+- Ett skal, en vänsterkant på alla sidor. RailLayout (huvudspalt + sidospalt) är standard; brytpunkt 62rem (992px) överallt. Under brytpunkten hamnar sidospalten under huvudinnehållet (kontroll vid 375px).
+- Metadata och tickern: minst 13px. Inga undantag.
+
 ## Komponentbiblioteket (site/src/components/ui/)
-HeroStat, InsightLine, RangeBar, HourStrip (timmar med temperaturkurva + regnstaplar), DayRows (en rad per dag, detaljer bakom tryck), TimeStrip, Card (toppkant 4 px i kategorifärg), CompactRow (vänsterkant 3 px), Chips (>=3 per chip, >=2 chips, inga siffror), DayStrip, Pill/Badge, SectionHeader, WarningBanner, EmptyState, AboutThisPage, FallbackTile, Icon. Tokens i site/src/design/ui-tokens.css; accent från site.config. Galleri: `/_design/` (pages/[design].astro, noindex, ej i sitemap, bara byggt med BUILD_DESIGN=1).
+HeroStat (bara temperatur, matchresultat, pris), InsightLine, RangeBar, HourStrip (timmar med temperaturkurva + regnstaplar), DayRows (en rad per dag, detaljer bakom tryck), TimeStrip, Card (toppkant 4 px i kategorifärg), CompactRow (vänsterkant 3 px), Chips (>=3 per chip, >=2 chips, inga siffror), DayStrip, Pill/Badge, SectionHeader, WarningBanner, EmptyState, AboutThisPage, FallbackTile, Icon. Tokens i site/src/design/ui-tokens.css; accent från site.config. Galleri: `/_design/` (pages/[design].astro, noindex, ej i sitemap, bara byggt med BUILD_DESIGN=1).
 
 Regel: ingen sida skriver egen CSS för något biblioteket redan har. Städer får inte ha kodvägar i layouten (`townId ===`, stadsnamn, `country ===`); skillnader ligger i config. Test: lib/ui/standard-layout.test.ts.
 
@@ -65,7 +69,7 @@ Format per layout: syfte (frågan den besvarar), komponent, config-fält, tomma 
 ### Weather
 - Syfte: "Hur är vädret nu, vad gör det idag, vad ska jag planera för veckan?"
 - Komponent: pages/weather.astro på ui/* (WarningBanner, HeroStat, InsightLine, HourStrip, DayRows, SectionHeader, AboutThisPage). Svarsblocket (hjälte -> insikter -> 24 h -> vecka) är strängmarkup från lib/weather-html.ts; webbläsaren ritar om det med samma funktion (lib/live-weather.ts) när /api/weather ger nyare data.
-- Ordning: varning (bara aktiv) -> H1 "<stad> weather" + "Källa · Updated <tid>" -> hjälte (prognosen för aktuell timme, märkt "Forecast for 2pm"; känns som bara om ≥2° skillnad; dagens hög/låg) -> insiktsrader -> Next 24 hours -> Week ahead (rad per dygn, dag+natt ihopslagna, RangeBar på veckans gemensamma skala) -> "Cloudy all week" ovanför veckan -> About this page.
+- Ordning: varning (bara aktiv) -> H1 "<stad> weather" + "Källa · Updated <tid>" -> hjälte (aktuell timmes temperatur, vald i webbläsaren ur timdatan; dagens hög/låg och väderläge; känns som bara om ≥2° skillnad. Fallback utan JS: dagens hög/låg, aldrig en specifik timme. Etiketten "Forecast for 2pm" krävs inte längre, ägarbeslut 2026-11-20) -> insiktsrader -> Next 24 hours -> Week ahead (rad per dygn, dag+natt ihopslagna, RangeBar på veckans gemensamma skala) -> "Cloudy all week" ovanför veckan -> About this page.
 - Insiktsregler (lib/weather-model.ts, trösklar som exporterade konstanter): regn/torrt ur nederbördssannolikhet >=50 % (annars källans ord, utan "chance"), "Dry until" om <6 h annars "Rain from", "Dry for the next N hours" kräver >=12 h data; "Warmer/Colder tomorrow" och "than yesterday" vid högst-skillnad >=2 °C / 4 °F; "<Väder> all week" = samma väderklass >=3 dygn (all week bara vid >=5 dygn); gårdagens värde är gårdagens lagrade prognos (prognos mot prognos).
 - Config: temperaturenhet (country profile), koordinater (townCenter) för sol-tider, auktoritet och officiell varningslänk (country profile `weather`), hasMetOfficeWarnings, hasHeatAdvisory. Payload: valfria pop/feels/gust/uv/precip_mm + fetched_at; saknas de visas de inte.
 - Tomt läge: ingen prognos -> EmptyState med länk till källan; ingen timdata -> hjälten faller tillbaka på dagens hög/låg, ingen 24 h-remsa, ingen regnrad.

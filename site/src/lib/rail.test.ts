@@ -110,3 +110,42 @@ describe('latestFinal + scoreLine (Moreno Valley regional_sports_games, read 202
     expect(scoreLine(1, 1, 'D')).toBe('D 1-1');
   });
 });
+
+// Designsystem Fas 1 (owner 2026-11-20): one page grid, a rail per page from config, the ticker at the 13px metadata minimum.
+import { PAGE_RAIL, pageRailFor } from '../config/home-rail';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+describe('pageRailFor', () => {
+  it('only gives a page the modules its town has, with no reserve and no ad slot', () => {
+    for (const townId of Object.keys(HOME_RAIL_BY_TOWN)) {
+      const home = homeRailFor(townId);
+      const has = new Set([...home.modules, ...home.reserve]);
+      for (const page of Object.keys(PAGE_RAIL) as (keyof typeof PAGE_RAIL)[]) {
+        const r = pageRailFor(townId, page);
+        expect(r.modules.every((m) => has.has(m))).toBe(true);
+        expect(r.reserve).toEqual([]);
+        expect(r.adSlot).toBeUndefined();
+      }
+    }
+  });
+});
+
+describe('page grid (BaseLayout + RailLayout)', () => {
+  const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
+  const base = read('../layouts/BaseLayout.astro');
+  const rail = read('../components/RailLayout.astro');
+  it('has one shell: no narrow, centred variant', () => {
+    expect(base).not.toMatch(/shell--narrow|measure-narrow/);
+    expect(base).toMatch(/<RailLayout>\s*<slot \/>\s*<slot name="rail" slot="rail" \/>/);
+  });
+  it('gives the main column the same width with or without a rail, and breaks at 62rem', () => {
+    expect(rail).toMatch(/\.rail-layout__main, \.rail-layout__lead, \.rail-layout__after \{ max-width: var\(--measure-main/);
+    expect(rail).toMatch(/@media \(min-width: 62rem\)/);
+  });
+  it('keeps the ticker at or above 13px', () => {
+    const m = /\.sign__inner \{[^}]*font-size: ([\d.]+)rem/.exec(base);
+    expect(m).not.toBeNull();
+    expect(Number(m![1]) * 16).toBeGreaterThanOrEqual(13);
+  });
+});

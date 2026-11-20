@@ -1,7 +1,7 @@
 ---
 /** RailLayout (Fas 2): the main column and a right rail from 62rem; one column below that, in source order (the mobile order does not change).
  *  Slots, in source order: `lead` (the front page's lead), `now` (Right Now), default (the main column), `rail` (the aside) and `after`
- *  (the rest of the main column). From 62rem: main ≈ 2fr, rail ≈ 1fr (min 18rem); the lead spans the first two rows so the rail column
+ *  (the rest of the main column). From 62rem: main = --measure-main (44rem), rail 18-22rem; BaseLayout wraps every non-`wide` page in it (designsystem Fas 1); the lead spans the first two rows so the rail column
  *  (Right Now, then the rail) starts level with the lead, and the rail's extra height goes into the last row's 1fr track only, so the main
  *  column never gets a gap. Not sticky. An empty `rail` slot (no module has data) gives no aside and the main column takes the full width. */
 const hasRail = Astro.slots.has('rail');
@@ -22,12 +22,14 @@ const withSide = railHtml !== '' || nowHtml !== '';
 <style>
   .rail-layout__rail { display: flex; flex-direction: column; gap: var(--ui-4, 1rem); margin-bottom: 1.75rem; }
   .rail-layout__main, .rail-layout__lead, .rail-layout__after { min-width: 0; }
+  /* One column width on every page (designsystem Fas 1): heading, lead and content share the main column, rail or not. */
+  .rail-layout__main, .rail-layout__lead, .rail-layout__after { max-width: var(--measure-main, 44rem); }
   @media (min-width: 62rem) {
     .rail-layout--side {
       display: grid;
-      grid-template-columns: minmax(0, 2fr) minmax(18rem, 1fr);
+      grid-template-columns: minmax(0, var(--measure-main, 44rem)) minmax(18rem, 22rem);
       grid-template-rows: auto auto auto 1fr;
-      column-gap: 2rem;
+      column-gap: 2.5rem;
       align-items: start;
     }
     .rail-layout--side > .rail-layout__lead { grid-column: 1; grid-row: 1 / span 2; }

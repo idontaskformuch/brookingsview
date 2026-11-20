@@ -37,10 +37,13 @@ import CookieBanner from '../components/CookieBanner.astro';
 import MetOfficeWarnings from '../components/MetOfficeWarnings.astro';
 import LiveAlerts from '../components/LiveAlerts.astro';
 import LiveWeather from '../components/LiveWeather.astro';
+import RailLayout from '../components/RailLayout.astro';
 
 interface Props {
   title: string;
   description?: string;
+  /** The page lays out its own full shell width (it nests RailLayout itself: front page, holiday pages; or has not moved to the
+   *  page grid yet). Default: the page grid (designsystem Fas 1): main column + the `rail` slot, one left edge. */
   wide?: boolean;
   /** Slug att hämta delningsbild för. Utelämnad -> sajtens standardbild. */
   ogSlug?: string;
@@ -405,8 +408,10 @@ const footerGroups = FOOTER_GROUPS
      name so existing .data / .sign__inner rules follow without edits. */
   --font-data: var(--font-ui);
 
+  /* Page grid (designsystem Fas 1, owner 2026-11-20): one shell (74rem, same as the masthead and nav, so the nav keeps its
+     desktop links), one left edge. Main column 44rem (--measure-main) + 2.5rem gap + an 18-22rem rail (RailLayout, from 62rem). */
   --measure: 74rem;
-  --measure-narrow: 40rem;
+  --measure-main: 44rem;
 }
 
 /* Dark palette (Fas 6). Applied when the OS prefers dark unless the visitor
@@ -498,7 +503,6 @@ a { color: var(--navy); text-underline-offset: 2px; }
   margin-inline: auto;
   padding-inline: 1.25rem;
 }
-.shell--narrow { max-width: var(--measure-narrow); }
 
 .skip {
   position: absolute; left: -9999px;
@@ -590,7 +594,7 @@ a { color: var(--navy); text-underline-offset: 2px; }
   gap: 0.25rem 1.75rem;
   padding-block: 0.5rem;
   font-family: var(--font-data);
-  font-size: 0.75rem;
+  font-size: 0.8125rem; /* 13px: metadata minimum, no exceptions (owner 2026-11-20) */
   letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
 }
@@ -696,8 +700,13 @@ main { padding-block: 1.75rem 3.5rem; }
 <LiveWeather />
 
 <main id="main">
-  <div class:list={['shell', !wide && 'shell--narrow']}>
-    <slot />
+  <div class="shell">
+    {wide ? <slot /> : (
+      <RailLayout>
+        <slot />
+        <slot name="rail" slot="rail" />
+      </RailLayout>
+    )}
     {/* Content first, explanations last (owner 2026-11-11): every page type puts its sources / method / "how this page works" text in
         <AboutThisPage slot="about">, which lands here, after the content and before the footer. */}
     <slot name="about" />
