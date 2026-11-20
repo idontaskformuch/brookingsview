@@ -1,6 +1,7 @@
 /** Practical facts for an event or meeting detail page on the UK site (owner 2026-10-27): when, where, cost, how to book or
  *  take part, taken ONLY from the source's own fields (story.meta, source_url). A row is left out when the source had nothing;
  *  nothing is invented. Pure, so it is unit-tested (story-facts.test.ts). */
+import { tidyCost } from './text-hygiene';
 export interface FactRow { label: string; text: string; href?: string; linkText?: string }
 
 interface FactsInput {
@@ -51,7 +52,7 @@ export function storyFacts(story: FactsInput, ctx: FactsContext): FactRow[] {
       if (m.when && !ctx.whenText.includes(m.when)) add('Dates', m.when);
     }
     add('Where', [m.venue, m.address].filter(Boolean).join(', '));
-    add('Cost', m.cost);
+    add('Cost', tidyCost(m.cost));
     if (ctx.timeUnknown) {
       rows.push({ label: 'Time', text: 'Time not listed, check with the venue.', href: story.source_url ?? undefined, linkText: 'Original listing' });
     }

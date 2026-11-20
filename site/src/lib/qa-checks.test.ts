@@ -323,3 +323,13 @@ describe('event tile check (2026-11-06)', () => {
     for (const x of fx.eventBigTile.good) expect(page(x), JSON.stringify(x)).not.toContain('web.event-big-tile');
   });
 });
+
+describe('web.double-period (born_from: "about 12:30 p.m.." on Brookings /game-day/, build 2026-11-12)', () => {
+  it('flags the real /game-day/ line', () => {
+    expect(ids({ mainText: 'Gates open 90 minutes before kickoff, about 12:30 p.m..' })).toContain('web.double-period');
+  });
+  it('an ellipsis, a path and one period are fine', () => {
+    expect(ids({ mainText: 'Gates open 90 minutes before kickoff, about 12:30 p.m. More...' })).not.toContain('web.double-period');
+    expect(ids({ mainText: 'see ../events/' })).not.toContain('web.double-period');
+  });
+});

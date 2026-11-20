@@ -23,6 +23,7 @@ import { siteConfig } from '../lib/site-config';
 import { fitDescription } from '../lib/meta-description';
 import { resolvePageMeta } from '../lib/page-meta';
 import { localDayNumber } from '../lib/local-day';
+import { endSentence } from '../lib/text-hygiene';
 
 if (siteConfig.townId !== 'brookings_sd') {
   return Astro.redirect('/', 302);
@@ -98,8 +99,8 @@ const nextHobo = next ? isHoboDay(next.start) : false;
         {next.time_tba ? (
           <li><strong>Kickoff time is not set yet.</strong> SDSU says tailgating begins five hours before kickoff for most games and gates open 90 minutes before; check the <a href={SOURCES.schedule.url} rel="noopener">schedule</a> for the time.</li>
         ) : (<>
-          <li><strong>Tailgating starts about {fmtTime(hoursBefore(next.start, 5))}</strong>. SDSU says it begins five hours before kickoff for most games.</li>
-          <li><strong>Gates open 90 minutes before kickoff</strong>, about {fmtTime(hoursBefore(next.start, 1.5))}.</li>
+          <li><strong>{endSentence(`Tailgating starts about ${fmtTime(hoursBefore(next.start, 5))}`)}</strong> SDSU says it begins five hours before kickoff for most games.</li>
+          <li><strong>Gates open 90 minutes before kickoff</strong>, {endSentence(`about ${fmtTime(hoursBefore(next.start, 1.5))}`)}</li>
         </>)}
         <li><strong>Be on campus early.</strong> Parking is spread over several lots; open the season's parking map first (see Parking below).</li>
         <li><strong>Allow extra time to leave.</strong> See "After the game".</li>

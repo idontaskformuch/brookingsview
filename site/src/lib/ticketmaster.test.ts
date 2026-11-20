@@ -163,7 +163,7 @@ describe('normalizeTicketmasterEvent', () => {
     expect(e.priceMin).toBe(25);
     expect(e.priceMax).toBe(75);
     expect(e.priceCurrency).toBe('USD');
-    expect(e.priceRangeText).toBe('$25 - $75');
+    expect(e.priceRangeText).toBe('$25–75'); // Fas 2 (owner 2026-11-20): "$25–159" form
   });
 
   it('picks the widest image, not just the first in the array -- URL and dimensions together', () => {
@@ -192,7 +192,7 @@ describe('normalizeTicketmasterEvent', () => {
 
   it('formats a price range when present (constructed -- none of the 14 live Brookings results had pricing set)', () => {
     const result = normalizeTicketmasterEvent(realFixture({ priceRanges: [{ min: 25, max: 75, currency: 'USD' }] }));
-    expect(result.ticketmasterEvent.priceRangeText).toBe('$25 - $75');
+    expect(result.ticketmasterEvent.priceRangeText).toBe('$25–75');
   });
 
   it('formats a single-value price range without a dash', () => {

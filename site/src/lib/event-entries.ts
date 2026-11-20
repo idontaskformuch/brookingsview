@@ -7,9 +7,10 @@
  *      Event", 3 PM & 7 PM).
  *   2. Series: the same title at the same place on several days is one entry ("Nov 20–21", "3 dates, Nov 20–22").
  *  "Same place": the venue's name (first comma part, without a leading "The") equal or one containing the other; a listing without a
- *  venue never blocks a same-day match, but a series needs the place on both sides.
+ *  venue never blocks a same-day match, but a series needs the place on both sides. Two named rooms that differ ("Glasgow Royal Concert
+ *  Hall, Strathclyde Suite" / "..., New Auditorium") are two places (event-dedup.mjs venueRoom); a room named on one side only is not.
  *  Pure: no database, no site config. The entry's `occ` is what lib/local-day.ts countEventsToday() counts. */
-import { itemTitle, itemVenue, localDateParts, venueKey } from './event-dedup.mjs';
+import { itemTitle, itemVenue, localDateParts, roomsDiffer, venueKey } from './event-dedup.mjs';
 import type { FeedItem } from './events';
 import { hasEnded, type TimedEvent } from './local-day';
 
@@ -31,8 +32,9 @@ const tokens = (t: string) => new Set(normTitle(t).split(' ').filter((w) => w &&
 
 export { venueKey };
 
-/** null = unknown on either side. */
-function venueMatch(a: string | null, b: string | null): boolean | null {
+/** null = unknown on either side. `raw*` are the venue strings as listed (for the room). */
+function venueMatch(a: string | null, b: string | null, rawA: string | null = null, rawB: string | null = null): boolean | null {
+  if (roomsDiffer(rawA, rawB)) return false;
   if (!a || !b) return null;
   return a === b || a.includes(b) || b.includes(a);
 }
@@ -54,7 +56,7 @@ const occOf = (item: FeedItem): TimedEvent => {
   return { start: iso(item.occurs_at!), end: end ? iso(end) : null };
 };
 
-interface Work extends EventEntry { title: string; venue: string | null; day: string }
+interface Work extends EventEntry { title: string; venue: string | null; raw: string | null; day: string }
 
 function dayOf(start: string, tz: string): string {
   const p = localDateParts(new Date(start), tz);
@@ -69,9 +71,10 @@ export function buildEntries(items: FeedItem[], timezone: string): EventEntry[] 
   for (const item of sorted) {
     const o = occOf(item);
     const title = itemTitle(item);
-    const venue = venueKey(itemVenue(item));
+    const raw = itemVenue(item);
+    const venue = venueKey(raw);
     const day = dayOf(o.start, timezone);
-    const sameDay = kept.filter((k) => k.day === day && venueMatch(k.venue, venue) !== false);
+    const sameDay = kept.filter((k) => k.day === day && venueMatch(k.venue, venue, k.raw, raw) !== false);
     const near = sameDay.find((k) => k.occ.some((x) => Math.abs(Date.parse(x.start) - Date.parse(o.start)) <= SAME_EVENT_MINUTES * 60_000)
       && titlesOverlap(k.title, title));
     if (near) {
@@ -83,6 +86,7 @@ export function buildEntries(items: FeedItem[], timezone: string): EventEntry[] 
         near.title = title;
       }
       near.venue ??= venue;
+      near.raw ??= raw;
       continue;
     }
     const again = sameDay.find((k) => normTitle(k.title) === normTitle(title));
@@ -90,14 +94,15 @@ export function buildEntries(items: FeedItem[], timezone: string): EventEntry[] 
       again.merged.push(item);
       again.occ.push(o);
       again.venue ??= venue;
+      again.raw ??= raw;
       continue;
     }
-    kept.push({ item, merged: [], occ: [o], title, venue, day });
+    kept.push({ item, merged: [], occ: [o], title, venue, raw, day });
   }
   // Pass 2: the same event on several days.
   const out: Work[] = [];
   for (const w of kept) {
-    const series = out.find((k) => k.day !== w.day && normTitle(k.title) === normTitle(w.title) && venueMatch(k.venue, w.venue) === true);
+    const series = out.find((k) => k.day !== w.day && normTitle(k.title) === normTitle(w.title) && venueMatch(k.venue, w.venue, k.raw, w.raw) === true);
     if (series) {
       series.merged.push(w.item, ...w.merged);
       series.occ.push(...w.occ);

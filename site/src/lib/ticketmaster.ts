@@ -6,6 +6,8 @@
  *  siteConfig.ticketmaster.enabled, both true for all three towns as of
  *  Phase 7 and its venue-curation follow-up.
  */
+import { formatPriceRange } from './text-hygiene';
+import { displayTitle } from './evening-names';
 
 const DISCOVERY_API_BASE = 'https://app.ticketmaster.com/discovery/v2/events.json';
 
@@ -228,15 +230,6 @@ export interface TicketmasterEvent {
   localTime?: string | null;
 }
 
-function formatPriceRange(ranges: RawTicketmasterEvent['priceRanges']): string | null {
-  const range = ranges?.[0];
-  if (!range || range.min == null || range.max == null) return null;
-  const currency = range.currency === 'USD' ? '$' : `${range.currency ?? ''} `;
-  return range.min === range.max
-    ? `${currency}${range.min}`
-    : `${currency}${range.min} - ${currency}${range.max}`;
-}
-
 function parseCoordinate(value: string | undefined): number | null {
   if (!value) return null;
   const parsed = Number(value);
@@ -371,7 +364,7 @@ export function normalizeTicketmasterEvent(raw: RawTicketmasterEvent): Ticketmas
   const primary = raw.classifications?.find((c) => c.primary) ?? raw.classifications?.[0];
   const event: TicketmasterEvent = {
     id: raw.id,
-    title: cleanTicketmasterTitle(raw.name),
+    title: displayTitle(cleanTicketmasterTitle(raw.name)),
     attractionId: raw._embedded?.attractions?.[0]?.id ?? null,
     venueId: venue?.id ?? null,
     venueName: venue?.name ?? null,
@@ -387,7 +380,7 @@ export function normalizeTicketmasterEvent(raw: RawTicketmasterEvent): Ticketmas
     imageUrl: image?.url ?? null,
     imageWidth: image?.width ?? null,
     imageHeight: image?.height ?? null,
-    priceRangeText: formatPriceRange(raw.priceRanges),
+    priceRangeText: formatPriceRange(priceRange?.min, priceRange?.max, priceRange?.currency),
     priceMin: priceRange?.min ?? null,
     priceMax: priceRange?.max ?? null,
     priceCurrency: priceRange?.currency ?? null,

@@ -53,6 +53,11 @@ export function zonedInstant(day, hhmm, tz) {
  *  (a leftover `</nav> )}` in BaseLayout.astro): the header is outside <main>, so the check also reads shellText. */
 export const LITERAL_RE = /\b(undefined|NaN|null)\b|\[object Object\]|Invalid Date|\{\{|\}\}|\$\{|\)\}/g;
 
+/** A doubled sentence period in visible text: a template added "." after a value that already ended with one ("Gates open 90 minutes
+ *  before kickoff, about 12:30 p.m.." on Brookings /game-day/, build 2026-11-12; Designsystem Fas 2, owner 2026-11-20). An ellipsis
+ *  ("...") and a path ("../") are not a finding. */
+export const DOUBLE_PERIOD_RE = /[A-Za-z)]\.\.(?![.\w/])/g;
+
 /** A heading that opens with "0 <word>". Prose like "0.5 miles" or "10 things" does not match. */
 export const ZERO_COUNT_RE = /^0\s+[a-z]+(?:\s+[a-z]+)?\b/i;
 
@@ -85,6 +90,13 @@ export function checkPage(snap, town, compiled) {
   const lits = new Set([...(snap.mainText.match(LITERAL_RE) ?? []), ...((snap.shellText ?? '').match(LITERAL_RE) ?? [])]);
   if (snap.loneDashNodes > 0) lits.add('--');
   if (lits.size) f.push(finding('web.literal', town, snap, `visible: ${[...lits].join(', ')}`));
+  const dots = [...`${snap.mainText}
+${snap.shellText ?? ''}`.matchAll(DOUBLE_PERIOD_RE)];
+  if (dots.length) {
+    const text = `${snap.mainText}
+${snap.shellText ?? ''}`;
+    f.push(finding('web.double-period', town, snap, `doubled period: ${dots.slice(0, 3).map((m) => `"...${text.slice(Math.max(0, m.index - 30), m.index + 3)}"`).join(', ')}`));
+  }
 
   if (snap.h1.length !== 1) f.push(finding('web.h1', town, snap, `${snap.h1.length} <h1> elements`));
   if (snap.titleCount !== 1) f.push(finding('web.h1', town, snap, `${snap.titleCount} <title> elements`));

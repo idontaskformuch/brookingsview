@@ -4,6 +4,7 @@
 import type { EveningEntry, EveningGroup } from './evening-items';
 import { countryProfile, type CountryId } from './country-profile';
 import { hasEnded } from './local-day';
+import { formatPrice } from './text-hygiene';
 import { showTimeGb } from './whats-on-dates';
 import { CHIP_MIN_ITEMS, CHIP_MIN_CHIPS as UI_CHIP_MIN_CHIPS, type Category } from './ui/ui-helpers';
 
@@ -49,8 +50,6 @@ export function isStartingSoon(startIso: string, endIso: string | null, now: Dat
   return new Date(startIso).getTime() - now.getTime() <= SOON_MINUTES * 60_000;
 }
 
-const CURRENCY_SYMBOL: Record<string, string> = { GBP: '£', USD: '$', EUR: '€' };
-
 export interface Badge { kind: 'free' | 'price'; text: string }
 
 /** Badges only from stated data: Free from the source's own label, a price from the source's lowest price in a currency we can write.
@@ -58,11 +57,9 @@ export interface Badge { kind: 'free' | 'price'; text: string }
 export function badgesFor(e: Pick<EveningEntry, 'labels' | 'priceMin' | 'priceCurrency'>, hidePrice = false): Badge[] {
   const out: Badge[] = [];
   if (e.labels.includes('Free')) out.push({ kind: 'free', text: 'Free' });
-  const symbol = e.priceCurrency ? CURRENCY_SYMBOL[e.priceCurrency] : undefined;
-  // hidePrice: the US towns, until we know what Ticketmaster's priceRanges contain (fees in or out; owner 2026-11-04)
-  if (!hidePrice && e.priceMin != null && e.priceMin > 0 && symbol && !out.length) {
-    out.push({ kind: 'price', text: `${symbol}${Number.isInteger(e.priceMin) ? e.priceMin : e.priceMin.toFixed(2)}` });
-  }
+  // hidePrice: the US towns, until we know what Ticketmaster's priceRanges contain (fees in or out; owner 2026-11-04). Whole units (Fas 2).
+  const price = !hidePrice && e.priceMin != null && e.priceMin > 0 && !out.length ? formatPrice(e.priceMin, e.priceCurrency) : null;
+  if (price) out.push({ kind: 'price', text: price });
   return out;
 }
 

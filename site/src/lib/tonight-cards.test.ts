@@ -27,7 +27,8 @@ describe('badgesFor: no badge without data', () => {
   it('Free only from the source label', () => expect(badgesFor(entry({ labels: ['Free'] }))).toEqual([{ kind: 'free', text: 'Free' }]));
   it('18+ / All ages labels are not badges', () => expect(badgesFor(entry({ labels: ['18+', 'All ages'] }))).toEqual([]));
   it('a stated GBP price shows as the lowest price', () => expect(badgesFor(entry({ priceMin: 12, priceCurrency: 'GBP' }))).toEqual([{ kind: 'price', text: '£12' }]));
-  it('pence are kept', () => expect(badgesFor(entry({ priceMin: 12.5, priceCurrency: 'GBP' }))[0].text).toBe('£12.50'));
+  // Fas 2 (owner 2026-11-20): prices in whole units; this replaces the earlier 'pence are kept'.
+  it('pence are rounded to whole pounds', () => expect(badgesFor(entry({ priceMin: 12.5, priceCurrency: 'GBP' }))[0].text).toBe('£13'));
   it('a price without a currency is not written', () => expect(badgesFor(entry({ priceMin: 12, priceCurrency: null }))).toEqual([]));
   it('an unknown currency is not written', () => expect(badgesFor(entry({ priceMin: 12, priceCurrency: 'XYZ' }))).toEqual([]));
   it('a zero price is not a price', () => expect(badgesFor(entry({ priceMin: 0, priceCurrency: 'GBP' }))).toEqual([]));

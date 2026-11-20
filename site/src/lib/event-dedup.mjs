@@ -81,8 +81,24 @@ export function venueKey(v) {
   const k = first.toLowerCase().replace(/&/g, ' and ').replace(/@/g, ' at ').replace(/[^a-z0-9]+/g, ' ').trim().replace(/^the /, '');
   return k || null;
 }
+/** The room inside the venue, when the source names one as the second comma part and it is not an address: "Glasgow Royal Concert
+ *  Hall, Strathclyde Suite" (story 4081) / "..., New Auditorium" (story 4151) -> "strathclyde suite" / "new auditorium". An address part
+ *  ("1601 University Boulevard", "16170 Perris Blvd Suite C3") starts with a digit and is never a room. null = no room named.
+ *  Owner 2026-11-20: two rooms of one building at the same time are two events, never merged. */
+const ROOM_WORDS = /\b(suite|room|hall|auditorium|studio|gallery|theatre|theater|lounge|ballroom|stage)\b/i;
+export function venueRoom(v) {
+  const second = (v ?? '').split(',')[1]?.trim() ?? '';
+  if (!second || /^\d/.test(second) || !ROOM_WORDS.test(second)) return null;
+  return second.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() || null;
+}
+/** Both name a room and the rooms differ. */
+export function roomsDiffer(a, b) {
+  const ra = venueRoom(a), rb = venueRoom(b);
+  return !!ra && !!rb && ra !== rb;
+}
 function venuesCompatible(a, b) {
   const ka = venueKey(a), kb = venueKey(b);
+  if (roomsDiffer(a, b)) return false;
   return !ka || !kb || ka === kb || ka.includes(kb) || kb.includes(ka);
 }
 

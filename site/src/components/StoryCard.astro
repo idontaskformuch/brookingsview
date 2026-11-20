@@ -2,6 +2,7 @@
 /** En post i nyhetsströmmen. Avdelad med hårfin linje, inte inramad som ett
  *  kort -- kortramar plattar ut hierarkin och får allt att se lika viktigt ut. */
 import { meetingCardTitle } from '../lib/meeting-title';
+import { tidyCost } from '../lib/text-hygiene';
 import DateBadge from './DateBadge.astro';
 import type { Story, Facility } from '../lib/db';
 import { formatDate, formatTime, formatMeetingDate, formatMeetingKicker, allDayWord, seriesClockText, CATEGORY_LABELS, isAiWrittenContent } from '../lib/db';
@@ -83,7 +84,7 @@ const listTeaser = alsoListed ? `${teaser(alsoListed[1])} ${alsoListed[2]}`.trim
 const wholeTextInList = !alsoListed && listTeaser === storyText.replace(/\s+/g, ' ').trim();
 // An event whose price line already shows the cost does not repeat it here (Q3 2026-10-28).
 const listFacts = siteConfig.country === 'gb' && wholeTextInList
-  ? (story.source_type === 'event' ? [story.meta?.venue, eventPriceAgeLine(story) ? '' : story.meta?.cost] : story.source_type === 'meeting' ? [story.meta?.address] : [])
+  ? (story.source_type === 'event' ? [story.meta?.venue, eventPriceAgeLine(story) ? '' : tidyCost(story.meta?.cost)] : story.source_type === 'meeting' ? [story.meta?.address] : [])
       .filter(Boolean).join(' · ')
   : '';
 const listBody = listFacts || listTeaser;

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  restrictionView, postedLine, checkedLine, UNKNOWN_TEXT, NONE_TEXT, STALE_AFTER_MS, MAX_SHOWN, CHECK_FREQUENCY_TEXT, SECTION_TITLE, LABELS,
+  restrictionView, postedLine, checkedLine, NONE_TEXT, STALE_AFTER_MS, MAX_SHOWN, CHECK_FREQUENCY_TEXT, SECTION_TITLE, LABELS,
   type RestrictionCheck, type RestrictionAlert,
 } from './restrictions';
 import { buildRestrictionStatus } from './cityStatus';
@@ -73,19 +73,20 @@ describe('restrictionView', () => {
 
   it('fetch failed on the newest check: unknown, even though an older check succeeded', () => {
     const v = restrictionView('fire', failed(fire, '2026-11-20T01:00:00.000Z'), fire, { sourceUrl: FIRE_URL }, NOW);
-    expect(v).toMatchObject({ state: 'unknown', text: UNKNOWN_TEXT, sourceUrl: FIRE_URL, staleAt: null, alerts: [] });
-    expect(checkedLine(v, TZ)).toBe('Last successful check Nov 19, 4:00 PM');
+    expect(v).toMatchObject({ state: 'unknown', text: '', sourceUrl: FIRE_URL, staleAt: null, alerts: [] });
+    expect(checkedLine(v, TZ)).toBeNull(); // Tillägg C: an unknown line is never shown, so it has no "checked" line
   });
 
   it('a failed check after "none" is unknown, never "no restrictions"', () => {
     const v = restrictionView('water', failed(water, '2026-11-20T01:00:00.000Z'), noneRow(water), { sourceUrl: WATER_URL }, NOW);
-    expect(v.text).toBe(UNKNOWN_TEXT);
+    expect(v.state).toBe('unknown');
+    expect(v.text).not.toBe(NONE_TEXT.water);
   });
 
   it('changed page structure (the scraper wrote unknown): unknown, no crash', () => {
     const v = restrictionView('fire', failed(fire, CHECKED), null, { sourceUrl: FIRE_URL }, NOW);
-    expect(v).toMatchObject({ state: 'unknown', text: UNKNOWN_TEXT, checkedAt: null });
-    expect(checkedLine(v, TZ)).toBe('Not checked yet');
+    expect(v).toMatchObject({ state: 'unknown', text: '', checkedAt: null });
+    expect(checkedLine(v, TZ)).toBeNull();
     // an "active" row without usable titles (should not happen) is unknown too, never an empty line
     expect(restrictionView('fire', { ...fire, alerts: [{ ...RED_FLAG, title: '  ' }] }, fire, { sourceUrl: FIRE_URL }, NOW).state).toBe('unknown');
     expect(restrictionView('fire', { ...fire, alerts: null }, fire, { sourceUrl: FIRE_URL }, NOW).state).toBe('unknown');
@@ -95,12 +96,12 @@ describe('restrictionView', () => {
     const at48 = new Date(Date.parse(CHECKED) + STALE_AFTER_MS);
     expect(restrictionView('fire', fire, fire, { sourceUrl: FIRE_URL }, at48).state).toBe('active');
     const later = new Date(at48.getTime() + 60_000);
-    expect(restrictionView('fire', fire, fire, { sourceUrl: FIRE_URL }, later)).toMatchObject({ state: 'unknown', text: UNKNOWN_TEXT });
+    expect(restrictionView('fire', fire, fire, { sourceUrl: FIRE_URL }, later)).toMatchObject({ state: 'unknown', text: '' });
   });
 
   it('no row at all (table empty or DB unreadable): unknown with the configured source link', () => {
     expect(restrictionView('water', null, null, { sourceUrl: WATER_URL }, NOW)).toMatchObject({
-      state: 'unknown', text: UNKNOWN_TEXT, sourceUrl: WATER_URL,
+      state: 'unknown', text: '', sourceUrl: WATER_URL,
     });
   });
 });
@@ -123,16 +124,21 @@ describe('"We check it ..." matches the real schedule', () => {
 });
 
 describe('CityStatus restriction rows', () => {
-  it('known row: the titles, links to /safety/, swaps to unknown at the 48 h mark in the browser', () => {
-    const m = buildRestrictionStatus(restrictionView('fire', fire, fire, { sourceUrl: FIRE_URL }, NOW));
+  it('known row: the titles, links to /safety/, and the browser removes it at the 48 h mark (data-ends)', () => {
+    const m = buildRestrictionStatus(restrictionView('fire', fire, fire, { sourceUrl: FIRE_URL }, NOW))!;
     expect(m).toMatchObject({ id: 'fire_restrictions', label: 'Fire alerts and restrictions',
       value: 'Red Flag Warning; Level 1 Fire Restrictions in Effect', tone: 'notice', href: '/safety/#restrictions' });
-    expect(m.swapAt).toEqual({ at: new Date(Date.parse(CHECKED) + STALE_AFTER_MS).toISOString(), value: UNKNOWN_TEXT, href: FIRE_URL });
+    expect(m.expiresAt).toBe(new Date(Date.parse(CHECKED) + STALE_AFTER_MS).toISOString());
+    expect(m.swapAt).toBeUndefined();
   });
 
-  it('unknown row links straight to the source and has nothing to swap', () => {
-    const m = buildRestrictionStatus(restrictionView('water', null, null, { sourceUrl: WATER_URL }, NOW));
-    expect(m).toMatchObject({ value: UNKNOWN_TEXT, href: WATER_URL, swapAt: undefined });
+  // Tillägg C (owner 2026-11-20): an unknown status is no row at all -- not "Status unknown", not "see the source".
+  it.each([
+    ['no row at all', () => restrictionView('water', null, null, { sourceUrl: WATER_URL }, NOW)],
+    ['the newest check failed', () => restrictionView('fire', failed(fire, '2026-11-20T01:00:00.000Z'), fire, { sourceUrl: FIRE_URL }, NOW)],
+    ['older than 48 h', () => restrictionView('fire', fire, fire, { sourceUrl: FIRE_URL }, new Date(Date.parse(CHECKED) + STALE_AFTER_MS + 60_000))],
+  ])('unknown (%s): no CityStatus row', (_name, view) => {
+    expect(buildRestrictionStatus(view())).toBeNull();
   });
 
   afterEach(() => { vi.unstubAllEnvs(); vi.resetModules(); });

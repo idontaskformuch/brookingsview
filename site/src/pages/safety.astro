@@ -18,6 +18,11 @@ if (!siteConfig.safetyNotices || !info) return Astro.redirect('/', 302);
 
 const pageMeta = resolvePageMeta('safety', siteConfig);
 const canonicalUrl = new URL('/safety/', Astro.site ?? siteConfig.siteUrl).href;
+// Tillägg C (owner 2026-11-20): an unknown restriction status is not shown, so the City's pages are always named here, the page's own sources.
+const restrictionLinks = [
+  { label: 'fire alerts and restrictions', url: siteConfig.restrictions?.fire?.sourceUrl },
+  { label: 'water restrictions', url: siteConfig.restrictions?.water?.sourceUrl },
+].filter((l): l is { label: string; url: string } => !!l.url);
 const breadcrumbTrail: BreadcrumbEntry[] = [{ label: 'Home', href: '/' }, { label: 'Fire and air', href: canonicalUrl }];
 ---
 <BaseLayout title={pageMeta.title} canonicalUrl={canonicalUrl}
@@ -48,7 +53,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [{ label: 'Home', href: '/' }, { labe
       <li>The fire list is wildfire data from NIFC's national incident feed, checked about every 15 minutes. It shows fires reported by the agencies fighting them, so a new fire can take time to appear and the size and containment can be behind what is happening on the ground.</li>
       <li>The air-quality index is AirNow's current reading from the nearest monitor, which can be miles away. It is preliminary data that has not been fully checked and can change. The color and category follow the EPA's standard index ranges.</li>
       <li>If we cannot confirm the data is recent, we show nothing rather than an old number.</li>
-      {siteConfig.restrictions && <li>Fire and water restrictions are the City's own alert titles, word for word, from its Alert Center. If our last check failed or is more than 48 hours old, the line says the status is unknown and links to the City's page instead.</li>}
+      {restrictionLinks.length > 0 && <li>Fire and water restrictions are the City's own alert titles, word for word, from its Alert Center ({restrictionLinks.map((l, i) => <>{i > 0 && ', '}<a href={l.url} rel="noopener">{l.label}</a></>)}). If our last check failed or is more than 48 hours old, we leave the line out rather than show an old status.</li>}
       <li>This is not an alert system. Sign up for the official alerts from the links above.</li>
     </ul>
   </section>

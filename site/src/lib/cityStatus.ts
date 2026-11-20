@@ -52,7 +52,7 @@ import { ownPageHref } from './ai-text';
 import { ELECTION_BY_TOWN } from '../config/election';
 import { buildElectionStatus } from './election';
 import { loadRestrictionViews } from './restrictions-data';
-import { UNKNOWN_TEXT, type RestrictionKind, type RestrictionView } from './restrictions';
+import type { RestrictionKind, RestrictionView } from './restrictions';
 
 export type StatusTone = 'quiet' | 'notice' | 'alert';
 
@@ -281,20 +281,20 @@ async function resolveElection(): Promise<CityStatusModule | null> {
   return { id: 'election', icon: ICONS.election, label: 'Election', tone: 'notice', href: href ?? '/vote/', swapAt: then, ...rest };
 }
 
-/** Fire/water restriction row (Fas 5 source 1, lib/restrictions.ts). Always rendered when configured: "Status unknown, see the
- *  source" is itself the answer the owner asked for, never hidden and never replaced by "no restrictions". The row carries
- *  data-swap-* (the election row's mechanism, lib/election-swap.ts) so the browser switches it to unknown once the check is 48 h
- *  old. Exported and pure for the unit test. */
-export function buildRestrictionStatus(v: RestrictionView): CityStatusModule {
+/** Fire/water restriction row (Fas 5 source 1, lib/restrictions.ts). Tillägg C (owner 2026-11-20): an unknown status is not a
+ *  row at all -- no "Status unknown", no "see the source" text; the City's page stays in the page's own sources. A known row
+ *  carries expiresAt = the 48 h mark (data-ends), so the browser removes it once the check is too old, no rebuild. Never replaced
+ *  by "no restrictions". Exported and pure for the unit test. */
+export function buildRestrictionStatus(v: RestrictionView): CityStatusModule | null {
+  if (v.state === 'unknown' || !v.checkedAt) return null;
   const id = `${v.kind}_restrictions`;
-  const known = v.state !== 'unknown';
   return {
     id, icon: ICONS[id], label: v.label,
     value: v.more ? `${v.text} (${v.more})` : v.text,
     tone: v.tone,
-    href: known ? '/safety/#restrictions' : v.sourceUrl,
-    asOf: known && v.checkedAt ? new Date(v.checkedAt) : new Date(),
-    swapAt: known && v.staleAt ? { at: v.staleAt, value: UNKNOWN_TEXT, href: v.sourceUrl } : undefined,
+    href: '/safety/#restrictions',
+    asOf: new Date(v.checkedAt),
+    expiresAt: v.staleAt ?? undefined,
   };
 }
 

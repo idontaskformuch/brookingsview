@@ -30,6 +30,7 @@
 import type { Story, SdsuEvent, Facility } from './db';
 import { siteConfig } from './site-config';
 import { linkTarget } from './ai-text';
+import { tidyCost } from './text-hygiene';
 import { buildVenueIndex, resolveVenue, isVirtualVenue } from './db';
 import { classifyLocalityByCoords, classifyLocalityByText, type LocalityResult, type LocalityMethod } from './town-boundary';
 
@@ -426,7 +427,7 @@ export function isFreeEvent(item: FeedItem, facilities: Facility[]): boolean {
  *  every row published before 027_story_meta.sql have `meta` null -- same
  *  "render nothing" rule. */
 export function eventPriceAgeLine(story: Story): string | null {
-  const parts = [story.meta?.cost, story.meta?.audience].filter((v): v is string => Boolean(v));
+  const parts = [tidyCost(story.meta?.cost), story.meta?.audience].filter((v): v is string => Boolean(v));
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 

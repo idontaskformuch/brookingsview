@@ -3,13 +3,14 @@
  *
  *  Rules (owner, verbatim decisions in .claude/specs/fas5-source-inventory.md, and the changes of 2026-11-19 evening):
  *  - always the source link and "last checked";
- *  - the newest check failed, or the newest successful check is older than 48 h: "Status unknown, see the source";
+ *  - the newest check failed, or the newest successful check is older than 48 h: state 'unknown', and an unknown kind is not shown
+ *    at all (Tillägg C, owner 2026-11-20: no "Status unknown" / "see the source" text; the source stays in the page's sources);
  *  - never "no restrictions" as a fallback: the "none" text needs a successful, fresh check whose page said 0 alerts;
  *  - every active alert in the category, the source's own title verbatim, newest first, at most MAX_SHOWN;
  *  - no AI text: every other string is a fixed template below.
  *
  *  Pure (no DB, no clock of its own): the build and the browser call the same function, so a page built while the data was fresh
- *  still flips to "unknown" in the browser once the 48 h have passed (no rebuild needed). */
+ *  still drops the line in the browser once the 48 h have passed (no rebuild needed). */
 
 export type RestrictionKind = 'fire' | 'water';
 export type RestrictionState = 'active' | 'none' | 'unknown';
@@ -36,7 +37,6 @@ export const MAX_SHOWN = 3;
 /** The section heading on /safety/ (owner 2026-11-20). */
 export const SECTION_TITLE = 'Fire and water restrictions and alerts';
 export const LABELS: Record<RestrictionKind, string> = { fire: 'Fire alerts and restrictions', water: 'Water restrictions' };
-export const UNKNOWN_TEXT = 'Status unknown, see the source';
 export const NONE_TEXT: Record<RestrictionKind, string> = {
   fire: 'No fire restriction alert posted by the City',
   water: 'No water restriction or drought alert posted by the City',
@@ -51,14 +51,14 @@ export interface RestrictionView {
   state: RestrictionState;
   /** active: the alerts shown, newest first, at most MAX_SHOWN; otherwise empty. */
   alerts: { title: string; sinceAt: string | null; url: string | null }[];
-  /** The one-line text: the titles joined with "; " (active), a NONE_TEXT (none) or UNKNOWN_TEXT. */
+  /** The one-line text: the titles joined with "; " (active) or a NONE_TEXT (none); '' when unknown (never rendered). */
   text: string;
   /** "+1 more alert" when the category lists more than MAX_SHOWN (template). */
   more: string | null;
   /** The successful check the line is built from; null when there never was one. */
   checkedAt: string | null;
   sourceUrl: string;
-  /** ISO instant at which the browser must switch this line to UNKNOWN_TEXT; null when it already is unknown. */
+  /** ISO instant at which the browser must remove this line (48 h after the check); null when it already is unknown. */
   staleAt: string | null;
   tone: 'quiet' | 'notice';
 }
@@ -68,7 +68,7 @@ export function restrictionView(kind: RestrictionKind, latest: RestrictionCheck 
   source: RestrictionSource, now: Date): RestrictionView {
   const base = { kind, label: LABELS[kind], sourceUrl: latest?.source_url ?? source.sourceUrl };
   const unknown: RestrictionView = {
-    ...base, state: 'unknown', alerts: [], text: UNKNOWN_TEXT, more: null,
+    ...base, state: 'unknown', alerts: [], text: '', more: null,
     checkedAt: lastGood?.checked_at ?? null, staleAt: null, tone: 'notice',
   };
   if (!latest || latest.state === 'unknown' || !lastGood) return unknown;
@@ -106,8 +106,8 @@ export function postedLine(sinceAt: string | null, timeZone: string): string | n
   return sinceAt ? `Posted ${formatPosted(sinceAt, timeZone)}` : null;
 }
 
-/** "Last checked Nov 19, 4:00 PM" / "Last successful check ..." / "Not checked yet" (templates). */
-export function checkedLine(v: RestrictionView, timeZone: string): string {
-  if (!v.checkedAt) return 'Not checked yet';
-  return `${v.state === 'unknown' ? 'Last successful check' : 'Last checked'} ${formatChecked(v.checkedAt, timeZone)}`;
+/** "Last checked Nov 19, 4:00 PM" (template) for a shown (known) line; null for an unknown one, which is never shown. */
+export function checkedLine(v: RestrictionView, timeZone: string): string | null {
+  if (v.state === 'unknown' || !v.checkedAt) return null;
+  return `Last checked ${formatChecked(v.checkedAt, timeZone)}`;
 }

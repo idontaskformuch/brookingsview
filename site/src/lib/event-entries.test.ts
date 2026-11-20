@@ -3,7 +3,9 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import fixture from './fixtures/events-brookings-2026-11-20.json';
+import rooms from './fixtures/events-glasgow-rooms-2026-11-20.json';
 import { buildEventFeed, itemTitle, type FeedItem } from './events';
+import { venueRoom } from './event-dedup.mjs';
 import { buildEntries, seriesLabel, entryDays, joinTimes, titlesOverlap, venueKey, type EventEntry } from './event-entries';
 import { countEventsToday } from './local-day';
 import { buildEventsView, type RowFacts } from './event-day-view';
@@ -109,5 +111,54 @@ describe('QA registry (CLAUDE.md 12)', () => {
   it('logic.events-today-one-count is registered with born_from', () => {
     const reg = JSON.parse(readFileSync(new URL('../../../qa/checks.json', import.meta.url), 'utf8')).checks as Record<string, { born_from: string }>;
     expect(reg['logic.events-today-one-count']?.born_from).toBeTruthy();
+  });
+});
+
+describe('the boundary: one name, two rooms or two subtitles (owner 2026-11-20)', () => {
+  // Real Glasgow rows (fixtures/events-glasgow-rooms-2026-11-20.json): venue_raw names the room as its second comma part.
+  const GLA = 'Europe/London';
+  const [suite, auditorium] = rooms.stories.map((s) => ({ ...s, body: '' })) as unknown as Story[];
+  const glaEntries = (ss: Story[]) => buildEntries(buildEventFeed(ss, [], GLA).items, GLA);
+
+  it('room data exists: the same concert at the same time in two rooms of one hall stays two entries', () => {
+    // Story 4081 (Strathclyde Suite) and story 4081 with ONLY venue_raw changed to story 4151's "Glasgow Royal Concert Hall, New Auditorium".
+    const other = { ...suite, id: -4081, venue_raw: auditorium.venue_raw };
+    const es = glaEntries([suite, other]);
+    expect(es).toHaveLength(2);
+    expect(es.map((e) => e.occ.length)).toEqual([1, 1]);
+  });
+  it('a room on one side only is not a different place: the bare hall and the Strathclyde Suite at 2 PM are one entry', () => {
+    // Story 4081 with ONLY venue_raw changed to the bare "Glasgow Royal Concert Hall" (stories 4038/4078 list it that way).
+    const bare = { ...suite, id: -4081, venue_raw: 'Glasgow Royal Concert Hall' };
+    expect(glaEntries([suite, bare])).toHaveLength(1);
+  });
+  it('venueRoom: a room is the second comma part, never an address', () => {
+    expect(venueRoom(suite.venue_raw)).toBe('strathclyde suite');
+    expect(venueRoom(auditorium.venue_raw)).toBe('new auditorium');
+    expect(venueRoom('Oscar Larson Performing Arts Center, 1601 University Boulevard, Brookings, SD, 57007')).toBeNull();
+    expect(venueRoom('Moreno Valley Public Library Iris Plaza Branch,16170 Perris Blvd Suite C3, Moreno Valley, CA 92551')).toBeNull();
+  });
+
+  // Brookings: SDSU's location is the building only ("The Oscar Larson Performing Arts Center"), never a room. Without room data the
+  // titles decide. This LOCKS today's behaviour, it does not claim it is right: a subtitle naming a room is only words in the title.
+  const grace = arts.find((a) => a.title === 'Grace Fromknect Recital')!;
+  const sdsu = (as: SdsuEvent[]) => buildEntries(buildEventFeed([], as, CHI).items, CHI);
+  it('no room data, two different subtitles: stay two (real row "Grace Fromknect Recital", ONLY title changed on each copy)', () => {
+    const a = { ...grace, external_event_id: `${grace.external_event_id}#jones`, title: 'Grace Fromknect Recital – Jones Hall' };
+    const b = { ...grace, external_event_id: `${grace.external_event_id}#founders`, title: 'Grace Fromknect Recital – Founders Room' };
+    expect(sdsu([a, b]).map((e) => itemTitle(e.item))).toEqual([a.title, b.title]);
+  });
+  it('no room data, the owner\'s exact pair "Recital – Jones Hall" / "Recital – Founders Room": stay two', () => {
+    const a = { ...grace, external_event_id: `${grace.external_event_id}#jones`, title: 'Recital – Jones Hall' };
+    const b = { ...grace, external_event_id: `${grace.external_event_id}#founders`, title: 'Recital – Founders Room' };
+    expect(sdsu([a, b])).toHaveLength(2);
+  });
+  it('no room data, one title without the subtitle: TODAY they merge into the longer title (containment, same place, same time)', () => {
+    // Locked on purpose: with only a building to go on, "Grace Fromknect Recital" and "Grace Fromknect Recital – Founders Room" read as one
+    // event listed twice. If a source ever gives rooms, venueRoom() above keeps them apart instead.
+    const b = { ...grace, external_event_id: `${grace.external_event_id}#founders`, title: 'Grace Fromknect Recital – Founders Room' };
+    const es = sdsu([grace, b]);
+    expect(es).toHaveLength(1);
+    expect(itemTitle(es[0].item)).toBe(b.title);
   });
 });

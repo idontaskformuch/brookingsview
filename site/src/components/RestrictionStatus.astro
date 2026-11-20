@@ -1,27 +1,28 @@
 ---
 /** "Can I have a fire / water my lawn right now?" -- the City's own fire and water restriction alerts (Fas 5 source 1, owner
  *  2026-11-19; lib/restrictions.ts). Per kind: every active alert in the City's category, its own title verbatim, newest first, at
- *  most 3, each with "Posted <date>" (the alert's publication date) and a link to that alert; then "Last checked" and the category page. A failed or 48 h old
- *  check reads "Status unknown, see the source", also in a page built while the data was fresh: the script below swaps in the
- *  pre-rendered unknown row at data-stale-at, no rebuild. Renders nothing for a town without siteConfig.restrictions. */
+ *  most 3, each with "Posted <date>" (the alert's publication date) and a link to that alert; then "Last checked" and the category page.
+ *  Tillägg C (owner 2026-11-20): a failed or 48 h old check is not shown at all -- no "Status unknown", no "see the source" text (the
+ *  City's pages are in /safety/'s own sources). A page built while the data was fresh drops the kind in the browser at data-stale-at
+ *  (the script below), and the whole section once no kind is left; no rebuild. Renders nothing for a town without
+ *  siteConfig.restrictions, or when no kind is known. */
 import SectionHeader from './ui/SectionHeader.astro';
 import CompactRow from './ui/CompactRow.astro';
 import { siteConfig } from '../lib/site-config';
 import { loadRestrictionViews } from '../lib/restrictions-data';
-import { SECTION_TITLE, UNKNOWN_TEXT, CHECK_FREQUENCY_TEXT, postedLine, checkedLine } from '../lib/restrictions';
+import { SECTION_TITLE, CHECK_FREQUENCY_TEXT, postedLine, checkedLine } from '../lib/restrictions';
 
-const views = await loadRestrictionViews(siteConfig, new Date());
+const views = (await loadRestrictionViews(siteConfig, new Date())).filter((v) => v.state !== 'unknown');
 const tz = siteConfig.timezone;
 ---
 {views.length > 0 && (
-  <section id="restrictions" class="restrictions" aria-label={SECTION_TITLE} data-tz={tz}>
+  <section id="restrictions" class="restrictions" aria-label={SECTION_TITLE}>
     <SectionHeader title={SECTION_TITLE} />
     {views.map((v) => (
-      <div class="restrictions__kind" data-restriction={v.kind} data-state={v.state} data-stale-at={v.staleAt ?? undefined}
-        data-checked-at={v.checkedAt ?? undefined}>
+      <div class="restrictions__kind" data-restriction={v.kind} data-state={v.state} data-stale-at={v.staleAt ?? undefined}>
         <h3 class="restrictions__label">{v.label}</h3>
         {v.state === 'active' && v.alerts.map((a) => (
-          <div data-r-known>
+          <div>
             <CompactRow href={a.url ?? v.sourceUrl}>
               <span class="restrictions__row">
                 <span class="restrictions__text">{a.title}</span>
@@ -31,13 +32,10 @@ const tz = siteConfig.timezone;
           </div>
         ))}
         {v.state === 'none' && (
-          <div data-r-known><CompactRow href={v.sourceUrl}><span class="restrictions__text">{v.text}</span></CompactRow></div>
+          <div><CompactRow href={v.sourceUrl}><span class="restrictions__text">{v.text}</span></CompactRow></div>
         )}
-        <div data-r-unknown hidden={v.state !== 'unknown' ? true : undefined}>
-          <CompactRow href={v.sourceUrl}><span class="restrictions__text">{UNKNOWN_TEXT}</span></CompactRow>
-        </div>
         <p class="restrictions__meta">
-          {v.more && <span data-r-known>{v.more} · </span>}<span data-r-checked>{checkedLine(v, tz)}</span> · <a href={v.sourceUrl} rel="noopener">The City's {v.label.toLowerCase()} page</a>
+          {v.more && <span>{v.more} · </span>}<span>{checkedLine(v, tz)}</span> · <a href={v.sourceUrl} rel="noopener">The City's {v.label.toLowerCase()} page</a>
         </p>
       </div>
     ))}
@@ -58,25 +56,19 @@ const tz = siteConfig.timezone;
 </style>
 
 <script>
-  import { formatChecked } from '../lib/restrictions';
-  // Same 48 h rule as the build (lib/restrictions.ts restrictionView): past data-stale-at the kind shows only the unknown row.
+  // Same 48 h rule as the build (lib/restrictions.ts restrictionView): past data-stale-at the kind is unknown and is removed;
+  // with no kind left the section goes too (Tillägg C).
   const root = document.querySelector<HTMLElement>('#restrictions');
-  const tz = root?.dataset.tz || 'UTC';
-  const flip = () => {
+  const drop = () => {
     let waiting = 0;
     root?.querySelectorAll<HTMLElement>('[data-stale-at]').forEach((kind) => {
-      if (kind.dataset.state === 'unknown') return;
       const at = Date.parse(kind.dataset.staleAt || '');
       if (Number.isNaN(at)) return;
       if (Date.now() < at) { waiting++; return; }
-      kind.dataset.state = 'unknown';
-      kind.querySelectorAll<HTMLElement>('[data-r-known]').forEach((el) => { el.hidden = true; });
-      const unknown = kind.querySelector<HTMLElement>('[data-r-unknown]');
-      if (unknown) unknown.hidden = false;
-      const checked = kind.querySelector('[data-r-checked]');
-      if (checked && kind.dataset.checkedAt) checked.textContent = `Last successful check ${formatChecked(kind.dataset.checkedAt, tz)}`;
+      kind.remove();
     });
+    if (root && !root.querySelector('[data-restriction]')) root.hidden = true;
     return waiting;
   };
-  if (flip() > 0) { const h = setInterval(() => { if (flip() === 0) clearInterval(h); }, 60_000); }
+  if (drop() > 0) { const h = setInterval(() => { if (drop() === 0) clearInterval(h); }, 60_000); }
 </script>

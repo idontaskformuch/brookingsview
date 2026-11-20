@@ -1,0 +1,39 @@
+{
+  "_source": "read-only SELECT on stories (town glasgow) 2026-11-20 ~17:40 UTC, ids 4081 and 4151, verbatim. Rows whose venue_raw names a room as the second comma part: 4081 Strathclyde Suite (4255 is the same room), 4151 New Auditorium.",
+  "stories": [
+    {
+      "id": 4081,
+      "slug": "event-318303",
+      "title": "Dementia Friendly Concert: Niamh Corkey",
+      "source_type": "event",
+      "source_url": "https://www.glasgowlife.org.uk/event/1/dementia-friendly-concert-niamh-corkey",
+      "occurs_at": "2026-11-20T14:00:00.000Z",
+      "ends_at": null,
+      "venue_raw": "Glasgow Royal Concert Hall, Strathclyde Suite",
+      "is_recurring_series": false,
+      "generated_by": "ai:claude-sonnet-5",
+      "meta": {
+        "when": "Friday 20 November 2026, 2pm",
+        "venue": "Glasgow Royal Concert Hall, Strathclyde Suite",
+        "_checked": true,
+        "registration": "Tickets on sale from 10am, Monday 14 September"
+      }
+    },
+    {
+      "id": 4151,
+      "slug": "event-326517",
+      "title": "Glasgow Orchestral Society: Sky to Space",
+      "source_type": "event",
+      "source_url": "https://www.glasgowlife.org.uk/event/1/glasgow-orchestral-society-sky-to-space",
+      "occurs_at": "2026-12-20T17:00:00.000Z",
+      "ends_at": null,
+      "venue_raw": "Glasgow Royal Concert Hall, New Auditorium",
+      "is_recurring_series": false,
+      "generated_by": "ai:claude-sonnet-5",
+      "meta": {
+        "venue": "Glasgow Royal Concert Hall, New Auditorium",
+        "_checked": true
+      }
+    }
+  ]
+}

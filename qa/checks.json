@@ -595,6 +595,21 @@
       "severity": "soft",
       "born_from": "Designsystem Fas 0 report 2026-11-20 (owner): Brookings showed 'N events today' 6 in the ticker, 7 on /events/, 6 listed on /today/, and duplicates on /today/. Read-only rows 2026-11-20 16:09 UTC: /events/ alone counted the recurring Playful Preschoolers (story 3536); all three listed Grace Fromknect Recital + Grace Fromknect & Ava Gibbs Recital (both SDSU 2 PM, same calendar so never merged) and History Club 20s Event twice (3 PM + 7 PM); /today/ listed the CNS brunch twice (8 + 9 AM Nov 21). Rule: lib/local-day.ts countEventsToday over lib/event-entries.ts buildEntries (via events-town-view.ts buildTownEntries), the one definition. Regression fixture: site/src/lib/fixtures/events-brookings-2026-11-20.json driven by site/src/lib/event-entries.test.ts (fails before: module missing; with the old pipelines the counts are 6/7/6).",
       "what": "ticker, /today/ and /events/ do not give the same events-today count for the fixture rows, or a same-day duplicate / multi-date series of the fixture is listed more than once (vitest)"
+    },
+    "web.double-period": {
+      "severity": "soft",
+      "born_from": "Designsystem Fas 2 (owner 2026-11-20, 'about 9 a.m..'): Brookings /game-day/ (build 2026-11-12) rendered 'Tailgating starts about 9 a.m.</strong>.' and 'Gates open 90 minutes before kickoff, about 12:30 p.m..' -- the template added '.' after fmtTime(), which already ends in 'a.m.'/'p.m.'. Fix: lib/text-hygiene.ts endSentence() in pages/game-day.astro. Regression fixture: site/src/lib/qa-checks.test.ts (the real line; fails before: no such check) + site/src/lib/text-hygiene.test.ts.",
+      "what": "visible text has a doubled sentence period ('p.m..'); an ellipsis or '../' is not a finding"
+    },
+    "logic.text-hygiene": {
+      "severity": "soft",
+      "born_from": "Designsystem Fas 2 punkt 3 (owner 2026-11-20): What's On Brookings showed Ticketmaster prices as '$25.43 - $159.33' (Davina and The Vagabonds, build 2026-11-20), stories.meta.cost '£30.62' (story 4155), and titles in capitals ('NED LEDOUX', 'MGMT DJ SET'). Rule: lib/text-hygiene.ts formatPriceRange/formatPrice/tidyCost (whole units, '$25–159'), lib/evening-names.ts displayTitle (more than one word; a short word is kept in capitals only on the list or without a vowel) in ticketmaster.ts and event-row-facts.ts. Regression fixture: site/src/lib/text-hygiene.test.ts (fails before: module missing).",
+      "what": "a price with pennies or a ' - ' range, or a multi-word all-caps event title, reaches a row (vitest)"
+    },
+    "safety.restriction-unknown-not-rendered": {
+      "severity": "hard",
+      "born_from": "Tillägg C (owner 2026-11-20): Broomfield /safety/ and the 'Right now' rows showed 'Status unknown, see the source' / 'Not checked yet' (live 14:22 UTC before the first good run; afterwards as hidden data-r-unknown rows). Rule: an unknown restriction status is not rendered at all, no replacement text; the City's two Alert Center pages are linked in /safety/'s 'About these notices'. lib/cityStatus.ts buildRestrictionStatus returns null, components/RestrictionStatus.astro renders only known kinds and drops a kind in the browser at data-stale-at. Regression fixture: site/src/components/RestrictionStatus.test.ts (renders the component; fails before: the HTML held 'Status unknown' and data-r-unknown) + site/src/lib/restrictions.test.ts.",
+      "what": "the rendered restrictions HTML contains 'Status unknown', 'see the source', 'Not checked yet' or a data-r-unknown row (vitest)"
     }
   }
 }
