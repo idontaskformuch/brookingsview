@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
-import PopEventList from '../components/pop/PopEventList.astro';
+import EventDays from '../components/events/EventDays.astro';
 import EventsGlance from '../components/events/EventsGlance.astro';
 import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import StoryCard from '../components/StoryCard.astro';
@@ -31,6 +31,10 @@ import ClusterNav from '../components/ClusterNav.astro';
 import HolidayContextCard from '../components/HolidayContextCard.astro';
 import { buildTownEventsView } from '../lib/events-town-view';
 import { groupRowsByDay } from '../lib/pop-days';
+import { rowEnvFor, rowFromDayRow, labelOfDay, mixedCategories, type DayGroupData, type EventRowData } from '../lib/event-row';
+import { makeRowFacts } from '../lib/event-row-facts';
+import { areasFor } from '../lib/areas';
+import type { DayRow } from '../lib/event-day-view';
 import { aboutSourcesFor } from '../lib/about-sources';
 
 const pageMeta = resolvePageMeta('events', siteConfig);
@@ -91,6 +95,20 @@ function hrefOf(item: FeedItem): string | null {
 }
 const FOLD = 7;
 const busyDays = view.days.filter((d) => d.count > 0);
+
+// Designsystem Fas 4 (owner 2026-11-21): one DayGroup per day with EventRows under it; the date is the heading, never on a row, and no
+// "Today" on each card. The rows are the same DayRows as before (one pipeline with the front page), only printed as EventRows.
+const rowEnv = rowEnvFor(siteConfig, new Date());
+const rowFacts = makeRowFacts({ cityName: siteConfig.cityName, facilities, areas: areasFor(siteConfig.townId) });
+const asGroups = (days: { dayKey: string; rows: DayRow[] }[], placeOf?: (r: DayRow) => string | null): DayGroupData<EventRowData>[] =>
+  days.map((d) => ({ key: d.dayKey, label: labelOfDay(d.dayKey, rowEnv.now, rowEnv.country, rowEnv.tz), rows: d.rows.map((r) => rowFromDayRow(r, rowEnv, rowFacts, placeOf?.(r))) }));
+const nearbyPlace = (r: DayRow) => { const m = distanceOf.get(r.item); return m != null ? `${Math.round(m)} mi away` : null; };
+const busyGroups = asGroups(busyDays);
+const laterGroups = asGroups(groupRowsByDay(view.furtherOut.slice(0, FOLD)));
+const laterMoreGroups = asGroups(groupRowsByDay(view.furtherOut.slice(FOLD)));
+const nearbyGroups = asGroups(groupRowsByDay(nearbyRows), nearbyPlace);
+// Category on a row only when the page's lists mix them (as on Today).
+const showCategory = mixedCategories([...busyGroups, ...laterGroups, ...laterMoreGroups, ...nearbyGroups].flatMap((g) => g.rows));
 
 const canonicalUrl = new URL('/events/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = [
@@ -180,7 +198,7 @@ const webPageJsonLd = dateModified ? {
     ))}
   </nav>
 
-  <PopEventList days={busyDays} />
+  <EventDays groups={busyGroups} tz={siteConfig.timezone} showCategory={showCategory} />
   {busyDays.length === 0 && view.furtherOut.length === 0 && (
     <CalendarEmpty lead={`No events in ${siteConfig.cityName} are listed right now`} />
   )}
@@ -188,11 +206,11 @@ const webPageJsonLd = dateModified ? {
   {view.furtherOut.length > 0 && (
     <section class="ev-day" aria-labelledby="h-later">
       <h2 class="ev-day__h" id="h-later">Further out</h2>
-      <PopEventList days={groupRowsByDay(view.furtherOut.slice(0, FOLD))} idPrefix="later" />
+      <EventDays groups={laterGroups} tz={siteConfig.timezone} idPrefix="later" level={3} showCategory={showCategory} />
       {view.furtherOut.length > FOLD && (
         <details class="ev-more">
           <summary>{view.furtherOut.length - FOLD} more</summary>
-          <PopEventList days={groupRowsByDay(view.furtherOut.slice(FOLD))} idPrefix="later-more" />
+          <EventDays groups={laterMoreGroups} tz={siteConfig.timezone} idPrefix="later-more" level={3} showCategory={showCategory} />
         </details>
       )}
     </section>
@@ -201,7 +219,7 @@ const webPageJsonLd = dateModified ? {
   {nearbyRows.length > 0 && (
     <section class="ev-day" aria-labelledby="h-nearby">
       <h2 class="ev-day__h" id="h-nearby">Nearby</h2>
-      <PopEventList days={groupRowsByDay(nearbyRows)} idPrefix="nearby" noteOf={(r) => { const m = r.item ? distanceOf.get(r.item) : undefined; return m != null ? `${Math.round(m)} mi away` : null; }} />
+      <EventDays groups={nearbyGroups} tz={siteConfig.timezone} idPrefix="nearby" level={3} showCategory={showCategory} />
     </section>
   )}
 

@@ -73,7 +73,12 @@ function row(dataset: Record<string, string>) {
   const el = { dataset, hidden: false, querySelector: (sel: string) => (sel === '[data-pop-rel]' ? slot : sel === '[data-pop-tile]' ? tile : null) };
   return { el, slot, tileClasses };
 }
-const docOf = (...rows: ReturnType<typeof row>[]) => ({ querySelectorAll: () => rows.map((r) => r.el) }) as unknown as Document;
+const docOf = (...rows: ReturnType<typeof row>[]) => docWithGroups([], ...rows);
+/** Day groups (/events/, Fas 4): each holds some of the rows; the doc answers [data-pop-group] with the groups, anything else with the rows. */
+function docWithGroups(groups: { hidden: boolean; querySelectorAll: () => unknown[] }[], ...rows: ReturnType<typeof row>[]) {
+  return { querySelectorAll: (sel: string) => (sel === '[data-pop-group]' ? groups : rows.map((r) => r.el)) } as unknown as Document;
+}
+const groupOf = (...rows: ReturnType<typeof row>[]) => ({ hidden: false, querySelectorAll: () => rows.map((r) => r.el) });
 
 describe('applyEventPop', () => {
   const NOW = new Date('2026-11-09T22:00:00Z'); // Mon 16:00 Chicago
@@ -104,6 +109,15 @@ describe('applyEventPop', () => {
     expect(first.el.hidden).toBe(true);
     expect([...second.tileClasses]).toEqual([]);       // now carries the tile
     expect([...third.tileClasses]).toEqual(['tile--dup']);
+  });
+  it('a day group whose rows are all over is hidden with its heading; a group with one row left stays (Fas 4, /events/)', () => {
+    const over1 = row({ start: '2026-11-09T15:00:00Z', end: '2026-11-09T17:00:00Z' });
+    const over2 = row({ start: '2026-11-09T16:00:00Z', end: '2026-11-09T18:00:00Z' });
+    const left = row({ start: '2026-11-10T01:00:00Z', end: '2026-11-10T03:00:00Z' });
+    const gone = groupOf(over1, over2);
+    const kept = groupOf(over1, left);
+    applyEventPop(docWithGroups([gone, kept], over1, over2, left), NOW, CHI);
+    expect([gone.hidden, kept.hidden]).toEqual([true, false]);
   });
 });
 

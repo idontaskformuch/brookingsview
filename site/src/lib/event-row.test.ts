@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { rowFromTicketmaster, rowFromFeedItem, rowEnvFor, groupByDay, mixedCategories, dayKey, clockFromLocalTime } from './event-row';
+import { rowFromTicketmaster, rowFromFeedItem, rowFromDayRow, rowEnvFor, groupByDay, mixedCategories, dayKey, clockFromLocalTime } from './event-row';
 import { normalizeTicketmasterEvent } from './ticketmaster';
 import { weekendWindow, weekendShows } from './whats-on';
 import { makeRowFacts } from './event-row-facts';
 import { eventClock, dayTimeKicker } from './time';
 import type { TicketmasterFeedItem } from './ticketmaster';
 import type { FeedItem } from './events';
+import type { DayRow } from './event-day-view';
 import type { SdsuEvent } from './db';
 
 // Real rows (CLAUDE.md 15), Brookings, read from the /whats-on/ JSON-LD and /today/ on 2026-11-20:
@@ -116,5 +117,36 @@ describe('Ticketmaster local date and time (Moreno Valley, 8 PM)', () => {
     expect(weekendWindow('2026-11-22')).toEqual({ from: '2026-11-22', to: '2026-11-22' });
     expect(weekendShows([item], '2026-11-20').map((i) => i.ticketmasterEvent.id)).toEqual(['vvG1IZ_CkTutk8']);
     expect(weekendShows([item], '2026-11-23')).toEqual([]);
+  });
+});
+
+describe('rowFromDayRow: an /events/ day row as an EventRow (Fas 4, owner 2026-11-21)', () => {
+  // The recital (real row above) as the DayRow /events/ builds for it on Fri Nov 20.
+  const day: DayRow = {
+    item: recital, dayKey: '2026-11-20', dateLabel: 'Nov 20', offset: 0, timeLabel: '2 PM', allDay: false, tonight: false, recurrence: 'one_off',
+    title: 'Grace Fromknect Recital', venue: 'The Oscar Larson Performing Arts Center', area: null, free: false, kids: false, teens: false, cat: null,
+    start: '2026-11-20T20:00:00Z', end: null, merged: [], occ: [], seriesLabel: null,
+  };
+  it('time, title and place from the day row, the link from the item; no date and no "Today" on the row', () => {
+    const r = rowFromDayRow(day, env, facts);
+    expect(r).toMatchObject({ time: '2 PM', title: 'Grace Fromknect Recital', place: ['The Oscar Larson Performing Arts Center'], extra: [],
+      href: 'https://www.sdstate.edu/events/2026/11/grace-fromknect-recital', start: '2026-11-20T20:00:00Z', day: '2026-11-20' });
+    expect(JSON.stringify(r)).not.toMatch(/Today|Nov 20/);
+  });
+  it("the old card's pills and ↻ go after the place; Nearby's distance replaces the area", () => {
+    // Same row, only free/kids/recurrence/seriesLabel changed (no real row carries all four).
+    const r = rowFromDayRow({ ...day, free: true, kids: true, recurrence: 'weekly', seriesLabel: 'Nov 20–21' }, env, facts, '4 mi away');
+    expect(r.extra).toEqual(['Nov 20–21', 'Weekly', 'Free', 'Kids & families']);
+    expect(r.place).toEqual(['The Oscar Larson Performing Arts Center', '4 mi away']);
+  });
+});
+
+describe('EventRow time column (Fas 4 screenshots 2026-11-21)', () => {
+  it('several times a day ("3 PM & 7 PM", History Club 20s Event on /events/ Nov 20) wrap after "&", each time kept whole', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync(new URL('../components/ui/EventRow.astro', import.meta.url), 'utf8');
+    expect(src).toMatch(/row\.time\.split\(' & '\)/);
+    expect(src).toMatch(/\.ev-row__t \{ white-space: nowrap; \}/);
+    expect(src).not.toMatch(/\.ev-row__time \{[^}]*white-space: nowrap/);
   });
 });

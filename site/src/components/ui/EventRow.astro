@@ -9,9 +9,14 @@ interface Props { row: EventRowData; showCategory?: boolean; /** Heading level o
 const { row, showCategory = false, level = 3 } = Astro.props;
 const Title = `h${level}` as 'h3' | 'h4';
 const meta = [...row.place, ...row.extra];
+// Several times a day ("3 PM & 7 PM") ran out of the time column over the title (Fas 4 screenshots 2026-11-21): each time stays whole,
+// the list wraps after "&".
+const times = row.time.split(' & ').map((t, i, all) => (i < all.length - 1 ? `${t} &` : t));
 ---
 <article class="ev-row" data-start={row.start ?? undefined} data-end={row.end ?? undefined}>
-  <span class="ev-row__time">{row.time && row.start ? <time datetime={row.start}>{row.time}</time> : row.time}</span>
+  <span class="ev-row__time">{row.time && row.start
+    ? <time datetime={row.start}>{times.map((t) => <span class="ev-row__t">{t}</span>)}</time>
+    : times.map((t) => <span class="ev-row__t">{t}</span>)}</span>
   <div class="ev-row__body">
     {showCategory && row.category && <p class="ev-row__cat">{CATEGORY_LABEL[row.category]}</p>}
     <Title class="ev-row__title">{row.href ? <a href={row.href} rel={row.rel ?? undefined}>{row.title}</a> : row.title}</Title>
@@ -21,7 +26,9 @@ const meta = [...row.place, ...row.extra];
 <style is:global>
   /* Global: /today's browser script clones rows out of a <template>, and the clones must keep the look. */
   .ev-row { display: grid; grid-template-columns: 4.75rem minmax(0, 1fr); gap: 0 1rem; padding: 0.625rem 0; border-top: 1px solid var(--rule); }
-  .ev-row__time { font-family: var(--font-ui); font-size: 0.875rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink); padding-top: 0.125rem; white-space: nowrap; }
+  .ev-row__time { font-family: var(--font-ui); font-size: 0.875rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink); padding-top: 0.125rem; }
+  .ev-row__t { white-space: nowrap; }
+  .ev-row__t + .ev-row__t::before { content: ' '; white-space: normal; }
   .ev-row__body { min-width: 0; }
   .ev-row__cat { margin: 0 0 0.125rem; font-family: var(--font-ui); font-size: 0.8125rem; color: var(--ink-soft); }
   .ev-row__title { margin: 0; font-family: var(--font-head); font-size: 1.0625rem; line-height: 1.3; overflow-wrap: anywhere; }

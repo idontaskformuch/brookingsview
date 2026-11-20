@@ -4,7 +4,7 @@
  *  - keeps the date tile on the first row of each day that is still shown (the server puts it on the day's first row; when that row has gone, the
  *    next one carries it).
  *  Rows carry data-pop-row plus data-start (+ data-end) for events or data-day for calendar dates, data-day-key (the local day) and a [data-pop-tile]
- *  box; the label slot is [data-pop-rel]. */
+ *  box; the label slot is [data-pop-rel]. A [data-pop-group] (a day's DayGroup) is hidden when none of its rows is left. */
 import { isOver, relativeDayLabel, relativeDayLabelForDate } from './event-pop';
 
 export function applyEventPop(doc: Document, now: Date, tz: string): void {
@@ -22,5 +22,9 @@ export function applyEventPop(doc: Document, now: Date, tz: string): void {
       row.querySelector<HTMLElement>('[data-pop-tile]')?.classList.toggle('tile--dup', dayHasTile.has(key));
       dayHasTile.add(key);
     }
+  });
+  // A day group (/events/, Fas 4: DayGroup + EventRow) whose rows are all over goes too, heading and all.
+  doc.querySelectorAll<HTMLElement>('[data-pop-group]').forEach((g) => {
+    g.hidden = ![...g.querySelectorAll<HTMLElement>('[data-pop-row]')].some((r) => !r.hidden);
   });
 }

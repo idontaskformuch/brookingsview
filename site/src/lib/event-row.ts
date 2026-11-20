@@ -7,7 +7,7 @@
  *  only when the caller's list mixes categories (mixedCategories). Data and template strings only, no prose. Country differences come
  *  from rowEnvFor (the country profile), never from a branch here. */
 import { eventPriceAgeLine, type FeedItem } from './events';
-import type { RowFacts } from './event-day-view';
+import type { DayRow, RowFacts } from './event-day-view';
 import { linkTarget } from './ai-text';
 import { eventClock, seriesKicker } from './time';
 import { distanceLabel, type TicketmasterFeedItem } from './ticketmaster';
@@ -107,6 +107,26 @@ export function rowFromFeedItem(item: FeedItem, env: RowEnv, facts: (item: FeedI
     extra: [series && when ? seriesKicker(s.meta?.recurrence, when, env.tz).replace(/ · \S+$/, '') : null, eventPriceAgeLine(s)]
       .filter((v): v is string => !!v),
     category: f.cat ?? null,
+  };
+}
+
+/** A /events/ day row (lib/event-day-view.ts DayRow: its occurrence, its times already joined "3 PM & 7 PM", a series' dates) as an
+ *  EventRow (Fas 4, owner 2026-11-21). Link, category and price/age line from the feed item, as on Today; what the old card said as
+ *  pills (Free, Kids & families, Teens) and its ↻ ("Repeats weekly") go after the place. `place` replaces the area (Nearby: "4 mi away"). */
+export function rowFromDayRow(r: DayRow, env: RowEnv, facts: (item: FeedItem) => RowFacts, place?: string | null): EventRowData {
+  const base = rowFromFeedItem(r.item, env, facts);
+  const extra = [r.seriesLabel, ...base.extra];
+  if (r.recurrence === 'weekly' || r.recurrence === 'monthly') {
+    const word = r.recurrence === 'weekly' ? 'Weekly' : 'Monthly';
+    if (!extra.includes(word)) extra.push(word);
+  }
+  if (r.free && !extra.some((x) => x && /\bfree\b/i.test(x))) extra.push('Free');
+  if (r.kids && !extra.some((x) => x && /\bkids\b/i.test(x))) extra.push('Kids & families');
+  if (r.teens && !extra.some((x) => x && /\bteens?\b/i.test(x))) extra.push('Teens');
+  return {
+    ...base, start: r.start, end: r.end, day: r.dayKey, time: r.timeLabel, title: r.title,
+    place: [r.venue, place ?? r.area].filter((v): v is string => !!v),
+    extra: extra.filter((v): v is string => !!v),
   };
 }
 

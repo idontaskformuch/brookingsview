@@ -1,0 +1,39 @@
+---
+/** /events/ as day groups (Designsystem Fas 4, owner 2026-11-21: "DayGroup per dag. Ta bort Today-etiketten per kort."). One DayGroup per
+ *  town day with its date as the heading, EventRows under it (time, title, place; never a date or "Today" on a row). The group keeps
+ *  id="<idPrefix>-YYYY-MM-DD", the anchor the week strip (EventsGlance) links to. In the browser (lib/event-pop-client.ts) rows that are over
+ *  are removed, and a day whose rows are all over goes with its heading; without JavaScript every row stays.
+ *
+ *  Resident question: what is on in town on each of the next days? */
+import DayGroup from '../ui/DayGroup.astro';
+import EventRow from '../ui/EventRow.astro';
+import type { DayGroupData, EventRowData } from '../../lib/event-row';
+
+interface Props { groups: DayGroupData<EventRowData>[]; tz: string; idPrefix?: string; level?: 2 | 3; showCategory?: boolean }
+const { groups, tz, idPrefix = 'day', level = 2, showCategory = false } = Astro.props;
+const rowLevel = (level + 1) as 3 | 4;
+---
+<div class="ed" data-pop-list data-tz={tz}>
+  {groups.map((g) => (
+    <div data-pop-group>
+      <DayGroup label={g.label} datetime={g.key} id={`${idPrefix}-${g.key}`} level={level}>
+        {g.rows.map((row) => (
+          <li data-pop-row data-start={row.start ?? undefined} data-end={row.end ?? undefined} data-tz={tz} data-day-key={g.key}>
+            <EventRow row={row} showCategory={showCategory} level={rowLevel} />
+          </li>
+        ))}
+      </DayGroup>
+    </div>
+  ))}
+</div>
+<script>
+  import { applyEventPop } from '../../lib/event-pop-client';
+  const root = document.querySelector<HTMLElement>('.ed[data-pop-list]');
+  const tick = () => applyEventPop(document, new Date(), root?.dataset.tz || 'America/Chicago');
+  tick();
+  setInterval(tick, 60_000);
+</script>
+<style>
+  .ed :global(.day-group) { scroll-margin-top: var(--ui-5); }
+  [data-pop-group][hidden] { display: none; }
+</style>
