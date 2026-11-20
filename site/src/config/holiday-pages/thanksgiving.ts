@@ -72,12 +72,15 @@ function brookingsFacts(moves: BrookingsTrashMoves): HolidayFact[] {
       value: 'Closed Thu Nov 26.',
       meta: 'City offices closed Nov 26',
       closedOn: ['2026-11-26'],
+      days: { '2026-11-26': 'closed' },
       source: BK_HOLIDAYS, checkedOn: BK_CHECKED,
     },
     {
       section: 'closures', status: 'confirmed', change: 'closed', label: 'Landfill',
       value: 'Closed all day Thu Nov 26. Sat Nov 28 is the last Saturday open for the season.',
       meta: 'Landfill closed Nov 26',
+      days: { '2026-11-26': 'closed' },
+      dayNote: 'Sat Nov 28 is the last Saturday open for the season.',
       source: BK_COLLECTIONS, checkedOn: BK_CHECKED,
     },
     {
@@ -85,6 +88,7 @@ function brookingsFacts(moves: BrookingsTrashMoves): HolidayFact[] {
       value: 'Closed Thu Nov 26 and Fri Nov 27.',
       // No meta: the description's 155 characters keep the recycling move instead.
       closedOn: ['2026-11-26', '2026-11-27'],
+      days: { '2026-11-26': 'closed', '2026-11-27': 'closed' },
       source: BK_MCCRORY, checkedOn: '2026-10-23',
     },
     {

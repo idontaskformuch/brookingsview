@@ -163,9 +163,20 @@ describe('closures grid (Tillägg B, owner 2026-11-20)', () => {
     expect(groups.find((x) => x.id === 'closed')).toBeUndefined();
     expect(groups.find((x) => x.id === 'changed')!.rows.map((r) => r.name)).toContain('Police Department Building and Detention Center');
   });
-  it('a page without `days` has no grid and keeps its Closed list (Brookings, Moreno)', () => {
-    expect(closureGrid(bkThanks)).toBeNull();
-    expect(buildGroups(bkThanks, '2026-11-20', '2026-11-26').some((x) => x.id === 'closed')).toBe(true);
+  it('a page without `days` has no grid and keeps its Closed list (Moreno)', () => {
+    expect(closureGrid(mvThanks)).toBeNull();
+    expect(buildGroups(mvThanks, '2026-11-20', '2026-11-26').some((x) => x.id === 'closed')).toBe(true);
+  });
+  it('Brookings Thanksgiving: three places, Thu 26 + Fri 27, no grouping, the closed list empties', () => {
+    // City Holidays page (offices Thu), Landfill and Collections Calendar (landfill Thu), SDSU events 21522/21523 (McCrory Thu + Fri).
+    const bg = closureGrid(bkThanks)!;
+    expect(bg.days.map((d) => d.label)).toEqual(['Thu 26', 'Fri 27']);
+    expect(bg.groups.map((x) => x.heading)).toEqual([null]);
+    const rows = bg.groups[0].rows.map((r) => [r.name, r.cells.map((c) => c.kind).join(',')]);
+    expect(rows).toEqual([['City offices', 'closed,usual'], ['Landfill', 'closed,usual'], ['McCrory Gardens', 'closed,closed']]);
+    expect(bg.groups[0].rows.find((r) => r.name === 'Landfill')!.note).toBe('Sat Nov 28 is the last Saturday open for the season.');
+    expect(bg.checked).toBe('2026-10-24');
+    expect(buildGroups(bkThanks, '2026-11-20', '2026-11-26').find((x) => x.id === 'closed')?.rows.map((r) => r.name) ?? []).not.toContain('City offices');
   });
   it('the template renders the grid without a <table>, with day labels for the phone cards', () => {
     const src = read('../components/HolidayDayGrid.astro');
