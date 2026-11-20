@@ -411,3 +411,57 @@ def test_hidden_line_never_becomes_a_change():
     plan = plan_changes(stored, LISTED, _pages(), set())
     police = next(r for r in plan.upserts if r["page_id"] == 4390)
     assert police.get("unchanged") is True and plan.updates == []
+
+
+# --- owner 2026-11-20 (a)(b)(c), HASH_VERSION cip-extract-v2: the three real pages read 2026-11-20 -----------------------------
+UPTOWN_HTML = (CP / "uptown112.html").read_text(encoding="utf-8")        # page 3573, phases as paragraphs + sub-task bullets
+AIRPORT_HTML = (CP / "airport_creek.html").read_text(encoding="utf-8")   # page 4259, "...: 2022 - completed."
+STONEY_HTML = (CP / "stoneybrook.html").read_text(encoding="utf-8")      # page 4389, "Construction Completion: April 2026."
+
+
+def test_a_sub_task_bullets_are_not_timeline_lines_112th():
+    # v1 stored the 20 bullets ("Prairie Dogs", "Paving Pt. 1", ...) and none of the phases.
+    assert extract_page(UPTOWN_HTML)["timeline"] == [
+        "Project Start: 7/27/2025",
+        "Preliminary Items: June 2025.",
+        "Phase 1A & 1B Tasks - East End/North Side of W. 112th Ave: August thru October 2025",
+        "Phase 2A & 2B -Outside ROW / North & South of W. 112th Avenue: October through May 2026",
+        "Phase 3 - Misc. Closeout Tasks: May thru July 2026.",
+        "Project Completion: Summer 2026",
+    ]
+    # Bullets with a colon stay the Timeline, without the image captions in paragraphs next to them (Airport Creek).
+    assert len(extract_page(AIRPORT_HTML)["timeline"]) == 7
+
+
+def test_b_dash_completed_is_completed_airport_creek():
+    lines = {l["text"]: l for l in visible_timeline(extract_page(AIRPORT_HTML)["timeline"])}
+    design = lines["60% design: May 2026 - completed."]
+    assert (design["label"], design["start"], design["end"], design["completed"]) == ("60% design", "2026-05-01", "2026-05-31", True)
+    # A year we do not read (d) keeps its date unread but the City's "completed" mark is kept.
+    first = lines["Initial Alternatives Analysis: 2022 - completed."]
+    assert (first["start"], first["completed"]) == (None, True)
+    assert lines["Public outreach: 2025"]["completed"] is False
+
+
+def test_c_closing_period_is_read_stoneybrook():
+    line = parse_timeline_line("Construction Completion: April 2026.")
+    assert (line["label"], line["start"], line["end"], line["completed"]) == ("Construction Completion", "2026-04-01", "2026-04-30", False)
+    assert [l["start"] for l in visible_timeline(extract_page(STONEY_HTML)["timeline"])] == ["2025-11-01", "2026-04-01"]
+    assert parse_timeline_line("Preliminary Items: June 2025.")["start"] == "2025-06-01"  # 112th
+
+
+def test_a_parser_change_rebaselines_without_change_rows():
+    # The stored rows of the live baseline (v1 hash, 112th with its 20 bullets): reading the same page with v2 writes the new
+    # timeline but no phase_added/phase_removed -- the difference is ours, not the City's.
+    _, stored = _baseline()
+    old = stored[4537]
+    stored[4537] = Stored(old.id, old.page_id, old.slug, old.title, "v1-hash-without-prefix",
+                          [parse_timeline_line(t) | {"completed": False} for t in ["Prairie Dogs", "Paving Pt. 1"]], None, None)
+    plan = plan_changes(stored, LISTED, _pages(), set())
+    assert plan.updates == []
+    varra = next(r for r in plan.upserts if r["page_id"] == 4537)
+    assert varra["source_hash"].startswith("cip-extract-v2:") and len(varra["timeline"]) == 4
+    # The next day, same version: a real change is dated again.
+    stored2 = {**stored, 4537: Stored(old.id, 4537, old.slug, old.title, varra["source_hash"], varra["timeline"], None, None)}
+    changed = VARRA_HTML.replace("Final Design: November - January 2027", "Final Design: December 2026 - February 2027")
+    assert [u["change_kind"] for u in plan_changes(stored2, LISTED, _pages({4537: changed}), set()).updates] == ["phase_changed"]

@@ -158,3 +158,22 @@ describe('meta descriptions (2026-11-20 battery: /projects/ and long-titled page
     }
   });
 });
+
+describe('Stoneybrook Drive Retaining Wall Replacement (page 4389, parser v2 2026-11-20)', () => {
+  // The real lines as scrapers/parsers/capital_projects.py v2 reads them (owner (c): the closing period no longer blocks the date).
+  // The City's summary says "The Stoneybrook Drive Retaining Wall Replacement project is now complete.", but no line is marked
+  // "(Completed)", so under the owner's group rule it is In progress, not Complete. Owner question open 2026-11-20.
+  const STONEY: CipProject = {
+    slug: 'stoneybrook-drive-retaining-wall-replacement', title: 'Stoneybrook Drive Retaining Wall Replacement',
+    description: 'The Stoneybrook Drive Retaining Wall Replacement project is now complete.',
+    source_url: 'https://www.broomfield.org/4389/Stoneybrook-Drive-Retaining-Wall',
+    timeline: [
+      ph('Construction Start: November 2025', 'Construction Start', '2025-11-01', '2025-11-30'),
+      ph('Construction Completion: April 2026.', 'Construction Completion', '2026-04-01', '2026-04-30'),
+    ],
+    cost_text: null, last_checked_at: '2026-11-20T11:07:36Z', delisted_at: null,
+  };
+  it('is In progress, not "see the City", now that both lines have dates', () => {
+    expect(groupOf(STONEY, new Date('2026-11-20T12:00:00Z'))).toBe('in_progress');
+  });
+});

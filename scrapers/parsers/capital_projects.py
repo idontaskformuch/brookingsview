@@ -50,7 +50,10 @@ from scrapers.user_agent import user_agent
 SOURCE_TYPE = "cip_page"
 FAILURE_ALERT_AFTER = timedelta(hours=72)
 MAX_SUMMARY_WORDS = 25
-HASH_VERSION = "cip-extract-v1"
+# The version prefixes the stored source_hash. A stored hash without the current prefix was made by an older extractor/parser: the
+# project is re-read as its own baseline (no change rows), because the difference is ours, not the City's (v2 2026-11-20: 112th's
+# sub-task bullets dropped, "- completed." and a closing period read).
+HASH_VERSION = "cip-extract-v2"
 
 # Fixed templates for project_updates.body (the only text of ours; the quoted parts are the source's words).
 BODY_NEW = "Added to the City's list of current capital improvement projects."
@@ -70,7 +73,9 @@ _MONTH_RE = r"(" + "|".join(sorted(_MONTHS, key=len, reverse=True)) + r")\.?"
 _POINT = _MONTH_RE + r"(?:\s+(\d{1,2})(?:st|nd|rd|th)?,?)?(?:\s+(\d{4}))?"
 _RANGE = re.compile(r"^" + _POINT + r"\s*-\s*" + _POINT + r"$", re.I)
 _SINGLE = re.compile(r"^" + _POINT + r"$", re.I)
-_COMPLETED = re.compile(r"\s*\((completed?|complete)\)\s*$", re.I)
+# "(Completed)" (Varra Park) or "- completed." (Airport Creek, owner 2026-11-20 b) at the end of the line.
+_COMPLETED = re.compile(r"\s*(?:\((?:completed?)\)|-\s*completed?)\.?\s*$", re.I)
+_LABEL_COLON = re.compile(r":(?!\d)")  # "Winter 2026: The ...", not the "6:30" in "5-6:30 pm" (Police meeting line)
 _TBD = re.compile(r"^(tbd|tba|to be determined)\.?$", re.I)
 _PAGE_ID = re.compile(r"^/(\d+)/")
 # Abbreviations that end with a period but do not end a sentence (street names, "i.e.").
@@ -176,7 +181,13 @@ def extract_page(html: bytes | str) -> dict:
         return next((sections[k] for k in keys if k in sections), [])
 
     timeline_blocks = blocks(_TIMELINE_KEYS)
-    lines = [t for tag, t in timeline_blocks if tag == "li"] or [t for _, t in timeline_blocks]
+    # Owner 2026-11-20 (a): bullet lines with neither a date nor a "label: when" colon are not Timeline lines. 112th & Uptown lists
+    # its phases as paragraphs ("Phase 3 - Misc. Closeout Tasks: May thru July 2026.") with sub-task bullets under each ("Paving Pt.
+    # 1"): the phases are kept, the bullets dropped. Bullets with a colon (Varra, Birch, Airport Creek) stay the Timeline as before,
+    # without the captions and repeats in paragraphs next to them. A section with no colon line at all keeps every line (Police).
+    li_lines = [t for tag, t in timeline_blocks if tag == "li"]
+    lines = ([t for t in li_lines if _LABEL_COLON.search(t)] or [t for _, t in timeline_blocks if _LABEL_COLON.search(t)]
+             or li_lines or [t for _, t in timeline_blocks])
     return {
         "title": title,
         "info": [t for _, t in blocks(_INFO_KEYS)],
@@ -187,8 +198,8 @@ def extract_page(html: bytes | str) -> dict:
 
 def extracted_hash(extracted: dict) -> str:
     """Hash of the extracted content only (owner addition 1): heading, Project Information, Timeline, Project Cost."""
-    return content_hash(HASH_VERSION, extracted["title"], json.dumps(extracted["info"]), json.dumps(extracted["timeline"]),
-                        json.dumps(extracted["cost"]))
+    return f"{HASH_VERSION}:" + content_hash(HASH_VERSION, extracted["title"], json.dumps(extracted["info"]),
+                                              json.dumps(extracted["timeline"]), json.dumps(extracted["cost"]))
 
 
 def sentences(text: str) -> list[str]:
@@ -277,11 +288,13 @@ def parse_timeline_line(text: str) -> dict:
         return out
     completed = bool(_COMPLETED.search(rest))
     rest_bare = _COMPLETED.sub("", rest).strip()
+    rest_bare = re.sub(r"\.$", "", rest_bare).strip()  # owner 2026-11-20 (c): "April 2026." reads as "April 2026"
     if _TBD.match(rest_bare):
         out.update(label=label, tbd=True, completed=completed)
         return out
     dates = parse_dates(rest_bare)
     if dates is None:
+        out["completed"] = completed  # what the City marked, also when the date is a year or season we do not read ("2022 - completed.")
         return out
     out.update(label=label, start=dates[0].isoformat(), end=dates[1].isoformat(), completed=completed)
     return out
@@ -410,8 +423,9 @@ def plan_changes(stored: dict[int, Stored], listed: list[Listed], pages: dict[in
                 cost = cost_sentence(page.extracted["cost"])
                 row.update(unchanged=False, source_hash=h, timeline=timeline, cost_text=cost,
                            description=summary_sentence(page.extracted["info"]) or "")
-                # Changes only against a timeline we read before; the first successful read of a project is its own baseline.
-                if st is not None and st.timeline is not None:
+                # Changes only against a timeline we read before with this HASH_VERSION; the first successful read of a project, and
+                # the first read after a parser change, is its own baseline (a real City change on that same day is not dated then).
+                if st is not None and st.timeline is not None and (st.source_hash or "").startswith(f"{HASH_VERSION}:"):
                     for kind, body in timeline_changes(st.timeline, timeline):
                         plan.updates.append({"page_id": item.page_id, "change_kind": kind, "body": body})
                     change = cost_change(st.cost_text, cost)
