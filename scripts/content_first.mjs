@@ -25,6 +25,9 @@ export const ALLOWED_CLASSES = new Set([
   // the front page's active fire/air warning line (components/SafetyNotices.astro compact, hidden unless a notice is active), which sits
   // above the lead since Fas 1a 2026-11-18: an active warning is the one thing allowed above the content (standards.md "Svaret först")
   'safety-compact',
+  // the holiday page's status line under the photo band ("Thursday, Nov 26 · 6 days away", Tillägg A 2026-11-20): a data row like
+  // hp-checked/hp-state, the date and how far away it is, not an explanation of the page (owner yes 2026-11-20)
+  'hp-status',
 ]);
 
 /** Pages whose opening text is the content itself (exact paths). */
