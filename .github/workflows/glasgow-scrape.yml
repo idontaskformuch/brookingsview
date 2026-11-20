@@ -17,6 +17,8 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    # A hung call must never run to GitHub's 6 h default (owner 2026-11-20). Longest run so far 26 min (moval 2026-11-16).
+    timeout-minutes: 30
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       MET_OFFICE_WARNINGS_API_KEY: ${{ secrets.MET_OFFICE_WARNINGS_API_KEY }}
