@@ -1,0 +1,93 @@
+---
+/** /projects/<slug> -- "What does the City say about this project's schedule, and has it changed?" (Fas 5 source 2, owner
+ *  2026-11-20). The City's timeline lines verbatim plus every change our daily check has seen, dated. noindex under the existing
+ *  project rule (lib/project-noindex.ts: fewer than 2 updates and no confirmed outcome; a CIP change is never an "outcome"), so a
+ *  project page only becomes indexable once it has two dated changes of its own. Mirrored in astro.config.mjs's sitemap. */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import AboutThisPage from '../../components/ui/AboutThisPage.astro';
+import { getCapitalProjects, getCapitalProjectUpdates, getProjects } from '../../lib/db';
+import { siteConfig } from '../../lib/site-config';
+import { forCountry } from '../../lib/country-profile';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
+import { shouldNoindexProject } from '../../lib/project-noindex';
+import { CHECK_FREQUENCY_TEXT, GROUPS, TIMELINE_LABEL, exactNameMatch, formatCheckedDate, groupOf } from '../../lib/capital-projects';
+
+export async function getStaticPaths() {
+  const projects = await getCapitalProjects();
+  return projects.map((p) => ({ params: { slug: p.slug }, props: { project: p } }));
+}
+
+const { project } = Astro.props as { project: Awaited<ReturnType<typeof getCapitalProjects>>[number] };
+const config = siteConfig.capitalProjects!;
+const locale = forCountry(siteConfig.country, 'en-US', 'en-GB');
+const fmt = (iso: string) => formatCheckedDate(iso, siteConfig.timezone, locale);
+const updates = await getCapitalProjectUpdates(project.slug);
+const noindex = shouldNoindexProject(updates.map(() => ({ outcome: 'pending' })));
+const group = GROUPS.find((g) => g.key === groupOf(project, new Date()))!;
+const twin = exactNameMatch(project.title, await getProjects());
+const canonicalUrl = new URL(`/projects/${project.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'Capital projects', href: '/projects/' },
+  { label: project.title, href: canonicalUrl },
+];
+const description = `${project.title}: the City of ${siteConfig.cityName}'s timeline for this capital improvement project, word for word, and the changes we have seen to it.`;
+---
+<BaseLayout title={`${project.title} — ${siteConfig.siteName}`} canonicalUrl={canonicalUrl} ogSlug="section-city-hall"
+  description={description} noindex={noindex}>
+  <Breadcrumbs trail={breadcrumbTrail} />
+  <article class="cip">
+    <header>
+      <p class="cip-group">{group.label}</p>
+      <h1>{project.title}</h1>
+      {project.description && <p class="cip-sum">{project.description}</p>}
+    </header>
+
+    <section aria-labelledby="cip-tl">
+      <h2 id="cip-tl">Timeline, {TIMELINE_LABEL}</h2>
+      {project.timeline && project.timeline.length > 0 ? (
+        <ul class="cip-phases">{project.timeline.map((ph) => <li>{ph.text}</li>)}</ul>
+      ) : (
+        <p>We have no timeline lines from the City's page. <a href={project.source_url} rel="noopener">See the City's page</a>.</p>
+      )}
+      {project.cost_text && <p>Cost, per the City: {project.cost_text}</p>}
+      {project.delisted_at && <p>Not on the City's list since {fmt(project.delisted_at)}.</p>}
+    </section>
+
+    <section aria-labelledby="cip-ch">
+      <h2 id="cip-ch">Changes we have seen</h2>
+      {updates.length > 0 ? (
+        <ol class="cip-changes">
+          {updates.map((u) => <li><time datetime={u.entry_date}>{fmt(u.entry_date)}</time> {u.body}</li>)}
+        </ol>
+      ) : (
+        <p>None yet. Each day we compare the City's page with the version we read before and list any change here with its date.</p>
+      )}
+    </section>
+
+    <p class="cip-links">
+      <a href={project.source_url} rel="noopener">The City's page for this project</a>
+      · <a href="/projects/">All capital projects</a>
+      {twin && <> · <a href={`/city-hall/projects/${twin.slug}/`}>This project at council and commission meetings</a></>}
+    </p>
+  </article>
+
+  <AboutThisPage slot="about" sources={[{ name: `City of ${siteConfig.cityName}: ${project.title}`, href: project.source_url },
+    { name: 'Current Capital Improvement Projects', href: config.listUrl }]}
+>
+    <p>{project.last_checked_at ? `Last checked ${fmt(project.last_checked_at)}.` : 'Not checked yet.'}</p>
+    <p>{CHECK_FREQUENCY_TEXT} The timeline lines and the cost line are copied exactly as the City wrote them; the group at the top
+    only sorts them. If the City's page cannot be read, this page keeps the last version we read and its date.</p>
+  </AboutThisPage>
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl))} />
+</BaseLayout>
+
+<style>
+.cip { max-width: 44rem; }
+.cip-group { font-size: 0.8125rem; color: var(--ink-soft); margin: 0; }
+.cip-sum { color: var(--ink-soft); }
+.cip-phases, .cip-changes { padding-left: 1.25rem; }
+.cip-changes time { font-weight: 600; margin-right: 0.35rem; }
+.cip-links { margin-top: 1.5rem; font-size: 0.9375rem; }
+</style>

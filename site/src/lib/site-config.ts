@@ -84,6 +84,10 @@ export interface SiteConfig {
    *  configs/<town_id>.json data_sources.restrictions.pages[].url (the scraper reads those; this is the link shown when there is no
    *  check yet). Shown as CityStatus rows ('fire_restrictions', 'water_restrictions') and a section on /safety/. Absent: nothing. */
   restrictions?: { fire?: RestrictionSource; water?: RestrictionSource };
+  /** The City's own list of current capital improvement projects (Fas 5 source 2, owner 2026-11-20; lib/capital-projects.ts): turns
+   *  on /projects/ and /projects/<slug>/. Mirrors configs/<town_id>.json data_sources.capital_projects.list_url (the scraper reads
+   *  it; this is the source link on the pages). Absent: /projects/ redirects to / (Worker STATIC_GATE_REDIRECTS). */
+  capitalProjects?: { listUrl: string };
   /** false = not listed in the other towns' multi-site disclosure yet (an unlaunched, noindexed
    *  site is not advertised from the live ones). Default true. */
   listedInNetwork?: boolean;
@@ -786,6 +790,8 @@ const CITIES: Record<string, SiteConfig> = {
       fire: { sourceUrl: 'https://broomfield.org/AlertCenter.aspx?CID=Fire-Alerts-and-Restrictions-8' },
       water: { sourceUrl: 'https://broomfield.org/AlertCenter.aspx?CID=Water-Restrictions-and-Drought-Condition-9' },
     },
+    // Fas 5 source 2 (owner 2026-11-20): same URL as configs/broomfield_co.json data_sources.capital_projects.list_url.
+    capitalProjects: { listUrl: 'https://www.broomfield.org/3763/Current-Capital-Improvement-Projects' },
     // Local Accent Identity, Broomfield-first rollout. A muted Front Range
     // slate-teal (H185) -- deliberately not green (avoids reading as an
     // interpretation of Vail Resorts' own branding, which this town's

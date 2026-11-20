@@ -52,6 +52,7 @@ REGISTRY: dict[str, str] = {
     "vail_news":       "scrapers.parsers.vail_news_v1:VailNewsParser",
     "usda":            "scrapers.parsers.usda:UsdaParser",
     "alert_center_restrictions": "scrapers.parsers.alert_center_restrictions:AlertCenterRestrictionsParser",
+    "capital_projects": "scrapers.parsers.capital_projects:CapitalProjectsParser",
     # stubbar (väntar på Stage 0-verifiering av källstruktur)
     "smartgov":        "scrapers.parsers.smartgov_v1:SmartGovParser",
     "civicengage_agenda_center": "scrapers.parsers.civicengage_pdf_v1:CivicEngageParser",
@@ -103,6 +104,14 @@ def run_source(conn, cfg: dict, source_key: str, source_cfg: dict) -> None:
     # över tyst (inget scrape_run-rad, ingen konsekvens för
     # consecutive_failures) -- det här är ett rutinmässigt "inte dags än",
     # inte ett fel. Källor utan refresh_minutes körs som förut, varje gång.
+    # run_at_utc_hours-spärr (Fas 5 källa 2, ägaren 2026-11-20: kapitalprojekten högst en gång per dygn, i 11:00 UTC-körningen):
+    # cron-dispatchern startar broomfield-scrape 11:00 och 23:00 UTC på minuten, så källan körs bara i de listade timmarna.
+    # Tyst, utan scrape_run-rad, precis som refresh_minutes nedan.
+    run_hours = source_cfg.get("run_at_utc_hours")
+    if run_hours and datetime.now(timezone.utc).hour not in run_hours:
+        print(f"  [{source_key}] hoppar över -- körs bara {run_hours} UTC")
+        return
+
     refresh_minutes = source_cfg.get("refresh_minutes")
     if refresh_minutes:
         last = db.last_run_at(conn, town_id, source_key)

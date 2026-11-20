@@ -284,6 +284,8 @@ const STATIC_GATE_REDIRECTS: Record<string, Record<string, StaticGateRedirect>> 
     '/new-in-town/': { to: '/', status: 302 },
     '/month/': { to: '/', status: 302 },
     '/safety/': { to: '/', status: 302 },
+    // Fas 5 source 2 (2026-11-20): /projects/ only where siteConfig.capitalProjects is set (Broomfield); projects/index.astro redirects.
+    '/projects/': { to: '/', status: 302 },
   },
   moreno_valley_ca: {
     '/jackrabbits/': { to: '/', status: 302 },
@@ -302,6 +304,8 @@ const STATIC_GATE_REDIRECTS: Record<string, Record<string, StaticGateRedirect>> 
     // Worker hides the real page.
     '/open-late/': { to: '/', status: 302 },
     '/university/weeks/': { to: '/', status: 302 },
+    // Fas 5 source 2 (2026-11-20): /projects/ only where siteConfig.capitalProjects is set (Broomfield); projects/index.astro redirects.
+    '/projects/': { to: '/', status: 302 },
   },
   broomfield_co: {
     '/jackrabbits/': { to: '/', status: 302 },
@@ -326,6 +330,8 @@ const STATIC_GATE_REDIRECTS: Record<string, Record<string, StaticGateRedirect>> 
   // served as a 200 meta refresh. Temporary hand list; Fas 4 derives it.
   glasgow: {
     '/advertising/': { to: '/', status: 302 },
+    // Fas 5 source 2 (2026-11-20): /projects/ only where siteConfig.capitalProjects is set (Broomfield); projects/index.astro redirects.
+    '/projects/': { to: '/', status: 302 },
     '/burro-bonanza/': { to: '/', status: 302 },
     '/closures/': { to: '/', status: 302 },
     '/election-results/': { to: '/', status: 302 },

@@ -219,6 +219,11 @@ const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | n
     </p>
   )}
 
+  {siteConfig.capitalProjects && (
+    <p class="source">Road and other projects the City has scheduled, with the City's own timelines:
+      <a href="/projects/">capital projects</a>.</p>
+  )}
+
   <ClusterNav clusterLabel="Getting around" items={clusterNavItems} />
 
   <RelatedContent pageType="traffic" />

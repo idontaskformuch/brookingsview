@@ -20,6 +20,7 @@
 import { isCountedOccurrence, listedEventRows } from './event-occurrence.mjs';
 import type { MeetingRow } from './meetings-view';
 import type { RestrictionCheck } from './restrictions';
+import type { CipProject, CipUpdate } from './capital-projects';
 import { neon } from '@neondatabase/serverless';
 import { siteConfig } from './site-config';
 import { PRUNE_EVENT_AFTER_DAYS } from './old-events';
@@ -3498,7 +3499,7 @@ export async function getProjects(): Promise<Project[]> {
       FROM projects p
       LEFT JOIN employers e
         ON e.town_id = p.town_id AND e.slug = p.workplace_watch_employer_slug
-     WHERE p.town_id = ${TOWN_ID}
+     WHERE p.town_id = ${TOWN_ID} AND (to_jsonb(p) ->> 'source_type') IS DISTINCT FROM 'cip_page'
      ORDER BY p.updated_at DESC
   `) as Project[];
 }
@@ -3511,7 +3512,7 @@ export async function getProjectBySlug(slug: string): Promise<Project | null> {
       FROM projects p
       LEFT JOIN employers e
         ON e.town_id = p.town_id AND e.slug = p.workplace_watch_employer_slug
-     WHERE p.town_id = ${TOWN_ID} AND p.slug = ${slug}
+     WHERE p.town_id = ${TOWN_ID} AND p.slug = ${slug} AND (to_jsonb(p) ->> 'source_type') IS DISTINCT FROM 'cip_page'
      LIMIT 1
   `) as Project[];
   return rows[0] ?? null;
@@ -3529,7 +3530,7 @@ export async function getProjectUpdates(slug: string): Promise<ProjectUpdate[]> 
            u.outcome_override, u.outcome_override_source_url
       FROM project_updates u
       JOIN projects p ON p.id = u.project_id
-     WHERE p.town_id = ${TOWN_ID} AND p.slug = ${slug}
+     WHERE p.town_id = ${TOWN_ID} AND p.slug = ${slug} AND (to_jsonb(p) ->> 'source_type') IS DISTINCT FROM 'cip_page'
      ORDER BY u.entry_date ASC
   `) as ProjectUpdate[];
 }
@@ -3547,7 +3548,7 @@ export async function getRecentProjectUpdates(limit = 3): Promise<(ProjectUpdate
            p.slug AS project_slug, p.title AS project_title
       FROM project_updates u
       JOIN projects p ON p.id = u.project_id
-     WHERE p.town_id = ${TOWN_ID}
+     WHERE p.town_id = ${TOWN_ID} AND (to_jsonb(p) ->> 'source_type') IS DISTINCT FROM 'cip_page'
        AND u.meeting_date >= now() - interval '14 days'
      ORDER BY u.meeting_date DESC
      LIMIT ${limit}
@@ -3569,7 +3570,7 @@ export async function getAllProjectUpdatesForWeekly(): Promise<(ProjectUpdate & 
            u.vote_absent, u.source_url, p.slug AS project_slug, p.title AS project_title
       FROM project_updates u
       JOIN projects p ON p.id = u.project_id
-     WHERE p.town_id = ${TOWN_ID}
+     WHERE p.town_id = ${TOWN_ID} AND (to_jsonb(p) ->> 'source_type') IS DISTINCT FROM 'cip_page'
        AND u.meeting_date IS NOT NULL
      ORDER BY u.meeting_date ASC
   `) as (ProjectUpdate & { project_slug: string; project_title: string })[];
@@ -3585,7 +3586,7 @@ export async function getProjectUpdatesInMonth(start: Date, end: Date): Promise<
            p.slug AS project_slug
       FROM project_updates u
       JOIN projects p ON p.id = u.project_id
-     WHERE p.town_id = ${TOWN_ID}
+     WHERE p.town_id = ${TOWN_ID} AND (to_jsonb(p) ->> 'source_type') IS DISTINCT FROM 'cip_page'
        AND u.entry_date >= ${start.toISOString()} AND u.entry_date < ${end.toISOString()}
   `) as (ProjectUpdate & { project_slug: string })[];
 }
@@ -3596,9 +3597,63 @@ export async function getProjectUpdatesFirstEntryDate(): Promise<string | null> 
   const rows = await sql`
     SELECT MIN(u.entry_date) AS first_entry
       FROM project_updates u JOIN projects p ON p.id = u.project_id
-     WHERE p.town_id = ${TOWN_ID}
+     WHERE p.town_id = ${TOWN_ID} AND (to_jsonb(p) ->> 'source_type') IS DISTINCT FROM 'cip_page'
   `;
   return (rows[0] as { first_entry: string | null })?.first_entry ?? null;
+}
+
+/* ------------------------------------------- capital improvement projects (Fas 5 source 2) */
+// The City's own CIP list (lib/capital-projects.ts, db/migrations/074_capital_projects.sql): projects rows with source_type
+// 'cip_page'. Every query above leaves them out (the to_jsonb() filter also works before 074 adds the column), so the meeting-
+// tracked /city-hall/projects/ and Story Threads are unchanged (owner decision D, 2026-11-20). Before 074 is applied the columns
+// do not exist: these readers then return nothing and /projects/ shows its empty state, never a failed build.
+
+function isMissingColumn(err: unknown): boolean {
+  const code = (err as { code?: string })?.code;
+  return code === '42703' || /column .* does not exist/i.test(String((err as Error)?.message ?? ''));
+}
+
+function normCip(r: Record<string, unknown>): CipProject {
+  return {
+    slug: String(r.slug), title: String(r.title), description: String(r.description ?? ''), source_url: String(r.source_url),
+    timeline: Array.isArray(r.timeline) ? (r.timeline as CipProject['timeline']) : null,
+    cost_text: (r.cost_text as string | null) ?? null,
+    last_checked_at: r.last_checked_at ? new Date(r.last_checked_at as string).toISOString() : null,
+    delisted_at: r.delisted_at ? new Date(r.delisted_at as string).toISOString() : null,
+  };
+}
+
+export async function getCapitalProjects(): Promise<CipProject[]> {
+  if (!siteConfig.capitalProjects) return [];
+  try {
+    const rows = await sql`
+      SELECT slug, title, description, source_url, timeline, cost_text, last_checked_at, delisted_at
+        FROM projects
+       WHERE town_id = ${TOWN_ID} AND source_type = 'cip_page'
+       ORDER BY title`;
+    return (rows as Record<string, unknown>[]).map(normCip);
+  } catch (err) {
+    if (isMissingColumn(err)) return [];
+    throw err;
+  }
+}
+
+/** A CIP project's dated changes, oldest first (the page's own timeline over time). */
+export async function getCapitalProjectUpdates(slug: string): Promise<CipUpdate[]> {
+  try {
+    const rows = await sql`
+      SELECT u.entry_date, u.change_kind, u.body, u.source_url
+        FROM project_updates u JOIN projects p ON p.id = u.project_id
+       WHERE p.town_id = ${TOWN_ID} AND p.slug = ${slug} AND p.source_type = 'cip_page' AND u.source_type = 'cip_page'
+       ORDER BY u.entry_date ASC, u.id ASC`;
+    return (rows as Record<string, unknown>[]).map((r) => ({
+      entry_date: new Date(r.entry_date as string).toISOString(), change_kind: String(r.change_kind ?? ''),
+      body: String(r.body ?? ''), source_url: (r.source_url as string | null) ?? null,
+    }));
+  } catch (err) {
+    if (isMissingColumn(err)) return [];
+    throw err;
+  }
 }
 
 /** CityStatus's `next_meeting` module (lib/cityStatus.ts) -- the soonest

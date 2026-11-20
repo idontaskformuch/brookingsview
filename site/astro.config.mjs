@@ -368,6 +368,8 @@ const CROSS_SITE_CANONICAL_ORIGINS = {
 // are excluded from this list on purpose: getStaticPaths() only ever
 // generates pages for rows that exist, so those branches are unreachable
 // dead code in a static build and never produce a stub file.)
+// Towns with siteConfig.capitalProjects (Fas 5 source 2): same list as TOWN_GATED_PAGES' /projects/ entry below.
+const CAPITAL_PROJECT_TOWNS = ['broomfield_co'];
 const TOWN_GATED_PAGES = [
   { path: '/burro-bonanza/', activeFor: ['moreno_valley_ca'] },
   { path: '/home-sales/', activeFor: ['moreno_valley_ca'] },
@@ -393,6 +395,8 @@ const TOWN_GATED_PAGES = [
   { path: '/play/', activeFor: ['brookings_sd'] },
   { path: '/university/', activeFor: ['brookings_sd'] },
   { path: '/vail-resorts/', activeFor: ['broomfield_co'] },
+  // Fas 5 source 2 (owner 2026-11-20): towns with siteConfig.capitalProjects (src/lib/capital-projects.test.ts checks the mirror).
+  { path: '/projects/', activeFor: ['broomfield_co'] },
   // Election 2026 /vote/: every town has an enabled `election` block today (config/election.ts); a town
   // without one redirects, so it must be listed here before it can be dropped from the sitemap.
   { path: '/vote/', activeFor: ['brookings_sd', 'moreno_valley_ca', 'broomfield_co'] },
@@ -547,7 +551,8 @@ async function buildLastmodMap(townId, databaseUrl) {
     }
   }
 
-  const projects = await sql`SELECT slug, updated_at FROM projects WHERE town_id = ${townId}`;
+  // CIP rows (source_type 'cip_page', Fas 5 source 2) are /projects/<slug>/, not /city-hall/projects/ (getProjects() has the same filter).
+  const projects = await sql`SELECT slug, updated_at FROM projects p WHERE town_id = ${townId} AND (to_jsonb(p) ->> 'source_type') IS DISTINCT FROM 'cip_page'`;
   for (const p of projects) map.set(`/city-hall/projects/${p.slug}/`, p.updated_at);
   // Mirrors lib/project-noindex.ts MIN_INDEXABLE_PROJECTS_HUB (getProjects() has the same WHERE): the hub is noindex under 3 projects.
   const MIN_INDEXABLE_PROJECTS_HUB = 3;
@@ -564,7 +569,7 @@ async function buildLastmodMap(townId, databaseUrl) {
     SELECT p.slug, count(u.id) AS n_updates,
            count(u.id) FILTER (WHERE u.outcome <> 'pending') AS n_confirmed
       FROM projects p LEFT JOIN project_updates u ON u.project_id = p.id
-     WHERE p.town_id = ${townId}
+     WHERE p.town_id = ${townId} AND (to_jsonb(p) ->> 'source_type') IS DISTINCT FROM 'cip_page'
      GROUP BY p.slug
   `;
   for (const row of projectUpdateStats) {
@@ -572,6 +577,28 @@ async function buildLastmodMap(townId, databaseUrl) {
     const nConfirmed = Number(row.n_confirmed);
     if (nUpdates < 2 && nConfirmed === 0) {
       noindexThinPageUrls.add(`/city-hall/projects/${row.slug}/`);
+    }
+  }
+
+  // /projects/ + /projects/<slug>/ (Fas 5 source 2): mirrors pages/projects/index.astro (noindex while no listed project) and
+  // [slug].astro (lib/project-noindex.ts shouldNoindexProject(): fewer than 2 updates; a CIP change is never a confirmed outcome).
+  // Before migration 074 the columns do not exist: no CIP pages are built then, and the hub is the empty, noindexed state.
+  if (CAPITAL_PROJECT_TOWNS.includes(townId)) {
+    let cip = [];
+    try {
+      cip = await sql`
+        SELECT p.slug, p.updated_at, p.delisted_at, count(u.id) AS n_updates
+          FROM projects p LEFT JOIN project_updates u ON u.project_id = p.id AND u.source_type = 'cip_page'
+         WHERE p.town_id = ${townId} AND p.source_type = 'cip_page'
+         GROUP BY p.slug, p.updated_at, p.delisted_at
+      `;
+    } catch (err) {
+      if (!/column .* does not exist/i.test(String(err?.message ?? ''))) throw err;
+    }
+    if (!cip.some((row) => row.delisted_at === null)) noindexThinPageUrls.add('/projects/');
+    for (const row of cip) {
+      map.set(`/projects/${row.slug}/`, row.updated_at);
+      if (Number(row.n_updates) < 2) noindexThinPageUrls.add(`/projects/${row.slug}/`);
     }
   }
 

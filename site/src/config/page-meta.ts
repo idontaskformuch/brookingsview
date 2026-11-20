@@ -66,6 +66,12 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
     titlePattern: '{Town} Projects, Tracked by Meeting | {Site}',
     h1Pattern: 'Active {Town} Projects, Followed Meeting by Meeting',
   },
+  // Fas 5 source 2 (owner 2026-11-20): the City's own capital improvement projects list. The H1 is the owner's wording, verbatim
+  // (lib/capital-projects.ts PAGE_H1); only towns with siteConfig.capitalProjects build the page.
+  'projects': {
+    titlePattern: '{Town} Capital Projects and Timelines | {Site}',
+    h1Pattern: 'Ongoing capital projects (per the City)',
+  },
   // Phase 2, item 2c (2026-10-08): was 'Things to Do in {Town} This Week' /
   // '{Town} Events: Today, This Weekend, and Coming Up' -- the phase2 spec
   // called for a plain, literal "Events in {Town}" instead, with per-town

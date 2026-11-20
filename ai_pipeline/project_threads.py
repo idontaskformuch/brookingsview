@@ -431,7 +431,9 @@ def load_open_projects_for_matching(conn, town_id: str) -> list[dict]:
     projects, which that function doesn't filter."""
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT id, title, description FROM projects WHERE town_id = %s AND resolved_at IS NULL",
+            "SELECT id, title, description FROM projects WHERE town_id = %s AND resolved_at IS NULL"
+            # CIP rows (source_type 'cip_page', migration 074) are never matched to meetings; to_jsonb() works before 074 too.
+            " AND (to_jsonb(projects) ->> 'source_type') IS DISTINCT FROM 'cip_page'",
             (town_id,),
         )
         return [{"id": r[0], "title": r[1], "description": r[2]} for r in cur.fetchall()]

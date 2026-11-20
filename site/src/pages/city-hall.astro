@@ -99,6 +99,9 @@ const eventJsonLd = meetingsTown
           touches it? See <a href="/city-hall/projects/">active city hall projects →</a>
         </p>
       )}
+      {siteConfig.capitalProjects && (
+        <p class="projects-teaser">What the City itself is building, with the City's own timelines: <a href="/projects/">capital projects →</a></p>
+      )}
       {meetingsTown.extraLinks.map((l) => (
         <p class="projects-teaser">{l.lead} <a href={l.href}>{l.label}</a></p>
       ))}
@@ -116,6 +119,9 @@ const eventJsonLd = meetingsTown
           Tracking a real development or ordinance through every meeting that
           touches it? See <a href="/city-hall/projects/">active city hall projects →</a>
         </p>
+      )}
+      {siteConfig.capitalProjects && (
+        <p class="projects-teaser">What the City itself is building, with the City's own timelines: <a href="/projects/">capital projects →</a></p>
       )}
 
       <SectionRule label="Coming up" />

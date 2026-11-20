@@ -64,7 +64,10 @@ def agenda_item_counter(item: dict) -> str:
 def load_projects(conn, town_id: str) -> list[dict]:
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT id, slug, title, case_numbers FROM projects WHERE town_id = %s",
+            # CIP rows (Fas 5 source 2, source_type 'cip_page', migration 074) are the City's list, never matched to meetings;
+            # to_jsonb() so the filter also works before 074 adds the column.
+            "SELECT id, slug, title, case_numbers FROM projects WHERE town_id = %s"
+            " AND (to_jsonb(projects) ->> 'source_type') IS DISTINCT FROM 'cip_page'",
             (town_id,),
         )
         rows = cur.fetchall()

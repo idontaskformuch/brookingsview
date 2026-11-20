@@ -177,6 +177,15 @@ describe('resolveStaticGateRedirect', () => {
     }
     expect(answerPagesFor('glasgow')).toEqual([]);
   });
+
+  // Fas 5 source 2 (2026-11-20): /projects/ is built only where siteConfig.capitalProjects is set; everywhere else the Worker
+  // must answer its redirect stub with the 302 (verify_stub_redirects checks the built stubs against this).
+  it('/projects/ redirects in every town without capitalProjects', () => {
+    for (const town of ['brookings_sd', 'moreno_valley_ca', 'glasgow']) {
+      expect(resolveStaticGateRedirect('/projects/', town), town).toEqual({ to: '/', status: 302 });
+    }
+    expect(resolveStaticGateRedirect('/projects/', 'broomfield_co')).toBeNull();
+  });
 });
 
 describe('isGoneSection', () => {

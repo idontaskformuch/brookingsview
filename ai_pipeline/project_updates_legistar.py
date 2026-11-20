@@ -215,7 +215,8 @@ def main() -> int:
     with db_connect(database_url) as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, slug, legistar_matter_ids FROM projects WHERE town_id = %s", (town_id,)
+                "SELECT id, slug, legistar_matter_ids FROM projects WHERE town_id = %s"
+                " AND (to_jsonb(projects) ->> 'source_type') IS DISTINCT FROM 'cip_page'", (town_id,)
             )
             projects = [{"id": r[0], "slug": r[1], "matter_ids": r[2] or []} for r in cur.fetchall()]
 

@@ -1,0 +1,108 @@
+---
+/** /projects -- "What is the City building near me, and when is it supposed to happen?" (Fas 5 source 2, owner 2026-11-20).
+ *  The City's own list of current capital improvement projects (siteConfig.capitalProjects; Broomfield today), read once a day by
+ *  scrapers/parsers/capital_projects.py. Every phase line is the City's own words, marked "per the City's timeline"; the groups are a
+ *  sort order (lib/capital-projects.ts), not a statement about a project. Towns without the config redirect to / (Worker
+ *  STATIC_GATE_REDIRECTS). Indexable when it lists projects; empty (no check yet) is noindex. */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import ShareButton from '../../components/ShareButton.astro';
+import SectionRule from '../../components/SectionRule.astro';
+import AboutThisPage from '../../components/ui/AboutThisPage.astro';
+import CompactRow from '../../components/ui/CompactRow.astro';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import { getCapitalProjects, getProjects } from '../../lib/db';
+import { siteConfig } from '../../lib/site-config';
+import { resolvePageMeta } from '../../lib/page-meta';
+import { forCountry } from '../../lib/country-profile';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
+import {
+  CHECK_FREQUENCY_TEXT, TIMELINE_LABEL, exactNameMatch, formatCheckedDate, groupProjects, lastChecked,
+} from '../../lib/capital-projects';
+
+const config = siteConfig.capitalProjects;
+const locale = forCountry(siteConfig.country, 'en-US', 'en-GB');
+if (!config) return Astro.redirect('/', 302);
+
+const pageMeta = resolvePageMeta('projects', siteConfig);
+const canonicalUrl = new URL('/projects/', Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = [{ label: 'Home', href: '/' }, { label: 'Capital projects', href: canonicalUrl }];
+const projects = await getCapitalProjects();
+const listed = projects.filter((p) => !p.delisted_at);
+const groups = groupProjects(projects, new Date());
+const checked = lastChecked(listed);
+const registry = await getProjects();
+const noindex = listed.length === 0;
+const description = `The City of ${siteConfig.cityName}'s current capital improvement projects, each with its phases and dates exactly as the City lists them, grouped by where the timeline stands.`;
+---
+<BaseLayout title={pageMeta.title} canonicalUrl={canonicalUrl} wide ogSlug="section-city-hall" description={description} noindex={noindex}>
+  <Breadcrumbs trail={breadcrumbTrail} />
+  <header class="cip-head">
+    <h1>{pageMeta.h1}</h1>
+    <ShareButton title={pageMeta.title} />
+  </header>
+  <p class="cip-lede">
+    {listed.length > 0 ? `${listed.length} projects on` : 'Projects on'} the City's list of
+    <a href={config.listUrl} rel="noopener">current capital improvement projects</a>.
+    Phases and dates are the City's own words. The groups below only sort them by the City's timeline lines.
+  </p>
+
+  {groups.length === 0 ? (
+    <EmptyState href={config.listUrl} linkLabel="See the City's list">We have not read the City's list yet.</EmptyState>
+  ) : groups.map((g) => (
+    <section class="cip-group" aria-label={g.label}>
+      <SectionRule label={`${g.label} (${g.projects.length})`} />
+      <ul class="cip-list">
+        {g.projects.map((p) => {
+          const twin = exactNameMatch(p.title, registry);
+          return (
+            <li>
+              <CompactRow cat="civic">
+                <a class="cip-title" href={`/projects/${p.slug}/`}>{p.title}</a>
+                {p.description && <span class="cip-sum">{p.description}</span>}
+                {p.timeline && p.timeline.length > 0 && (
+                  <span class="cip-phases">
+                    <span class="cip-label">{TIMELINE_LABEL}:</span>
+                    {p.timeline.map((ph) => <span class="cip-phase">{ph.text}</span>)}
+                  </span>
+                )}
+                {p.cost_text && <span class="cip-cost">Cost, per the City: {p.cost_text}</span>}
+                {p.delisted_at && <span class="cip-cost">Not on the City's list since {formatCheckedDate(p.delisted_at, siteConfig.timezone, locale)}.</span>}
+                <span class="cip-links">
+                  <a href={p.source_url} rel="noopener">The City's page</a>
+                  {twin && <> · <a href={`/city-hall/projects/${twin.slug}/`}>Followed at meetings</a></>}
+                </span>
+              </CompactRow>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  ))}
+
+  <p class="cip-back">Developments and ordinances followed through council and commission meetings are on
+    <a href="/city-hall/projects/">city hall projects</a>.</p>
+
+  <AboutThisPage slot="about" sources={[{ name: `City of ${siteConfig.cityName}: Current Capital Improvement Projects`, href: config.listUrl }]}
+>
+    <p class="cip-checked">{checked ? `Last checked ${formatCheckedDate(checked, siteConfig.timezone, locale)}.` : 'Not checked yet.'}</p>
+    <p>{CHECK_FREQUENCY_TEXT} We read the City's list and each project's own page, and copy the timeline lines, the cost line
+    and at most one short sentence exactly as written. When a line changes, the project's page here records the change with the
+    date we saw it. If the City's page cannot be read, we keep the last version we read and its date. Schedules change: the City's
+    page is the one to rely on.</p>
+  </AboutThisPage>
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl))} />
+</BaseLayout>
+
+<style>
+.cip-head { max-width: 44rem; }
+.cip-lede { max-width: 44rem; color: var(--ink-soft); }
+.cip-group { margin-top: 1.5rem; }
+.cip-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; max-width: 48rem; }
+.cip-title { font-weight: 600; display: block; }
+.cip-sum, .cip-cost, .cip-links { display: block; color: var(--ink-soft); font-size: 0.9375rem; margin-top: 0.25rem; }
+.cip-phases { display: block; margin-top: 0.35rem; font-size: 0.9375rem; }
+.cip-label { display: block; font-size: 0.8125rem; color: var(--ink-soft); text-transform: none; }
+.cip-phase { display: block; }
+.cip-back { margin-top: 1.5rem; font-size: 0.9375rem; max-width: 44rem; }
+</style>

@@ -345,6 +345,19 @@
       },
       "_notes": "Fas 5 källa 1 (ägaren 2026-11-19, nr 1+5). broomfield.org robots: User-agent * Crawl-delay 10, AlertCenter.aspx ej nekad; RSS.aspx, CivicAlerts.aspx, calendar.aspx, map.aspx nekade och läses aldrig. Båda kategorisidorna lästa 19 nov (.claude/evidence/fas5-restrictions/cid8.html, cid9.html); brand flyttad från AID=90 till CID=8 (ägaren 19 nov kväll). Körs med broomfield-scrape 11:00 och 23:00 UTC. Parser: scrapers/parsers/alert_center_restrictions.py; sajten: site/src/lib/restrictions.ts. URL:erna speglas i site/src/lib/site-config.ts restrictions."
     },
+    "capital_projects": {
+      "type": "capital_projects",
+      "enabled": true,
+      "list_url": "https://www.broomfield.org/3763/Current-Capital-Improvement-Projects",
+      "list_heading": "Current Capital Improvement Projects",
+      "run_at_utc_hours": [11],
+      "refresh_minutes": 1200,
+      "output": {
+        "format": "structured_data_no_ai",
+        "voice": "n/a (källans ordagranna fasrader + fasta mallar, ingen AI)"
+      },
+      "_notes": "Fas 5 källa 2 (ägaren 2026-11-20). broomfield.org robots: User-agent * Crawl-delay 10; /3763/ och projektsidorna /<nr>/... ej nekade. Listan + 3 projektsidor lästa 20 nov (tests/fixtures/capital_projects/). Körs en gång per dygn: broomfield-scrape 11:00 UTC (run_at_utc_hours), 28 läsningar à 10 s. Parser: scrapers/parsers/capital_projects.py -> projects/project_updates (source_type cip_page, migration 074); sajten: site/src/lib/capital-projects.ts, /projects/. list_url speglas i site/src/lib/site-config.ts capitalProjects."
+    },
     "jobs": {
       "type": "jobs",
       "enabled": true,
