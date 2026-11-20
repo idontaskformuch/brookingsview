@@ -291,7 +291,8 @@ def upsert_records(conn, table: str, town_id: str, records: Iterable[dict],
                    update_columns: list[str] | None = None,
                    dedup_check_columns: tuple[str, ...] | None = None,
                    merge_raw_data: bool = False,
-                   identity_key: str | None = None) -> int:
+                   identity_key: str | None = None,
+                   jsonb_columns: tuple[str, ...] = ()) -> int:
     """Dedup-säker insert. Varje record MÅSTE ha 'content_hash' (om inte
     conflict_columns anger något annat).
 
@@ -426,6 +427,11 @@ def upsert_records(conn, table: str, town_id: str, records: Iterable[dict],
                 rec["raw_data"] = Jsonb(rec["raw_data"], dumps=_json_dumps)
             if "payload" in rec and rec["payload"] is not None:
                 rec["payload"] = Jsonb(rec["payload"], dumps=_json_dumps)
+            # Parser-declared JSONB columns (BaseParser.jsonb_columns). Declared, never guessed from the value's type: a raw
+            # Python list goes to psycopg as an array, and an empty one would land in a jsonb column as '{}' (an object).
+            for c in jsonb_columns:
+                if rec.get(c) is not None:
+                    rec[c] = Jsonb(rec[c], dumps=_json_dumps)
 
             cols = list(rec.keys())
             placeholders = ", ".join(["%s"] * len(cols))

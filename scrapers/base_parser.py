@@ -71,6 +71,9 @@ class BaseParser(abc.ABC):
     #: new row being inserted under a changed content_hash. Set by the three
     #: meetings parsers; None (the default) leaves every other source as is.
     identity_key: str | None = None
+    #: record keys stored in a jsonb column other than raw_data/payload (which upsert_records always wraps). Declared per
+    #: parser; alert_center_restrictions sets ("alerts",) after its first live run failed "cannot adapt type 'dict'".
+    jsonb_columns: tuple[str, ...] = ()
 
     def __init__(self, cfg: dict, source_cfg: dict):
         self.cfg = cfg                    # hela town-configen

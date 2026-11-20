@@ -145,7 +145,8 @@ def run_source(conn, cfg: dict, source_key: str, source_cfg: dict) -> None:
                                  update_columns=parser.update_columns,
                                  dedup_check_columns=parser.dedup_check_columns,
                                  merge_raw_data=parser.merge_raw_data,
-                                 identity_key=parser.identity_key)
+                                 identity_key=parser.identity_key,
+                                 jsonb_columns=parser.jsonb_columns)
         # Optional per-parser step after the rows are written (alert_center_restrictions: the 72 h unknown alert). The parser's
         # own hook must not raise; it runs inside this try so a bug in it still shows as a failed run.
         after = getattr(parser, "after_upsert", None)

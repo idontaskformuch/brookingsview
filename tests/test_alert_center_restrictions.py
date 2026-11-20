@@ -245,3 +245,42 @@ def test_after_upsert_undelivered_alert_is_not_marked_and_never_raises():
     parser.after_upsert(conn)
     assert not any(sql.startswith("UPDATE") for sql, _ in conn.executed)
     parser.after_upsert(FakeConn([]))  # a broken query answer: logged, not raised
+
+
+def _insert_params_adapt(records, jsonb_columns):
+    """Every INSERT parameter upsert_records builds must be adaptable by psycopg (no DB needed: psycopg's own Transformer)."""
+    from unittest.mock import MagicMock
+
+    from psycopg.adapt import PyFormat, Transformer
+
+    from db.db import upsert_records
+    cur = MagicMock()
+    cur.rowcount = 1
+    cur.__enter__.return_value = cur
+    conn = MagicMock()
+    conn.cursor.return_value = cur
+    upsert_records(conn, "restriction_checks", "broomfield_co", records, jsonb_columns=jsonb_columns)
+    tx = Transformer()
+    inserts = [c.args for c in cur.execute.call_args_list if c.args[0].startswith("INSERT")]
+    assert len(inserts) == len(records)
+    dumped = []
+    for sql, params in inserts:
+        cols = sql[sql.index("(") + 1:sql.index(")")].split(", ")
+        row = {}
+        for col, value in zip(cols, params):
+            if value is not None:
+                row[col] = tx.get_dumper(value, PyFormat.AUTO).dump(value)  # raises ProgrammingError when it cannot adapt
+        dumped.append(row)
+    return dumped
+
+
+@pytest.mark.parametrize("routes", [OK, {**OK, WATER_URL: (200, WATER_NONE_HTML)}], ids=["active", "water-none"])
+def test_parsed_rows_reach_the_database_with_alerts_as_jsonb(routes):
+    # Born 2026-11-20: the first live run (11:00 UTC) failed "cannot adapt type 'dict'" -- the alerts list went to psycopg raw.
+    # An empty list must be JSON [] (a raw Python [] would have become '{}', an object).
+    parser, _ = make_parser(routes)
+    records = parser.parse(parser.fetch())
+    rows = {bytes(r["kind"]).decode(): r for r in _insert_params_adapt(records, parser.jsonb_columns)}
+    assert json.loads(bytes(rows["fire"]["alerts"]))[0]["title"] == "Red Flag Warning"
+    expected_water = [] if routes is not OK else ["Broomfield is Under a Drought Watch"]
+    assert [a["title"] for a in json.loads(bytes(rows["water"]["alerts"]))] == expected_water

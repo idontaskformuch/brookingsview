@@ -98,6 +98,7 @@ def parse_category_page(html: bytes | str, category: str, cid: int, tz: str = "A
 
 class AlertCenterRestrictionsParser(BaseParser):
     table = "restriction_checks"
+    jsonb_columns = ("alerts",)  # list of dicts; first live run 2026-11-20 failed "cannot adapt type 'dict'" without it
     platform = "civicplus_alert_center"
 
     def __init__(self, cfg: dict, source_cfg: dict):
