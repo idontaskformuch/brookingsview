@@ -10,6 +10,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import HolidayRows from './HolidayRows.astro';
 import HolidayDayGrid from './HolidayDayGrid.astro';
+import HolidayRail from './HolidayRail.astro';
 import RailLayout from './RailLayout.astro';
 import RailModules from './rail/RailModules.astro';
 import InsightLine from './ui/InsightLine.astro';
@@ -71,6 +72,8 @@ const groups = timeless ? timelessGroups(page) : buildGroups(page, today, dayIso
 // Closures grid (Tillägg B): rows with `days` leave the Closed list and show here, one column per affected day.
 const grid = timeless ? null : closureGrid(page);
 const hours = regularHoursRows(page);
+// Food help in the rail: confirmed help rows with their contact line (the row's clarify), Tillägg B.
+const foodHelp = page.facts.flatMap((f) => (f.status === 'confirmed' && f.section === 'help' && f.clarify ? [{ name: f.label, contact: f.clarify }] : []));
 const ungrouped = page.linkOnly.filter((l) => !l.group);
 const linkGroups = [...new Set(page.linkOnly.flatMap((l) => (l.group ? [l.group] : [])))];
 const sources = groupSources(page);
@@ -123,15 +126,9 @@ const jsonLd = buildHolidayEventsJsonLd(page, siteConfig.timezone, countryProfil
     </section>
   ))}
 
-  {(page.linkOnly.length > 0 || page.related.length > 0 || hours.length > 0 || hasClosures) && (
+  {(page.linkOnly.length > 0 || page.related.length > 0 || hasClosures) && (
     <section class="hp-group" aria-label="More">
       <SectionHeader title="More" />
-      {hours.length > 0 && (
-        <>
-          <SectionHeader title="Regular hours" level={3} />
-          <HolidayRows rows={hours} locale={page.locale} />
-        </>
-      )}
       {linkGroups.map((g) => (
         <>
           <SectionHeader title={g} level={3} />
@@ -147,8 +144,10 @@ const jsonLd = buildHolidayEventsJsonLd(page, siteConfig.timezone, countryProfil
       </ul>
     </section>
   )}
-  {/* No "<Town> in numbers" on a holiday page (owner 2026-11-20): the page answers what is open and closed that day. */}
-  <RailModules slot="rail" now={new Date()} withStatus omit={['numbers']} excludeHolidaySlugs={new Set([def.slug])} frontImageId={frontPhoto?.id ?? null} />
+  {/* Rail (Tillägg B, owner 2026-11-20): only what belongs to the holiday -- the next holiday page, this page's regular hours and the
+      food-help contact. No Right Now, no "<Town> in numbers" (config/home-rail.ts PAGE_RAIL.holiday). */}
+  <RailModules slot="rail" now={new Date()} page="holiday" excludeHolidaySlugs={new Set([def.slug])} frontImageId={frontPhoto?.id ?? null} />
+  {(hours.length > 0 || (!timeless && foodHelp.length > 0)) && <HolidayRail slot="rail" hours={hours} foodHelp={timeless ? [] : foodHelp} />}
   </RailLayout>
 
   <AboutThisPage slot="about" sources={sources} />

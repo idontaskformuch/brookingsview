@@ -1,0 +1,32 @@
+---
+/** Holiday page rail block (Tillägg B, owner 2026-11-20): the page's own regular hours and the food-help contact, from the page data.
+ *  Sits under the next-holiday module (RailModules page="holiday"). Resident question: when is it normally open, and who do I call
+ *  about food over the holiday? */
+import type { RowView } from '../lib/holiday-view';
+
+interface Props { hours: RowView[]; foodHelp: { name: string; contact: string }[] }
+const { hours, foodHelp } = Astro.props;
+---
+{hours.length > 0 && (
+  <section class="rail-mod hr-mod" aria-label="Regular hours" data-holiday-rail="hours">
+    <p class="hr-mod__head">Regular hours</p>
+    {hours.map((h) => (
+      <p class="hr-mod__row"><span class="hr-mod__name">{h.name.replace(/ \(regular hours\)$/, '')}</span> <span class="hr-mod__v">{h.parts.join(' ')}</span></p>
+    ))}
+  </section>
+)}
+{foodHelp.length > 0 && (
+  <section class="rail-mod hr-mod" aria-label="Food help" data-holiday-rail="food">
+    <p class="hr-mod__head">Food help</p>
+    {foodHelp.map((f) => (
+      <p class="hr-mod__row"><span class="hr-mod__name">{f.name}</span> <span class="hr-mod__v">{f.contact}</span></p>
+    ))}
+  </section>
+)}
+<style>
+  .hr-mod { border-top: 1px solid var(--rule); padding-top: 0.75rem; font-family: var(--font-ui); }
+  .hr-mod__head { margin: 0 0 0.25rem; font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+  .hr-mod__row { margin: 0 0 0.5rem; font-size: 0.875rem; line-height: 1.4; }
+  .hr-mod__name { display: block; font-weight: 600; color: var(--ink); }
+  .hr-mod__v { color: var(--ink-soft); }
+</style>

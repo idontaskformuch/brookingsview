@@ -137,6 +137,16 @@ describe('pageRailFor', () => {
     expect(PAGE_RAIL.today.modules).toEqual(['sport', 'holiday', 'weather_today', 'open_now']);
     for (const townId of Object.keys(HOME_RAIL_BY_TOWN)) expect(pageRailFor(townId, 'today').modules).not.toContain('numbers');
   });
+  // Owner 2026-11-20 (Tillägg B): a holiday page's rail = the next holiday, the page's regular hours, the food-help contact. No Right Now, no numbers.
+  it('holiday pages: next holiday only from the shared modules, no Right Now; hours + food help from the page', () => {
+    expect(PAGE_RAIL.holiday).toEqual({ modules: ['holiday'], withStatus: false });
+    const src = readFileSync(fileURLToPath(new URL('../components/HolidayPage.astro', import.meta.url)), 'utf8');
+    const tag = /<RailModules slot="rail"[^>]*\/>/.exec(src)?.[0] ?? '';
+    expect(tag).toMatch(/page="holiday"/);
+    expect(tag).not.toMatch(/\bwithStatus\b/);
+    expect(src).toMatch(/<HolidayRail slot="rail" hours=\{hours\}/);
+    expect(src).not.toMatch(/<SectionHeader title="Regular hours"/);
+  });
 });
 
 describe('page grid (BaseLayout + RailLayout)', () => {

@@ -48,7 +48,7 @@ export function homeRailFor(townId: string): RailConfig {
  *  intersected with the town's home rail (modules + reserve), so a town that has no such module (no sports data, no promo card) never
  *  gets it; towns differ only through HOME_RAIL_BY_TOWN, never here. No reserve fill and no ad slot outside the front page. A page
  *  that is not listed has no rail (its main column stays at --measure-main, same left edge). */
-export type RailPage = 'today' | 'whats_on';
+export type RailPage = 'today' | 'whats_on' | 'holiday';
 export interface PageRail {
   modules: RailModuleKind[];
   /** Open the rail with Right Now (CityStatus). */
@@ -63,6 +63,10 @@ export const PAGE_RAIL: Record<RailPage, PageRail> = {
   today: { modules: ['sport', 'holiday', 'weather_today', 'open_now'], withStatus: false, openNowMax: 8 },
   // Owner 2026-11-20: the marquee is a full-width band above the grid; beside "Also on" the next holiday and the weekend's shows.
   whats_on: { modules: ['holiday', 'shows_weekend'], withStatus: false },
+  // Owner 2026-11-20 (Tillägg B): a holiday page's rail holds only what belongs to the holiday: the next holiday page ("Coming up · in 6
+  // days" with its photo); the page's own regular hours and food-help contact follow as HolidayRail (from the page data). No Right Now,
+  // no "<Town> in numbers".
+  holiday: { modules: ['holiday'], withStatus: false },
 };
 /** Modules only a page rail has (never on the front page): not intersected with the town's home rail. Each one still hides itself
  *  without data (no weather snapshot, no fresh OpenStreetMap hours). */
