@@ -151,6 +151,9 @@ function brookingsFacts(): HolidayFact[] {
       value: 'In most cases closed Fri Dec 25 and Fri Jan 1.',
       meta: 'City offices closed Dec 25 and Jan 1',
       closedOn: ['2026-12-25', '2027-01-01'],
+      // Day grid (owner 2026-11-21): the source's "in most cases" goes under the name, the cells cannot carry it.
+      days: { '2026-12-25': 'closed', '2027-01-01': 'closed' },
+      dayNote: 'Closed "in most cases", the city says.',
       source: BK_HOLIDAYS, checkedOn: OWNER_READ,
     },
     {
@@ -158,6 +161,8 @@ function brookingsFacts(): HolidayFact[] {
       value: 'Closed all day Fri Dec 25 and Fri Jan 1. Open Mon–Fri 7:30 a.m.–4:15 p.m.; closed Saturdays Dec 1–Mar 31.',
       meta: 'Landfill closed Dec 25 and Jan 1',
       closedOn: ['2026-12-25', '2027-01-01'],
+      days: { '2026-12-25': 'closed', '2027-01-01': 'closed' },
+      dayNote: 'Open Mon–Fri 7:30 a.m.–4:15 p.m.; closed Saturdays Dec 1–Mar 31.',
       source: BK_COLLECTIONS, checkedOn: OWNER_READ,
     },
     {
@@ -165,6 +170,7 @@ function brookingsFacts(): HolidayFact[] {
       section: 'closures', status: 'confirmed', change: 'closed', label: 'McCrory Gardens',
       value: 'Closed Thu Dec 24, Fri Dec 25 and Fri Jan 1.',
       closedOn: ['2026-12-24', '2026-12-25', '2027-01-01'],
+      days: { '2026-12-24': 'closed', '2026-12-25': 'closed', '2027-01-01': 'closed' },
       source: SDSU('https://www.sdstate.edu/events/2026/12/mccrory-gardens-closed-christmas-day'), checkedOn: '2026-10-29',
     },
     {

@@ -238,6 +238,19 @@ describe('Christmas closures grids (owner 2026-11-21)', () => {
     expect(g.groups).toEqual([{ heading: null, rows: [{ name: 'Broomfield FISH food bank', note: 'Questions about access to food: 303-465-1600 or help@broomfieldfish.org.', cells: [{ kind: 'closed', text: 'Closed' }, { kind: 'closed', text: 'Closed' }, { kind: 'closed', text: 'Closed' }] }] }]);
     expect(g.legend).toBeNull();
   });
+  it('Brookings: City offices and Landfill Dec 25 + Jan 1, McCrory also Dec 24; Christmas Eve is usual where the source is silent', () => {
+    const g = closureGrid(buildChristmasPage('brookings_sd')!)!;
+    expect(g.days.map((d) => d.label)).toEqual(['Thu Dec 24', 'Fri Dec 25', 'Fri Jan 1']);
+    const rows = g.groups.flatMap((x) => x.rows);
+    expect(rows.map((r) => [r.name, r.cells.map((c) => c.text)])).toEqual([
+      ['City offices', ['Usual hours', 'Closed', 'Closed']],
+      ['Landfill', ['Usual hours', 'Closed', 'Closed']],
+      ['McCrory Gardens', ['Closed', 'Closed', 'Closed']],
+    ]);
+    // City Holidays page: "in most cases"; it does not name Christmas Eve.
+    expect(rows[0].note).toBe('Closed "in most cases", the city says.');
+    expect(g.legend).toBe('Usual = no change announced by the source.');
+  });
 });
 
 describe('hero and insights', () => {
