@@ -163,9 +163,19 @@ describe('closures grid (Tillägg B, owner 2026-11-20)', () => {
     expect(groups.find((x) => x.id === 'closed')).toBeUndefined();
     expect(groups.find((x) => x.id === 'changed')!.rows.map((r) => r.name)).toContain('Police Department Building and Detention Center');
   });
-  it('a page without `days` has no grid and keeps its Closed list (Moreno)', () => {
-    expect(closureGrid(mvThanks)).toBeNull();
-    expect(buildGroups(mvThanks, '2026-11-20', '2026-11-26').some((x) => x.id === 'closed')).toBe(true);
+  it('a page without `days` has no grid and keeps its Closed list (Broomfield Veterans Day)', () => {
+    expect(closureGrid(vet)).toBeNull();
+    expect(buildGroups(vet, '2026-11-01', '2026-11-11').some((x) => x.id === 'closed')).toBe(true);
+  });
+  it('Moreno Thanksgiving: RTA (Nov 12 release) no buses Thu 26; the library (tockify 304264/304267) Wed 25 closes 5 p.m., Thu 26 + Fri 27 closed', () => {
+    const mg = closureGrid(mvThanks)!;
+    expect(mg.days.map((d) => d.label)).toEqual(['Wed 25', 'Thu 26', 'Fri 27']);
+    expect(mg.groups[0].rows.map((r) => [r.name, r.cells.map((c) => `${c.kind}:${c.text}`)])).toEqual([
+      ['RTA buses', ['usual:Usual hours', 'closed:Closed', 'usual:Usual hours']],
+      ['Library (all locations)', ['hours:Closes 5 p.m.', 'closed:Closed', 'closed:Closed']],
+    ]);
+    expect(mg.checked).toBe('2026-11-14');
+    expect(buildGroups(mvThanks, '2026-11-20', '2026-11-26').find((x) => x.id === 'closed')).toBeUndefined();
   });
   it('Brookings Thanksgiving: three places, Thu 26 + Fri 27, no grouping, the closed list empties', () => {
     // City Holidays page (offices Thu), Landfill and Collections Calendar (landfill Thu), SDSU events 21522/21523 (McCrory Thu + Fri).
@@ -251,12 +261,11 @@ describe('sources', () => {
     const farm = groupSources(page).filter((s) => s.name === 'Farm House Collective');
     expect(farm).toEqual([{ name: 'Farm House Collective', href: 'https://farmhousecollective.com/event/a-charlie-brown-thanksgiving-fantastic-mr-fox-outdoor-screening/' }]);
   });
-  it('Moreno library: the library calendar rows are Closed Nov 26-27 and Changed (5 p.m.) Nov 25, nothing left to check', () => {
+  it('Moreno library: one library calendar row, 5 p.m. close Nov 25 and Closed Nov 26-27, nothing left to check', () => {
     const mv = buildThanksgivingPage('moreno_valley_ca')!;
     const lib = mv.facts.filter((f) => f.source.name === 'Moreno Valley Public Library calendar');
     expect(lib.map((f) => [f.status, f.status === 'confirmed' ? f.change : null, f.status === 'confirmed' ? f.value : null, f.checkedOn, f.source.url])).toEqual([
-      ['confirmed', 'closed', 'Closed Thu Nov 26 and Fri Nov 27.', '2026-10-03', 'https://moval.gov/mv-library/'],
-      ['confirmed', 'changed', 'Closes at 5 p.m. Wed Nov 25.', '2026-10-03', 'https://moval.gov/mv-library/'],
+      ['confirmed', 'closed', 'Closes at 5 p.m. Wed Nov 25. Closed Thu Nov 26 and Fri Nov 27.', '2026-10-03', 'https://moval.gov/mv-library/'],
     ]);
     expect(mv.facts.some((f) => f.status === 'unconfirmed' && /library/i.test(f.label))).toBe(false);
   });

@@ -128,6 +128,8 @@ const MORENO_FACTS: HolidayFact[] = [
     value: 'No bus service Thu Nov 26. Buses run on a regular schedule Wed Nov 25 and Fri Nov 27.',
     clarify: 'The Customer Information Center, (951) 565-5002, is closed Thu Nov 26.',
     meta: 'No RTA buses Nov 26',
+    // In the closures grid (Tillägg B 2026-11-20): otherwise a second "Closed" section with this one row stands under the grid.
+    days: { '2026-11-26': 'closed' },
     source: MV_RTA, checkedOn: MV_RECHECKED,
   },
   // City offices row removed 2026-11-15 (owner): it linked to the city's front page, and the city hours page
@@ -152,17 +154,14 @@ const MORENO_FACTS: HolidayFact[] = [
   // The library's own calendar (Tockify), events 304267 "LIBRARY CLOSED: Thanksgiving" and 304264 "Libraries Close Early at
   // 5PM", read 2026-10-03 (snapshot 7970): "locations are closed Thursday, November 26th, and Friday, November 27th" and
   // "close early at 5:00 pm, Wednesday, November 25th". Shown on the owner's word 2026-11-14 (no new fetch); the link is the
-  // library's own page.
+  // library's own page. One row since Tillägg B (2026-11-20): the closing and the early close were two rows, which in the day grid
+  // would name the library twice; the 5 p.m. close is the grid's Wed cell.
   {
     section: 'closures', status: 'confirmed', change: 'closed', label: 'Library (all locations)',
-    value: 'Closed Thu Nov 26 and Fri Nov 27.',
+    value: 'Closes at 5 p.m. Wed Nov 25. Closed Thu Nov 26 and Fri Nov 27.',
     meta: 'Library closed Nov 26–27',
     closedOn: ['2026-11-26', '2026-11-27'],
-    source: MV_LIBRARY_CALENDAR, checkedOn: MV_LIBRARY_CALENDAR_READ,
-  },
-  {
-    section: 'closures', status: 'confirmed', change: 'changed', label: 'Library (all locations)',
-    value: 'Closes at 5 p.m. Wed Nov 25.',
+    days: { '2026-11-25': 'Closes 5 p.m.', '2026-11-26': 'closed', '2026-11-27': 'closed' },
     source: MV_LIBRARY_CALENDAR, checkedOn: MV_LIBRARY_CALENDAR_READ,
   },
 ];
