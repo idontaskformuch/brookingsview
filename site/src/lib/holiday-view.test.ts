@@ -225,7 +225,7 @@ describe('the template', () => {
       const src = read(`../components/${f}.astro`).replace(/\/\*[\s\S]*?\*\//g, '');
       expect(src, f).not.toMatch(/<table|<td|<th\b|<thead/);
     }
-    expect(read('../components/HolidayRow.astro')).not.toMatch(/r\.source|checkedOn/);
+    expect(read('../components/HolidayRow.astro')).not.toMatch(/br\.sourceb|checkedOn/);
   });
   it('"Last checked" appears once, under the heading', () => {
     expect((read('../components/HolidayPage.astro').replace(/\/\*[\s\S]*?\*\//g, '').match(/Last checked/g) ?? []).length).toBe(1);

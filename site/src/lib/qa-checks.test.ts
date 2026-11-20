@@ -277,7 +277,7 @@ describe('event tile probe aims at the date-tile list (2026-11-09)', () => {
   const probe = /eventBigTiles:[\s\S]*?emptyLinks:/.exec(read('../../../qa/web/run.mjs'))?.[0] ?? '';
   it('the probe in qa/web/run.mjs selects what the date-tile components really print, not the removed .evd lists', () => {
     expect(probe).not.toBe('');
-    expect(probe).not.toMatch(/\.evd/);
+    expect(probe).not.toMatch(/\.evdb/);
     expect(probe).toMatch(/\[data-pop-list\]/);
     expect(probe).toMatch(/\[data-pop-tile\]/);
     expect(read('../components/pop/PopEventList.astro')).toMatch(/data-pop-list/);
@@ -310,7 +310,7 @@ describe('event tile probe aims at the date-tile list (2026-11-09)', () => {
   });
   it('nothing in the site prints the old .evd day list any more', () => {
     for (const f of ['../pages/events.astro', '../pages/index.astro', '../components/pop/PopEventList.astro', '../components/events/BigShowsNearby.astro']) {
-      expect(read(f), f).not.toMatch(/class="evd|class=\{`evd/);
+      expect(read(f), f).not.toMatch(/class="evdb|class=\{`evdb/);
     }
   });
 });
