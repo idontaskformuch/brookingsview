@@ -5,7 +5,10 @@
  *  ("Usual" on a phone card, where four day columns leave no room for two words).
  *  Transit rows say "Regular schedule" ("Regular") instead. Above the grid "Usual = no change announced by the source." when
  *  a cell says "Usual hours" (owner 2026-11-20).
- *  One "Checked" date for the whole grid (the newest row check). Data: lib/holiday-view.ts closureGrid.
+ *  One "Checked" date for the whole grid (the newest row check). Data: lib/holiday-view.ts closureGrid / seasonClosureGrid.
+ *  More than four days (grid.compact, owner 2026-11-21, all towns): below 40rem a place is one card that lists only the days that
+ *  differ ("Closed 25 Dec, 1 Jan · 24 Dec 10am–8pm"), and the legend is not shown there. Clock times in phone cards are short
+ *  ("Closes 5pm") and a cell's text stays on one line.
  *
  *  Resident question: which places can I use on each day around the holiday? */
 import SectionHeader from './ui/SectionHeader.astro';
@@ -19,8 +22,8 @@ const n = grid.days.length;
 <section class="hp-group hg-wrap" id="closures" aria-label="Closures by day" data-closure-grid>
   <SectionHeader title="Closures" />
   <p class="hg-checked">Checked <time datetime={grid.checked}>{formatIsoDate(grid.checked, false, locale)}</time></p>
-  {grid.legend && <p class="hg-legend" data-grid-legend>{grid.legend}</p>}
-  <div class="hg" role="table" aria-label="Closures by day" style={`--hg-days:${n}`}>
+  {grid.legend && <p class={`hg-legend${grid.compact ? ' hg-legend--wide' : ''}`} data-grid-legend>{grid.legend}</p>}
+  <div class={`hg${grid.compact ? ' hg--compact' : ''}`} role="table" aria-label="Closures by day" style={`--hg-days:${n}`}>
     <div class="hg__head" role="row">
       <span role="columnheader">Place</span>
       {grid.days.map((d) => <span role="columnheader"><time datetime={d.iso}>{d.label}</time></span>)}
@@ -31,8 +34,9 @@ const n = grid.days.length;
         {g.rows.map((r) => (
           <div class="hg__row" role="row" data-grid-row>
             <div class="hg__place" role="rowheader">
-              <span class="hg__name">{r.name}</span>
+              <span class="hg__name">{r.href ? <a href={r.href} rel="noopener">{r.name}</a> : r.name}</span>
               {r.note && <span class="hg__note">{r.note}</span>}
+              {grid.compact && <span class="hg__sum" data-grid-summary>{r.summary}</span>}
             </div>
             {r.cells.map((c, i) => (
               <div class={`hg__cell hg__cell--${c.kind}`} role="cell" data-cell={c.kind}>
@@ -60,7 +64,9 @@ const n = grid.days.length;
   .hg__row { padding: var(--ui-3) 0; border-bottom: 1px solid var(--rule); align-items: start; }
   .hg__name { display: block; font-weight: var(--ui-primary-weight); color: var(--ink); }
   .hg__note { display: block; margin-top: 0.15rem; font-size: var(--ui-meta); color: var(--ink-soft); }
+  .hg__name a { color: inherit; }
   .hg__day { display: none; }
+  .hg__sum { display: none; }
   .hg__short { display: none; }
   .hg__cell--closed { color: var(--ink-soft); }
   .hg__cell--hours { color: var(--ink); font-weight: 700; }
@@ -74,7 +80,11 @@ const n = grid.days.length;
       border: 1px solid var(--rule); border-radius: var(--ui-radius); background: var(--surface, var(--paper-raised));
     }
     .hg__place { flex: 1 0 100%; }
-    .hg__cell { flex: 1 1 0; min-width: 0; }
+    /* A cell keeps its text on one line ("Closes 5pm", "8am group fitness only", owner 2026-11-21); a long one moves to the next line of the card. */
+    .hg__cell { flex: 1 0 auto; white-space: nowrap; }
+    .hg--compact .hg__cell { display: none; }
+    .hg--compact .hg__sum { display: block; margin-top: var(--ui-1); color: var(--ink); }
+    .hg-legend--wide { display: none; }
     /* "Usual hours" broke over two lines in four 390px columns: "Usual" there, "Usual hours" on desktop (owner 2026-11-20). */
     .hg__long { display: none; }
     .hg__short { display: inline; }

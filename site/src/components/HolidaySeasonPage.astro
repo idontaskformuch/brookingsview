@@ -1,8 +1,10 @@
 ---
 /** A holiday page that spans a season, day by day (Glasgow's Christmas and New Year, owner 2026-11-14,
  *  .claude/specs/glasgow-christmas-2026.md). Same data and meta as HolidayPage.astro (lib/holiday-page.ts), laid out with /tonight's
- *  cards: a section per day still to come that has a card (anchored, "dec-24"; which days are bank holidays comes from GOV.UK, lib/holiday-season.ts)
- *  with the places that close or change hours that day as swipe cards and that day's events as the time-tile list, then the season's
+ *  cards: the places that close or change hours as one closures grid, a column per day (owner 2026-11-21, lib/holiday-view.ts
+ *  seasonClosureGrid; on a phone one card per place with only its changed days), then a section per day still to come that has an
+ *  event (anchored, "dec-24"; which days are bank holidays comes from GOV.UK, lib/holiday-season.ts) with that day's events as the
+ *  time-tile list (the day-by-day layout of 2026-11-14 stays for events), then the season's
  *  other events as the date-tile list, then support and links. Every card links to the page its fact was read from; nothing is
  *  shown for a day that has passed (built out, and hidden in the browser from the town's clock). No model text.
  *
@@ -10,7 +12,6 @@
  *  last New Year bank holiday in Glasgow? */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Card from './ui/Card.astro';
-import Pill from './ui/Pill.astro';
 import HeroStat from './ui/HeroStat.astro';
 import SectionHeader from './ui/SectionHeader.astro';
 import AboutThisPage from './ui/AboutThisPage.astro';
@@ -21,9 +22,10 @@ import { siteConfig } from '../lib/site-config';
 import { countryProfile } from '../lib/country-profile';
 import {
   buildHolidayMeta, buildHolidayEventsJsonLd, checkedSpan, checkTitleLength, formatCheckedSpan, formatIsoDate, localToday,
-  type ConfirmedEvent, type ConfirmedFact, type HolidayChange, type HolidayPageData,
+  type ConfirmedEvent, type ConfirmedFact, type HolidayPageData,
 } from '../lib/holiday-page';
-import { groupSources } from '../lib/holiday-view';
+import { groupSources, seasonClosureGrid } from '../lib/holiday-view';
+import HolidayDayGrid from './HolidayDayGrid.astro';
 import { daysWithCards, eventPopDays, seasonEvents, seasonHero } from '../lib/holiday-season';
 import { BANK_HOLIDAYS_SOURCE } from '../config/holiday-pages/gb/bank-holidays';
 import type { HolidayPageDef } from '../config/holiday-pages/calendar';
@@ -49,6 +51,7 @@ const webPage = { '@context': 'https://schema.org', '@type': 'WebPage', name: me
 
 const confirmedEvents = page.events.filter((e): e is ConfirmedEvent => e.status === 'confirmed');
 const days = daysWithCards(page, confirmedEvents, today);
+const grid = seasonClosureGrid(page);
 const hero = seasonHero(page.season.days, today);
 const later = seasonEvents(confirmedEvents, page.season.days, today);
 const help = page.facts.filter((f): f is ConfirmedFact => f.status === 'confirmed' && f.section === 'help');
@@ -57,7 +60,6 @@ const hours = page.facts.filter((f): f is ConfirmedFact => f.status === 'confirm
 const linkGroups = [...new Set(page.linkOnly.flatMap((l) => (l.group ? [l.group] : [])))];
 const ungrouped = page.linkOnly.filter((l) => !l.group);
 const sources = [...groupSources(page), { name: BANK_HOLIDAYS_SOURCE.name.split(':')[0], href: BANK_HOLIDAYS_SOURCE.url }];
-const org = (name: string) => name.split(':')[0].trim();
 // Photo band, the same as HolidayPage (owner 2026-11-18): always the holiday's own photo; never the front page's photo of the week.
 const photoWeek = weekInfoForInstant(new Date(), tz);
 const photoPool = thisWeekImagesFor(siteConfig.townId);
@@ -70,9 +72,6 @@ const bandSrc = band ? responsiveSrc(band.path) : null;
 // Event image = the band photo above (the only picture the page shows).
 const jsonLd = buildHolidayEventsJsonLd(page, tz, countryProfile(siteConfig.country).addressCountry, today,
   bandSrc ? new URL(bandSrc.src, Astro.site ?? siteConfig.siteUrl).href : undefined);
-const PILL: Record<HolidayChange, { tone: 'alert' | 'warn' | 'ok'; text: string }> = {
-  closed: { tone: 'alert', text: 'Closed' }, changed: { tone: 'warn', text: 'Changed' }, open: { tone: 'ok', text: 'Open' },
-};
 ---
 <BaseLayout title={meta.title} description={meta.description} wide modified={page.dataUpdatedOn}>
   <script type="application/ld+json" is:inline slot="head" set:html={JSON.stringify(webPage)} />
@@ -91,6 +90,8 @@ const PILL: Record<HolidayChange, { tone: 'alert' | 'warn' | 'ok'; text: string 
 
   {hero && <HeroStat value={hero.value} label={hero.label} sub={hero.sub} tone="accent" />}
 
+  {grid && <HolidayDayGrid grid={grid} locale={page.locale} />}
+
   {days.length > 0 && (
     <nav class="hs-days" aria-label="Days">
       {days.map((d) => <a class="hs-chip" href={`#${d.anchor}`} data-hp-day={d.date}>{d.heading}</a>)}
@@ -101,20 +102,6 @@ const PILL: Record<HolidayChange, { tone: 'alert' | 'warn' | 'ok'; text: string 
     <section class="hs-day" id={d.anchor} data-hp-day={d.date} aria-labelledby={`${d.anchor}-h`}>
       <h2 class="tc-day-h" id={`${d.anchor}-h`}>{d.heading}</h2>
       <p class="hs-label" data-hp-item data-source={BANK_HOLIDAYS_SOURCE.url}>{d.label}</p>
-      {d.facts.length > 0 && (
-        <ul class="tc-row">
-          {d.facts.map((f) => (
-            <li class="tc-card" data-hp-item data-source={f.source.url}>
-              <Card href={f.source.url} class="tc-link">
-                <span class="tc-time">{f.value}</span>
-                <span class="tc-title">{f.label}</span>
-                <span class="tc-meta">{org(f.source.name)}</span>
-                {f.change && <span class="tc-foot"><Pill tone={PILL[f.change].tone}>{PILL[f.change].text}</Pill></span>}
-              </Card>
-            </li>
-          ))}
-        </ul>
-      )}
       {d.events.length > 0 && <PopEventList days={eventPopDays(d.events, tz)} tile={d.events.every((e) => e.startTime) ? 'time' : 'date'} idPrefix={d.anchor} />}
     </section>
   ))}

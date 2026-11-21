@@ -199,14 +199,20 @@ export type GridCellKind = 'closed' | 'hours' | 'usual';
 /** `short`: the phone label (<40rem), where four day columns leave no room for "Usual hours" on one line (owner 2026-11-20).
  *  A transit row (section 'transit', set in the data, never read from the name) says "Regular schedule" / "Regular" instead. */
 export interface GridCell { kind: GridCellKind; text: string; short?: string }
-export interface GridRow { name: string; note?: string; cells: GridCell[] }
+/** `href`: the page the row was read from (season pages, where every place links to its source). `summary`: the phone card of a
+ *  grid with more than GRID_COMPACT_AFTER days, only the days that differ from usual (owner 2026-11-21). */
+export interface GridRow { name: string; note?: string; href?: string; cells: GridCell[]; summary: string }
 export interface ClosureGridView {
   days: { iso: string; label: string }[];
   groups: { heading: string | null; rows: GridRow[] }[];
   checked: string;
   /** The line above the grid, "Usual = no change announced by the source.", only when a cell says "Usual hours" (owner 2026-11-20). */
   legend: string | null;
+  /** More than GRID_COMPACT_AFTER days: below 40rem every place is one card with its `summary` instead of a column per day, and
+   *  the legend is hidden there (usual days are not shown on the phone). Owner 2026-11-21, all towns. */
+  compact: boolean;
 }
+export const GRID_COMPACT_AFTER = 4;
 export const GRID_LEGEND = 'Usual = no change announced by the source.';
 const USUAL_CELL: GridCell = { kind: 'usual', text: 'Usual hours', short: 'Usual' };
 const REGULAR_CELL: GridCell = { kind: 'usual', text: 'Regular schedule', short: 'Regular' };
@@ -217,7 +223,7 @@ const WD_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 /** Phone label for an hours cell (owner 2026-11-21): "9 a.m.–5 p.m." -> "9–5", "9:30 a.m.–5 p.m." -> "9:30–5", so it fits one
  *  line in a 390px card. a.m./p.m. stay only where the bare numbers would read wrong: a range that crosses noon (or midnight)
  *  with the end number above the start ("7 a.m.–9 p.m." would read as 7–9 a.m.). Anything that is not exactly one range
- *  ("Closes 5 p.m.", "8 a.m. group fitness only") is returned unchanged. Desktop always shows the full text. */
+ *  ("Closes 5 p.m.", "8 a.m. group fitness only") is returned unchanged; phoneHours shortens those. Desktop always shows the full text. */
 export function shortHourRange(v: string): string {
   const m = /^(\d{1,2})(:\d\d)?(?: ([ap])\.m\.)?–(\d{1,2})(:\d\d)? ([ap])\.m\.$/.exec(v);
   if (!m) return v;
@@ -229,10 +235,63 @@ export function shortHourRange(v: string): string {
   return `${h1}${m1}–${h2}${m2}`;
 }
 
-export function closureGrid(page: HolidayPageData): ClosureGridView | null {
-  const facts = page.facts.filter((f): f is ConfirmedFact & { days: Record<string, string> } => f.status === 'confirmed' && !!f.days);
-  if (facts.length === 0) return null;
-  const isos = [...new Set(facts.flatMap((f) => Object.keys(f.days)))].sort();
+/** The phone text of an hours cell (owner 2026-11-21): a range as shortHourRange; any other clock time loses its space and
+ *  periods, "Closes 5 p.m." -> "Closes 5pm", "8 a.m. group fitness only" -> "8am group fitness only", "7 a.m.–9 p.m." -> "7am–9pm". */
+export function phoneHours(v: string): string {
+  const range = shortHourRange(v);
+  return range !== v ? range : v.replace(/(\d) ([ap])\.m\./g, '$1$2m');
+}
+
+/** "25–26 Dec, 1–2 Jan" (en-GB) / "Dec 25–26, Jan 1–2" (en-US): days in order, a run of calendar days as a range, the month
+ *  once per month. A run over the month end keeps both months ("31 Dec–1 Jan"). */
+export function dayList(isos: string[], locale: HolidayLocale): string {
+  const DAY = 86_400_000;
+  const ms = [...isos].sort().map((iso) => Date.parse(`${iso}T00:00:00Z`));
+  const runs: [number, number][] = [];
+  for (const t of ms) { const last = runs[runs.length - 1]; if (last && t - last[1] === DAY) last[1] = t; else runs.push([t, t]); }
+  const mon = (t: number) => formatDayShort(t, locale).replace(/\d+/, '').trim();
+  const day = (t: number) => String(new Date(t).getUTCDate());
+  const parts: string[] = [];
+  let i = 0;
+  while (i < runs.length) {
+    const [a, b] = runs[i];
+    if (mon(a) !== mon(b)) { parts.push(`${formatDayShort(a, locale)}–${formatDayShort(b, locale)}`); i++; continue; }
+    const same: string[] = [];
+    while (i < runs.length && mon(runs[i][0]) === mon(a) && mon(runs[i][1]) === mon(a)) {
+      same.push(runs[i][0] === runs[i][1] ? day(runs[i][0]) : `${day(runs[i][0])}–${day(runs[i][1])}`);
+      i++;
+    }
+    parts.push(locale === 'en-GB' ? `${same.join(', ')} ${mon(a)}` : `${mon(a)} ${same.join(', ')}`);
+  }
+  return parts.join(', ');
+}
+
+/** A place's phone card in a compact grid (owner 2026-11-21): only the days that differ from usual, closed first, then the
+ *  changed hours in day order: "Closed 25–26 Dec, 1–2 Jan · 24 Dec until 4pm". Usual days are left out. */
+export function gridSummary(cells: GridCell[], isos: string[], locale: HolidayLocale): string {
+  const by = new Map<string, { kind: GridCellKind; text: string; days: string[] }>();
+  cells.forEach((c, i) => {
+    if (c.kind === 'usual') return;
+    const key = `${c.kind}|${c.text}`;
+    by.set(key, { kind: c.kind, text: c.text, days: [...(by.get(key)?.days ?? []), isos[i]] });
+  });
+  const lc = (t: string) => (/^[A-Z][a-z]/.test(t) ? t[0].toLowerCase() + t.slice(1) : t);
+  // A date never breaks over two lines on the card ("26–" / "27 Dec"): no-break space before the month, word joiner after a dash.
+  const dates = (d: string[]) => dayList(d, locale).replace(/(?<=\d) (?=[A-Z][a-z]{2}\b)|(?<=\b[A-Z][a-z]{2}) (?=\d)/g, '\u00a0').replace(/–/g, '–\u2060');
+  const groups = [...by.values()];
+  const segs = [
+    ...groups.filter((g) => g.kind === 'closed').map((g) => `${g.text} ${dates(g.days)}`),
+    ...groups.filter((g) => g.kind !== 'closed').map((g) => `${dates(g.days)} ${lc(phoneHours(g.text))}`),
+  ];
+  return segs.length ? segs.join(' · ') : 'No change announced';
+}
+
+/** One place in the grid, before the columns are known: its cells by day. */
+interface GridSourceRow { fact: ConfirmedFact; href?: string; cells: Record<string, GridCell> }
+
+function gridFromRows(page: HolidayPageData, src: GridSourceRow[]): ClosureGridView | null {
+  if (src.length === 0) return null;
+  const isos = [...new Set(src.flatMap((r) => Object.keys(r.cells)))].sort();
   // Days in two months (Dec 24 ... Jan 1) carry the month, or "Fri 1" next to "Fri 25" reads as December.
   const twoMonths = new Set(isos.map((iso) => iso.slice(0, 7))).size > 1;
   const days = isos.map((iso) => {
@@ -240,27 +299,49 @@ export function closureGrid(page: HolidayPageData): ClosureGridView | null {
     const wd = WD_SHORT[new Date(ms).getUTCDay()];
     return { iso, label: twoMonths ? `${wd} ${formatDayShort(ms, page.locale)}` : `${wd} ${Number(iso.slice(8, 10))}` };
   });
-  const row = (f: ConfirmedFact & { days: Record<string, string> }): GridRow => {
+  const row = ({ fact: f, href, cells: byDay }: GridSourceRow): GridRow => {
     const note = [f.dayNote, f.clarify].filter(Boolean).join(' ');
-    return {
-      name: f.label,
-      ...(note ? { note } : {}),
-      cells: isos.map((iso): GridCell => {
-        const v = f.days[iso];
-        if (v === undefined) return { ...(f.section === 'transit' ? REGULAR_CELL : USUAL_CELL) };
-        if (v === 'closed') return { kind: 'closed', text: 'Closed' };
-        const short = shortHourRange(v);
-        return { kind: 'hours', text: v, ...(short !== v ? { short } : {}) };
-      }),
-    };
+    const cells = isos.map((iso): GridCell => byDay[iso] ?? { ...(f.section === 'transit' ? REGULAR_CELL : USUAL_CELL) });
+    return { name: f.label, ...(note ? { note } : {}), ...(href ? { href } : {}), cells, summary: gridSummary(cells, isos, page.locale) };
   };
   const area = (f: ConfirmedFact): GridArea => f.area ?? (f.section === 'help' ? 'help' : 'city');
-  const groups = facts.length > GRID_GROUP_AFTER
-    ? GRID_AREA_ORDER.map((a) => ({ heading: GRID_AREA_HEADING[a], rows: facts.filter((f) => area(f) === a).map(row) })).filter((g) => g.rows.length > 0)
-    : [{ heading: null, rows: facts.map(row) }];
-  const checked = facts.map((f) => f.checkedOn).sort().reverse()[0];
+  const groups = src.length > GRID_GROUP_AFTER
+    ? GRID_AREA_ORDER.map((a) => ({ heading: GRID_AREA_HEADING[a], rows: src.filter((r) => area(r.fact) === a).map(row) })).filter((g) => g.rows.length > 0)
+    : [{ heading: null, rows: src.map(row) }];
+  const checked = src.map((r) => r.fact.checkedOn).sort().reverse()[0];
   const legend = groups.some((g) => g.rows.some((r) => r.cells.some((c) => c.text === USUAL_CELL.text))) ? GRID_LEGEND : null;
-  return { days, groups, checked, legend };
+  return { days, groups, checked, legend, compact: days.length > GRID_COMPACT_AFTER };
+}
+
+function hoursCell(v: string): GridCell {
+  const short = phoneHours(v);
+  return { kind: 'hours', text: v, ...(short !== v ? { short } : {}) };
+}
+
+export function closureGrid(page: HolidayPageData): ClosureGridView | null {
+  const facts = page.facts.filter((f): f is ConfirmedFact & { days: Record<string, string> } => f.status === 'confirmed' && !!f.days);
+  return gridFromRows(page, facts.map((f) => ({
+    fact: f,
+    cells: Object.fromEntries(Object.entries(f.days).map(([iso, v]): [string, GridCell] => [iso, v === 'closed' ? { kind: 'closed', text: 'Closed' } : hoursCell(v)])),
+  })));
+}
+
+/** The closures grid of a season page (Glasgow Christmas, owner 2026-11-21): its data rows are one per place and value with `on`
+ *  (what the day cards showed), merged per place in data order. A 'closed' row is Closed with its own word (ScotRail "No trains"),
+ *  an 'open' row is the place's usual hours on those days (plain, not bold, left out of the phone card), anything else is changed
+ *  hours. Each place links to the page its first row was read from. */
+export function seasonClosureGrid(page: HolidayPageData): ClosureGridView | null {
+  const rows = new Map<string, GridSourceRow>();
+  for (const f of page.facts) {
+    if (f.status !== 'confirmed' || !f.on || f.section === 'hours' || f.section === 'help') continue;
+    const r = rows.get(f.label) ?? { fact: f, href: f.source.url, cells: {} };
+    const cell: GridCell = f.change === 'closed' ? { kind: 'closed', text: f.value }
+      : f.change === 'open' ? { kind: 'usual', text: f.value }
+      : hoursCell(f.value);
+    for (const iso of f.on) r.cells[iso] = cell;
+    rows.set(f.label, r);
+  }
+  return gridFromRows(page, [...rows.values()]);
 }
 
 /** Status line under the holiday page's photo band (owner 2026-11-20, Tillägg A): the date and how far away it is, in normal

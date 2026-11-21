@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
-  buildGroups, closedPlaces, countHeld, holidayOverviewLine, isTimeless, timelessGroups, detailFor, FOLD_AFTER, GROUP_HEADING, GROUP_ORDER, groupSources, holidayStatus, holidayInsights, closureGrid, regularHoursRows, statusDay, shortHourRange,
+  buildGroups, closedPlaces, countHeld, holidayOverviewLine, isTimeless, timelessGroups, detailFor, FOLD_AFTER, GROUP_HEADING, GROUP_ORDER, groupSources, holidayStatus, holidayInsights, closureGrid, regularHoursRows, statusDay, shortHourRange, phoneHours, dayList, seasonClosureGrid,
 } from './holiday-view';
 import { occurrenceDay, resolvePageState } from './holiday-calendar';
 import { holidayPageDef } from '../config/holiday-pages/calendar';
@@ -160,7 +160,8 @@ describe('closures grid (Tillägg B, owner 2026-11-20)', () => {
     const rows = g.groups.flatMap((x) => x.rows);
     const hours = (name: string) => rows.find((r) => r.name === name)!.cells.filter((c) => c.kind === 'hours').map((c) => [c.text, c.short]);
     expect(hours('Library')).toEqual([['9 a.m.–5 p.m.', '9–5']]);
-    expect(hours('Broomfield Community Center')).toEqual([['8 a.m. group fitness only', undefined], ['8 a.m.–2 p.m.', '8–2']]);
+    // Not a range: since 2026-11-21 (owner) the clock time is short on the phone too, "8am group fitness only", one line at 390px.
+    expect(hours('Broomfield Community Center')).toEqual([['8 a.m. group fitness only', '8am group fitness only'], ['8 a.m.–2 p.m.', '8–2']]);
     expect(hours('Paul Derda Recreation Center')).toEqual([['12–6:30 p.m.', '12–6:30']]);
     // Library row, only the time changed: a half hour keeps its minutes; a noon-crossing range whose bare numbers would
     // read as one half of the day ("7–9") keeps a.m./p.m.; text that is not one range is untouched.
@@ -168,6 +169,12 @@ describe('closures grid (Tillägg B, owner 2026-11-20)', () => {
     expect(shortHourRange('7 a.m.–9 p.m.')).toBe('7 a.m.–9 p.m.');
     expect(shortHourRange('10 a.m.–12 p.m.')).toBe('10–12');
     expect(shortHourRange('Closes 5 p.m.')).toBe('Closes 5 p.m.');
+    // phoneHours (owner 2026-11-21): the clock in text that is not one range is short as well; it failed before (the cell kept "Closes 5 p.m.").
+    // Moreno Valley Thanksgiving, row 'Library (all locations)' (Wed Nov 25 'Closes 5 p.m.').
+    const mvLib = closureGrid(buildThanksgivingPage('moreno_valley_ca', MOVES)!)!.groups.flatMap((x) => x.rows).find((r) => r.name === 'Library (all locations)')!;
+    expect(mvLib.cells.filter((c) => c.kind === 'hours').map((c) => [c.text, c.short])).toEqual([['Closes 5 p.m.', 'Closes 5pm']]);
+    expect(phoneHours('7 a.m.–9 p.m.')).toBe('7am–9pm');
+    expect(phoneHours('9 a.m.–5 p.m.')).toBe('9–5');
   });
   it('one "Checked" for the grid: the newest row check, not a span', () => {
     expect(g.checked).toBe('2026-11-17');
@@ -235,8 +242,9 @@ describe('Christmas closures grids (owner 2026-11-21)', () => {
     // FISH page (read 2026-11-14): "Thursday, December 24th", "Friday, December 25th", "Friday, January 1st".
     const g = closureGrid(buildChristmasPage('broomfield_co')!)!;
     expect(g.days.map((d) => d.label)).toEqual(['Thu Dec 24', 'Fri Dec 25', 'Fri Jan 1']);
-    expect(g.groups).toEqual([{ heading: null, rows: [{ name: 'Broomfield FISH food bank', note: 'Questions about access to food: 303-465-1600 or help@broomfieldfish.org.', cells: [{ kind: 'closed', text: 'Closed' }, { kind: 'closed', text: 'Closed' }, { kind: 'closed', text: 'Closed' }] }] }]);
+    expect(g.groups).toEqual([{ heading: null, rows: [{ name: 'Broomfield FISH food bank', note: 'Questions about access to food: 303-465-1600 or help@broomfieldfish.org.', cells: [{ kind: 'closed', text: 'Closed' }, { kind: 'closed', text: 'Closed' }, { kind: 'closed', text: 'Closed' }], summary: 'Closed Dec\u00a024–\u206025, Jan\u00a01' }] }]);
     expect(g.legend).toBeNull();
+    expect(g.compact).toBe(false);
   });
   it('Brookings: City offices and Landfill Dec 25 + Jan 1, McCrory also Dec 24; Christmas Eve is usual where the source is silent', () => {
     const g = closureGrid(buildChristmasPage('brookings_sd')!)!;
@@ -441,5 +449,46 @@ describe('buildTimelessHolidayMeta', () => {
     expect(m.title).toBe('Veterans Day in Broomfield: closures');
     expect(m.description).toBe('What is normally closed or different in Broomfield on Veterans Day. Next Veterans Day: Thursday, November 11, 2027.');
     expect(m.description).not.toMatch(/\b(was|were|ran|held)\b/);
+  });
+});
+
+describe('Glasgow Christmas closures grid and the compact phone card (owner 2026-11-21)', () => {
+  // Real rows: config/holiday-pages/gb/christmas-glasgow.ts (Winter Wonderland FAQ and ScotRail, read 2026-11-14).
+  const gl = buildChristmasPage('glasgow')!;
+  const g = seasonClosureGrid(gl)!;
+  const rows = g.groups.flatMap((x) => x.rows);
+  it('one row per place, a column per day the rows name (8 days, month in the label)', () => {
+    expect(g.days.map((d) => d.label)).toEqual(['Thu 24 Dec', 'Fri 25 Dec', 'Sat 26 Dec', 'Sun 27 Dec', 'Mon 28 Dec', 'Thu 31 Dec', 'Fri 1 Jan', 'Sat 2 Jan']);
+    expect(rows.map((r) => r.name)).toEqual(['Winter Wonderland, St Enoch Square', 'Winter Wonderland, Glasgow Green', 'ScotRail']);
+    expect(rows.every((r) => /^https:/.test(r.href ?? ''))).toBe(true);
+    expect(g.compact).toBe(true);
+  });
+  it('more than four days: the phone card lists only the days that differ, closed first; usual days are left out', () => {
+    expect(rows.map((r) => r.summary.replace(/\u2060/g, '').replace(/\u00a0/g, ' '))).toEqual([
+      'Closed 25 Dec · 24 Dec 10am–8pm · 26–27 Dec 12 noon–8pm',
+      'Closed 25 Dec · 24 Dec closes at 8pm · 1 Jan 2pm–10pm',
+      'No trains 25 Dec, 1 Jan · 24, 31 Dec last trains leave earlier than normal',
+    ]);
+  });
+  it('a date in the phone card never breaks over two lines (26–27 Dec wrapped after the dash at 390px)', () => {
+    expect(rows[0].summary).toContain('26–\u206027\u00a0Dec');
+  });
+  it("Glasgow Green's 'open' rows (12 noon–10pm, its usual hours) are plain cells, not changes", () => {
+    const green = rows[1];
+    expect(green.cells[2]).toEqual({ kind: 'usual', text: '12 noon–10pm' });
+    expect(green.cells[3]).toEqual({ kind: 'usual', text: 'Usual hours', short: 'Usual' });
+  });
+  it('dayList: runs of days as ranges, the month once per month, both months over the year end', () => {
+    expect(dayList(['2026-12-25', '2026-12-26', '2027-01-01', '2027-01-02'], 'en-GB')).toBe('25–26 Dec, 1–2 Jan');
+    expect(dayList(['2026-12-31', '2027-01-01'], 'en-GB')).toBe('31 Dec–1 Jan');
+    expect(dayList(['2026-12-24', '2026-12-25', '2027-01-01'], 'en-US')).toBe('Dec 24–25, Jan 1');
+  });
+  it('the component prints the phone summary only for a compact grid and hides its cells there', () => {
+    const c = read('../components/HolidayDayGrid.astro');
+    expect(c).toMatch(/grid\.compact && <span class="hg__sum"/);
+    expect(c).toMatch(/\.hg--compact \.hg__cell \{ display: none; \}/);
+    expect(c).toMatch(/\.hg__cell \{ flex: 1 0 auto; white-space: nowrap; \}/);
+    expect(read('../components/HolidaySeasonPage.astro')).toMatch(/<HolidayDayGrid grid=\{grid\}/);
+    expect(read('../components/HolidaySeasonPage.astro')).not.toMatch(/d\.facts/);
   });
 });

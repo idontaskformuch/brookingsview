@@ -77,7 +77,8 @@ describe('cards per day', () => {
 
   it('no card, no section: Mon 4 Jan is left out while it has none and comes back with one (owner 2026-11-14)', () => {
     const events = page.events.filter((e): e is ConfirmedEvent => e.status === 'confirmed');
-    expect(daysWithCards(page, events, '2026-11-14').map((d) => d.anchor)).toEqual(['dec-24', 'dec-25', 'dec-26', 'dec-28', 'dec-31', 'jan-01', 'jan-02']);
+    // Since 2026-11-21 closures are in the grid, not day cards: only days with a one-day event have a section (Toyland, 24 Dec).
+    expect(daysWithCards(page, events, '2026-11-14').map((d) => d.anchor)).toEqual(['dec-24']);
     // The real Toyland row with one changed field: date 2027-01-04 (it is 2026-12-24 in the data).
     const toyland = events.find((e) => e.name === 'The McDougalls: Christmas in Toyland')!;
     const moved = [...events, { ...toyland, date: '2027-01-04' }];
