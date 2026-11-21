@@ -92,7 +92,7 @@ const [traffic, games, regionalNext, sdsuNext, prices, jobStats, regional, weath
   wants.has('shows_weekend') && siteConfig.hasWhatsOn && siteConfig.ticketmaster ? getTicketmasterEventsForTown(siteConfig) : Promise.resolve([]),
 ]);
 const closureStatus = wants.has('closure_status') && siteConfig.hasClosureWatch && siteConfig.closureWatch ? closureStatusLine(await getClosureWatchStatus()) : null;
-const closureChecked = now.toLocaleTimeString(siteConfig.country === 'gb' ? 'en-GB' : 'en-US', { hour: 'numeric', minute: '2-digit', timeZone: tz });
+const closureChecked = now.toLocaleTimeString(profile.locale, { hour: 'numeric', minute: '2-digit', timeZone: tz });
 
 // Meetings
 const { next: nextMeeting, more: moreMeetings } = meetingsData ? railMeetings(meetingsData.meetings, meetingsData.todayYmd, excludeMeetingIds) : { next: null, more: [] };
