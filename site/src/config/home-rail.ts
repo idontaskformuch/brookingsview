@@ -56,6 +56,9 @@ export interface PageRail {
   withStatus: boolean;
   /** open_now: how many cafes at most. 8 where the rail's list is the page's only one (owner 2026-11-20), else 5. */
   openNowMax?: number;
+  /** Modules shown only from the rail breakpoint (62rem, RailLayout), hidden in the one-column layout below it: a page lists the modules whose
+   *  content the main column already has at the top on a phone. Owner 2026-11-21 (Closure Watch: the status is already the first thing on the page). */
+  fromWide?: RailModuleKind[];
 }
 export const PAGE_RAIL: Record<RailPage, PageRail> = {
   // Owner 2026-11-20 (after the grid): the next game, the next holiday page, today's weather (high/low + condition) and open now. No
@@ -69,7 +72,8 @@ export const PAGE_RAIL: Record<RailPage, PageRail> = {
   // no "<Town> in numbers".
   holiday: { modules: ['holiday'], withStatus: false },
   // Fas 4 Closure Watch (owner spec 2026-11-20): the status also as a rail module, then today's weather (what a closure would follow from).
-  closures: { modules: ['closure_status', 'weather_today'], withStatus: false },
+  // The status is the page's own first line, so the rail copy of it is not repeated below 62rem (owner 2026-11-21); Weather today stays on a phone.
+  closures: { modules: ['closure_status', 'weather_today'], withStatus: false, fromWide: ['closure_status'] },
 };
 /** Modules only a page rail has (never on the front page): not intersected with the town's home rail. Each one still hides itself
  *  without data (no weather snapshot, no fresh OpenStreetMap hours). */

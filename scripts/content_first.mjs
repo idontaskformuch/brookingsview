@@ -28,6 +28,9 @@ export const ALLOWED_CLASSES = new Set([
   // the holiday page's status line under the photo band ("Thursday, Nov 26 · 6 days away", Tillägg A 2026-11-20): a data row like
   // hp-checked/hp-state, the date and how far away it is, not an explanation of the page (owner yes 2026-11-20)
   'hp-status',
+  // the weather hero's own conditions line under the temperature ("Chance Light Snow then Partly Sunny", Broomfield /weather/ built 2026-11-21 once
+  // the build showed the day's conditions instead of the hour's): data in the hero, like ui-hero__meta, not an explanation (owner yes 2026-11-21)
+  'ui-hero__sub',
 ]);
 
 /** Pages whose opening text is the content itself (exact paths). */

@@ -147,6 +147,15 @@ describe('pageRailFor', () => {
     expect(src).toMatch(/<HolidayRail slot="rail" hours=\{hours\}/);
     expect(src).not.toMatch(/<SectionHeader title="Regular hours"/);
   });
+  // Owner 2026-11-21 (Closure Watch): the status is the page's first line, so its rail copy only shows from the rail breakpoint; Weather today stays on a phone.
+  it('closures: the status module is from-wide (config), Weather today is not; the component reads the config, not the page name', () => {
+    expect(PAGE_RAIL.closures).toEqual({ modules: ['closure_status', 'weather_today'], withStatus: false, fromWide: ['closure_status'] });
+    expect(PAGE_RAIL.today.fromWide).toBeUndefined();
+    const c = readFileSync(fileURLToPath(new URL('../components/rail/RailModules.astro', import.meta.url)), 'utf8');
+    expect(c).toMatch(/PAGE_RAIL\[Astro\.props\.page\]\.fromWide/);
+    expect(c).toMatch(/\.rail-slot--wide \{ display: none; \}\s*@media \(min-width: 62rem\) \{ \.rail-slot--wide \{ display: contents; \} \}/);
+    expect(c).not.toMatch(/closures?['"]\s*\?|page === 'closures'/);
+  });
 });
 
 describe('page grid (BaseLayout + RailLayout)', () => {

@@ -73,6 +73,8 @@ const cfg = { ...base, modules: base.modules.filter((m) => !omit.has(m)), reserv
 const tz = siteConfig.timezone;
 const profile = countryProfile(siteConfig.country);
 const wants = new Set<RailModuleKind>([...cfg.modules, ...cfg.reserve]);
+// config/home-rail.ts PageRail.fromWide: modules that exist only from the rail breakpoint (a page whose main column already says it on a phone).
+const fromWide = new Set<RailModuleKind>(Astro.props.page ? PAGE_RAIL[Astro.props.page].fromWide ?? [] : []);
 
 const meetingsData = Astro.props.meetingsData !== undefined ? Astro.props.meetingsData : await loadUpcomingMeetings();
 const [traffic, games, regionalNext, sdsuNext, prices, jobStats, regional, weather, numbers, osmSnapshot, tmItems] = await Promise.all([
@@ -172,7 +174,7 @@ const plan = planRail(cfg, {
   <>
     {withStatus && <CityStatus />}
     {plan.modules.map((m, i) => (
-      <>
+      <div class={fromWide.has(m) ? 'rail-slot rail-slot--wide' : 'rail-slot'}>
         {m === 'meeting' && nextMeeting && <RailMeetings title="Next meeting" meetings={[nextMeeting]} todayYmd={meetingsData!.todayYmd} />}
         {m === 'meetings_more' && <RailMeetings title="Later meetings" meetings={moreMeetings} todayYmd={meetingsData!.todayYmd} />}
         {m === 'holiday' && holiday && <RailHoliday label={holiday.label} url={holiday.url} daysAway={holiday.daysAway} insights={holiday.insights ?? []} thumb={holidayThumb} />}
@@ -222,11 +224,15 @@ const plan = planRail(cfg, {
         {m === 'play' && <JackrabbitWidget />}
         {m === 'burro_bonanza' && <BurroBonanzaWidget />}
         {plan.adAfter === i + 1 && <AdSlot />}
-      </>
+      </div>
     ))}
   </>
 )}
 <style>
+  /* One wrapper per module, invisible to layout; a `fromWide` module is not shown in the one-column layout below the rail breakpoint (62rem). */
+  .rail-slot { display: contents; }
+  .rail-slot--wide { display: none; }
+  @media (min-width: 62rem) { .rail-slot--wide { display: contents; } }
   .rail-mod { border-top: 1px solid var(--rule); padding-top: 0.75rem; }
   .rail-mod__label {
     margin: 0 0 0.375rem; font-family: var(--font-ui); font-size: 0.625rem; font-weight: 600; letter-spacing: 0.12em;

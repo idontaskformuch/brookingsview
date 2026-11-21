@@ -45,6 +45,14 @@ describe('findIntroText', () => {
     expect(findIntroText(html, '/')).toEqual([]);
   });
 
+  it("the weather hero's conditions line is data, not an explanation (Broomfield /weather/ failed the battery 2026-11-21 on it)", () => {
+    // The real Broomfield /weather/ hero markup (heroHtml) with the conditions line the build printed that day.
+    const html = page(`<header class="wx-head"><h1>Broomfield Weather: Today's Forecast and the Week Ahead</h1><p class="wx-meta"><a href="https://www.weather.gov/">National Weather Service</a></p></header><div data-weather-region><div class="ui-hero ui-hero--ink" data-wx-hero><p class="ui-hero__label">Today’s high</p><p class="ui-hero__value"><span>46°</span><span class="ui-hero__unit">F</span></p><p class="ui-hero__sub">Chance Light Snow then Partly Sunny</p><p class="ui-hero__meta">High 46° · Low 23°</p></div></div>`);
+    expect(findIntroText(html, '/weather/')).toEqual([]);
+    // The same text in an ordinary paragraph is still an explanation.
+    expect(findIntroText(page(`<h1>T</h1><p>Chance Light Snow then Partly Sunny</p><ul><li>a</li></ul>`), '/weather/')).toHaveLength(1);
+  });
+
   it('flags a "Looking for X? See Y" link line too', () => {
     const html = page(`<h1>Past events</h1><p>Looking for what's coming up? See <a href="/events/">What's on</a>, updated every day.</p><h2>May</h2>`);
     expect(findIntroText(html, '/events/past/')).toHaveLength(1);
