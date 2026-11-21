@@ -261,8 +261,10 @@ function pageProbe({ allowSel, wantLinks }) {
         .map((e) => `picture or placeholder in a date-tile list: ${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)} px`),
       ...[...document.querySelectorAll('[data-ev-page] img, [data-ev-page] picture, .wk-groups img, .wk-groups picture, .ev-card-img')]
         .map((e) => `picture in an event list on /tonight, /this-weekend or a week/digest page: ${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)} px`),
-      ...[...document.querySelectorAll('.ev-card, .ev-highlights, .wk-row, .wk-list, .ev-row:not([data-late]), .tc-cat:not([data-bucket="late"])')]
-        .map((e) => `old event list markup (.${[...e.classList][0] ?? e.tagName.toLowerCase()}) where the date-tile list belongs`),
+      // OLD_EVENT_MARKUP: the old EveningRow is matched by its own .ev-time child, not by .ev-row, which since Fas 4 (2026-11-21) is also the
+      // design system's EventRow (components/ui/EventRow.astro, .ev-row__time). Fixtures: tests/fixtures/qa_event_row_markup_2026-11-21/.
+      ...[...document.querySelectorAll('.ev-card, .ev-highlights, .wk-row, .wk-list, .ev-row:not([data-late]) > .ev-time, .tc-cat:not([data-bucket="late"])')]
+        .map((e) => `old event list markup (.${e.classList.contains('ev-time') ? 'ev-row' : [...e.classList][0] ?? e.tagName.toLowerCase()}) where the date-tile list belongs`),
       ...[...document.querySelectorAll('[data-pop-list] [data-pop-tile], [data-pop-list] [data-pop-time-tile]')]
         .filter((e) => e.getBoundingClientRect().height > 80)
         .map((e) => `tile ${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)} px (over 80)`),

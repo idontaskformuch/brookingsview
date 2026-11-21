@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { parse } from 'ultrahtml';
+import { querySelectorAll } from 'ultrahtml/selector';
 // plain .mjs shared with the Node QA runner (qa/web/run.mjs)
 import { checkPage, checkDiag, checkRun, compileBlocklist, applyWaivers, zonedInstant, duplicateContentFindings, routeFindings, eveningFindings, safetyFindings } from '../../../qa/web/checks.mjs';
 
@@ -288,7 +290,7 @@ describe('event tile probe aims at the date-tile list (2026-11-09)', () => {
     expect(probe).toMatch(/\.wk-groups img/);
     expect(probe).toMatch(/\.ev-card/);
     expect(probe).toMatch(/\.wk-row/);
-    expect(probe).toMatch(/\.ev-row:not\(\[data-late\]\)/);
+    expect(probe).toMatch(/\.ev-row:not\(\[data-late\]\) > \.ev-time/);
     expect(probe).toMatch(/\[data-pop-time-tile\]/);
     expect(read('../components/pop/TimeTile.astro')).toMatch(/data-pop-time-tile/);
   });
@@ -313,6 +315,24 @@ describe('event tile probe aims at the date-tile list (2026-11-09)', () => {
       expect(read(f), f).not.toMatch(/class="evdb|class=\{`evdb/);
     }
   });
+});
+
+describe('old event row markup vs the design system EventRow (Fas 4, 2026-11-21)', () => {
+  // The probe's old-markup selector, read from qa/web/run.mjs and run on real markup: the EventRow (.ev-row + .ev-row__time) that /events/,
+  // /today/ and /whats-on/ print since Fas 4 must pass; the removed EveningRow (.ev-row + .ev-time) must still be a finding.
+  const run = readFileSync(new URL('../../../qa/web/run.mjs', import.meta.url), 'utf8');
+  const sel = /querySelectorAll\('(\.ev-card, [^']+)'\)/.exec(run)?.[1] ?? '';
+  const dir = '../../../tests/fixtures/qa_event_row_markup_2026-11-21/';
+  const findings = (f: string) => {
+    const doc = parse(readFileSync(new URL(dir + f, import.meta.url), 'utf8'));
+    // ultrahtml takes one selector at a time; the quoted attribute in .tc-cat:not([data-bucket="late"]) is unquoted for it (same meaning)
+    const hits = sel.split(/,\s*/).flatMap((one) => querySelectorAll(doc, one.replace(/="([^"]*)"/g, '=$1')));
+    const eventBigTiles = hits.map((n: { attributes: Record<string, string> }) => `old event list markup (.${n.attributes.class.split(/\s+/)[0]}) where the date-tile list belongs`);
+    return (checkPage({ ...base, eventBigTiles }, 'glasgow', compiled) as { check: string }[]).map((x) => x.check);
+  };
+  it('reads the selector from the probe', () => expect(sel).toMatch(/\.ev-card/));
+  it('the new EventRow (event-332696 as built) is not a finding', () => expect(findings('new-eventrow.html')).not.toContain('web.event-big-tile'));
+  it('the same row in the old EveningRow markup is a finding', () => expect(findings('old-eveningrow.html')).toContain('web.event-big-tile'));
 });
 
 describe('event tile check (2026-11-06)', () => {
