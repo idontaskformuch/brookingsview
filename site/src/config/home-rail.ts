@@ -17,7 +17,8 @@ export type RailModuleKind =
   | 'meetings_more'  // reserve: the meetings after the next one
   | 'weather_today'  // page rail only: today's high/low and condition, one line (RailWeatherToday)
   | 'open_now'       // page rail only: cafes open at this moment, picked in the browser from the OSM hours (RailOpenNow)
-  | 'shows_weekend'; // page rail only: Ticketmaster shows this weekend, by the venue's own date (RailShowsWeekend)
+  | 'shows_weekend'  // page rail only: Ticketmaster shows this weekend, by the venue's own date (RailShowsWeekend)
+  | 'closure_status'; // page rail only: the school-closure status in one line (RailClosureStatus), towns with Closure Watch
 
 export interface RailConfig {
   modules: RailModuleKind[];
@@ -48,7 +49,7 @@ export function homeRailFor(townId: string): RailConfig {
  *  intersected with the town's home rail (modules + reserve), so a town that has no such module (no sports data, no promo card) never
  *  gets it; towns differ only through HOME_RAIL_BY_TOWN, never here. No reserve fill and no ad slot outside the front page. A page
  *  that is not listed has no rail (its main column stays at --measure-main, same left edge). */
-export type RailPage = 'today' | 'whats_on' | 'holiday';
+export type RailPage = 'today' | 'whats_on' | 'holiday' | 'closures';
 export interface PageRail {
   modules: RailModuleKind[];
   /** Open the rail with Right Now (CityStatus). */
@@ -67,10 +68,12 @@ export const PAGE_RAIL: Record<RailPage, PageRail> = {
   // days" with its photo); the page's own regular hours and food-help contact follow as HolidayRail (from the page data). No Right Now,
   // no "<Town> in numbers".
   holiday: { modules: ['holiday'], withStatus: false },
+  // Fas 4 Closure Watch (owner spec 2026-11-20): the status also as a rail module, then today's weather (what a closure would follow from).
+  closures: { modules: ['closure_status', 'weather_today'], withStatus: false },
 };
 /** Modules only a page rail has (never on the front page): not intersected with the town's home rail. Each one still hides itself
  *  without data (no weather snapshot, no fresh OpenStreetMap hours). */
-export const PAGE_ONLY_MODULES: ReadonlySet<RailModuleKind> = new Set<RailModuleKind>(['weather_today', 'open_now', 'shows_weekend']);
+export const PAGE_ONLY_MODULES: ReadonlySet<RailModuleKind> = new Set<RailModuleKind>(['weather_today', 'open_now', 'shows_weekend', 'closure_status']);
 
 export function pageRailFor(townId: string, page: RailPage): RailConfig {
   const home = homeRailFor(townId);

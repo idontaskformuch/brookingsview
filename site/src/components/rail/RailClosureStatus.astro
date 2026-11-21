@@ -1,0 +1,20 @@
+---
+/** Rail module (Fas 4 Closure Watch, owner spec 2026-11-20: "Statusen visas också som modul i sidospalten"): the school-closure status
+ *  in one line, with when it was checked, linking to /closures/. The same line as the page's own status (lib/closure-watch.ts
+ *  closureStatusLine), so the two never disagree. Never a prediction: it only says what has (not) been announced. */
+interface Props { line: string; tone: 'alert' | 'notice' | 'quiet'; checked: string }
+const { line, tone, checked } = Astro.props;
+---
+<section class="rail-mod rail-cw" aria-label="School closures">
+  <a class="rail-cw__head" href="/closures/">Schools</a>
+  <p class={`rail-cw__line rail-cw__line--${tone}`} data-closure-status>{line}</p>
+  <p class="rail-cw__checked">Checked {checked}</p>
+</section>
+<style>
+  .rail-cw { border-top: 1px solid var(--rule); padding-top: 0.75rem; }
+  .rail-cw__head { display: inline-block; margin: 0 0 0.25rem; font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; }
+  .rail-cw__head:hover { text-decoration: underline; }
+  .rail-cw__line { margin: 0; font-family: var(--font-ui); font-size: 1rem; font-weight: 600; }
+  .rail-cw__line--alert { color: var(--status-bad); }
+  .rail-cw__checked { margin: 0.125rem 0 0; font-family: var(--font-ui); font-size: 0.8125rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+</style>

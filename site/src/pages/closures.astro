@@ -17,11 +17,12 @@
  *  close. If that ever reads uncertain, treat it as a bug, not a style note.
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
-import AboutThisPage from '../components/ui/AboutThisPage.astro';
+import RailModules from '../components/rail/RailModules.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getClosureWatchStatus } from '../lib/db';
+import { closureStatusLine } from '../lib/closure-watch';
 import { siteConfig } from '../lib/site-config';
 import { metaDescription } from '../lib/meta-description';
 import { resolvePageMeta } from '../lib/page-meta';
@@ -35,6 +36,7 @@ if (!siteConfig.hasClosureWatch || !siteConfig.closureWatch) {
 
 const feat = siteConfig.closureWatch;
 const status = await getClosureWatchStatus();
+const statusLine = closureStatusLine(status);
 const canonicalUrl = new URL('/closures/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('closures', siteConfig, { label: 'Closure Watch', href: canonicalUrl });
 
@@ -90,27 +92,17 @@ const newsArticleJsonLd = status.state === 'confirmed'
   accentColor={SECTION_THEME.closure_watch.accent}
 >
   <Breadcrumbs trail={breadcrumbTrail} />
-  {/* Reuses the existing school_alerts photo pool (real, already-sourced
-      photos of schools for Brookings/Moreno Valley) -- closure_watch isn't
-      its own ImageCategory, and this page's subject is schools, not a new
-      concept that needs its own pool (see lib/images.ts's ImageCategory). */}
+  {/* Fas 4 (owner spec 2026-11-20): the status in one line right under the H1, then when it was checked. The detail of an active
+      notice or alert follows; how the page works is one collapsed block at the very end (the old second "About this page" is gone). */}
   <header class="cw-hero">
     <h1>{pageMeta.h1}</h1>
-    {/* TODO (sitewide title/H1/lede handoff): must include the existing
-        never-predicts-a-closure disclaimer per the ledeRequirement in
-        page-meta.ts's 'closures' entry -- the tagline below already says
-        "not a guess," which arguably satisfies it, flagged not rewritten
-        in this title/H1-only pass. */}
+    <h2 class={`cw-status cw-status--${statusLine.tone}`} id="cw-state-heading" data-closure-status>{statusLine.line}</h2>
     <p class="cw-checked">Last checked {lastChecked}, {lastCheckedDate}</p>
     <ShareButton title={pageTitle} />
   </header>
 
   {status.state === 'confirmed' && status.closures.length > 0 && (
     <section class="cw-panel cw-panel--confirmed" aria-labelledby="cw-state-heading">
-      <p class="cw-kicker">Confirmed</p>
-      <h2 id="cw-state-heading">
-        {status.closures.length > 1 ? 'Closure notices' : (status.closures[0].title || 'Closure notice')}
-      </h2>
       {status.closures.map((closure) => (
         <div class="cw-closure">
           {status.closures.length > 1 && <h3 class="cw-closure__title">{closure.title || closure.district}</h3>}
@@ -128,8 +120,6 @@ const newsArticleJsonLd = status.state === 'confirmed'
 
   {status.state === 'watch' && status.alert && (
     <section class="cw-panel cw-panel--watch" aria-labelledby="cw-state-heading">
-      <p class="cw-kicker">Watch</p>
-      <h2 id="cw-state-heading">{status.alert.event} in effect</h2>
       {status.alert.areaDesc && <p class="cw-area">Affected area: {status.alert.areaDesc}</p>}
       {status.alert.headline && <p class="cw-message">{status.alert.headline}</p>}
 
@@ -148,24 +138,6 @@ const newsArticleJsonLd = status.state === 'confirmed'
     </section>
   )}
 
-  {/* R2/R7 (sitewide presentation-layer pass): a bordered, left-accented
-      panel is genuine severity styling -- reserved for Confirmed/Watch above,
-      the two states that actually have something active to report. Clear
-      renders on every ordinary school day, so it gets the plain status-line
-      + explanation shape instead: severity chrome that shows up every single
-      day has stopped meaning anything. */}
-  {status.state === 'clear' && (
-    <section class="cw-clear" aria-labelledby="cw-state-heading">
-      <h2 id="cw-state-heading" class="cw-clear__line">No closures announced.</h2>
-      <p class="cw-clear__detail">
-        No school-closure notice is active for {feat.districtName}, and no weather alert
-        relevant to closures is currently in effect. Official closures are always announced
-        through {feat.districtName}'s{' '}
-        <a href={feat.districtUrl} rel="noopener">own notification channel</a>, not predicted here.
-      </p>
-    </section>
-  )}
-
   {feat.otherDistrictsNote && (
     <p class="cw-coverage-note">
       This page tracks {feat.districtName}. Parts of {siteConfig.cityName} are served by{' '}
@@ -173,19 +145,6 @@ const newsArticleJsonLd = status.state === 'confirmed'
       <a href={feat.otherDistrictsNote.url} rel="noopener">their site</a> for closures.
     </p>
   )}
-
-  <details class="cw-methodology">
-    <summary>How this page works</summary>
-    <p>
-      This page reads two sources directly: {feat.districtName}'s own closure notices, and
-      active National Weather Service alerts ({feat.relevantAlertEvents.join(', ')}) for
-      this area. It never predicts a closure -- the Watch state only means a relevant
-      alert is active and nothing has been announced yet. An optional short paragraph of
-      context may be shown, generated by AI from the alert's own text and checked against
-      a rule that rejects any predictive language before it can be published; when that
-      check fails, or hasn't run yet, only the plain facts above are shown.
-    </p>
-  </details>
 
   <RelatedContent pageType="closure_watch" />
 
@@ -196,13 +155,24 @@ const newsArticleJsonLd = status.state === 'confirmed'
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
     buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
   )} />
-  <AboutThisPage slot="about">
+
+  <RailModules slot="rail" page="closures" now={now} />
+
+  {/* The one block about the page, last and collapsed (owner spec Fas 4: "How this page works" last and collapsed, no second About). */}
+  <details class="cw-methodology" slot="about">
+    <summary>How this page works</summary>
     <p>
-    Official school-closure status for {siteConfig.cityName} -- what's actually
-    been announced, not a guess at what might happen.
+      Official school-closure status for {siteConfig.cityName}: what has actually been announced, not a guess at what might happen.
+      Closures are always announced through {feat.districtName}'s{' '}
+      <a href={feat.districtUrl} rel="noopener">own notification channel</a>, not predicted here.
+    </p>
+    <p>
+      This page reads two sources directly: {feat.districtName}'s own closure notices, and active National Weather Service alerts
+      ({feat.relevantAlertEvents.join(', ')}) for this area. It never predicts a closure: the Watch state only means a relevant alert
+      is active and nothing has been announced yet. No AI-written text is shown.
     </p>
     {hubBacklink && <p>Checking road conditions too? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</p>}
-  </AboutThisPage>
+  </details>
 </BaseLayout>
 
 <style>
@@ -212,7 +182,9 @@ const newsArticleJsonLd = status.state === 'confirmed'
   padding-bottom: 1.125rem;
 }
 .cw-hero h1 { font-size: 2rem; margin-bottom: 0.5rem; }
-.tagline { color: var(--ink-soft); line-height: 1.6; }
+/* The status sentence in heading size (standards.md principle 1); one line. */
+.cw-status { margin: 0.75rem 0 0.25rem; font-size: 1.375rem; }
+.cw-status--alert { color: var(--status-bad); }
 .cw-checked { font-size: 0.8125rem; color: var(--ink-soft); margin: 0.5rem 0; }
 
 .cw-panel {
@@ -222,12 +194,6 @@ const newsArticleJsonLd = status.state === 'confirmed'
 }
 .cw-panel--confirmed { border-left-color: var(--status-bad); }
 .cw-panel--watch { border-left-color: var(--status-caution); }
-.cw-kicker {
-  font-family: var(--font-ui); font-size: 0.75rem; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 0.5rem;
-  color: var(--ink-soft);
-}
-.cw-panel h2 { margin: 0 0 0.75rem; font-size: 1.375rem; }
 .cw-message { line-height: 1.6; margin: 0 0 0.75rem; }
 .cw-area { font-size: 0.9375rem; color: var(--ink-soft); margin: 0 0 0.5rem; }
 .cw-history { font-size: 0.875rem; color: var(--ink-soft); margin: 0 0 0.75rem; }
@@ -243,16 +209,11 @@ const newsArticleJsonLd = status.state === 'confirmed'
   font-size: 0.9375rem; line-height: 1.5;
 }
 
-/* R7: Clear is the everyday state -- one plain line plus a short
-   explanation, no border/background/left-accent (that chrome is reserved
-   for Confirmed/Watch's genuine severity, see .cw-panel above). */
-.cw-clear { margin: 0 0 1.5rem; }
-.cw-clear__line { font-size: 1.375rem; margin: 0 0 0.5rem; }
-.cw-clear__detail { color: var(--ink-soft); line-height: 1.6; margin: 0; }
-
 .cw-methodology {
-  margin: 0 0 1.5rem; font-size: 0.8125rem; color: var(--ink-soft);
+  margin: var(--ui-6) 0 var(--ui-4); padding-top: var(--ui-3); border-top: var(--ui-hairline);
+  font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft);
 }
+.cw-methodology a { color: inherit; }
 .cw-methodology summary { cursor: pointer; font-weight: 600; }
 .cw-methodology p { line-height: 1.6; margin-top: 0.5rem; }
 </style>

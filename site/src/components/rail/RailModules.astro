@@ -18,6 +18,8 @@ import RailHoliday from './RailHoliday.astro';
 import RailWeather from './RailWeather.astro';
 import RailNumbers from './RailNumbers.astro';
 import RailWeatherToday from './RailWeatherToday.astro';
+import RailClosureStatus from './RailClosureStatus.astro';
+import { closureStatusLine } from '../../lib/closure-watch';
 import RailOpenNow from './RailOpenNow.astro';
 import RailShowsWeekend from './RailShowsWeekend.astro';
 import { getTicketmasterEventsForTown } from '../../lib/ticketmaster';
@@ -26,7 +28,7 @@ import { rowFromTicketmaster, rowEnvFor, groupByDay } from '../../lib/event-row'
 import { loadTownNumbers } from '../../lib/town-numbers-data';
 import {
   getActiveTrafficIncidents, getUpcomingGames, getNextRegionalGame, getNextSdsuMarqueeEvent, getAgPrices, getEmployerJobStats,
-  getRegionalSports, getWeatherSnapshot, getOsmSnapshot,
+  getRegionalSports, getWeatherSnapshot, getOsmSnapshot, getClosureWatchStatus,
 } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
 import { isSectionBuilt } from '../../lib/sections';
@@ -87,6 +89,8 @@ const [traffic, games, regionalNext, sdsuNext, prices, jobStats, regional, weath
   // Memoized per build (lib/ticketmaster.ts): What's On's own call already fetched it.
   wants.has('shows_weekend') && siteConfig.hasWhatsOn && siteConfig.ticketmaster ? getTicketmasterEventsForTown(siteConfig) : Promise.resolve([]),
 ]);
+const closureStatus = wants.has('closure_status') && siteConfig.hasClosureWatch && siteConfig.closureWatch ? closureStatusLine(await getClosureWatchStatus()) : null;
+const closureChecked = now.toLocaleTimeString(siteConfig.country === 'gb' ? 'en-GB' : 'en-US', { hour: 'numeric', minute: '2-digit', timeZone: tz });
 
 // Meetings
 const { next: nextMeeting, more: moreMeetings } = meetingsData ? railMeetings(meetingsData.meetings, meetingsData.todayYmd, excludeMeetingIds) : { next: null, more: [] };
@@ -155,6 +159,7 @@ const plan = planRail(cfg, {
   weather_today: wxToday.length > 0,
   open_now: openNowRows.length >= OPEN_TONIGHT_MIN_PLACES,
   shows_weekend: weekendDays.length > 0,
+  closure_status: closureStatus !== null,
   traffic: traffic.length > 0,
   workplace: hiringMover !== null,
   markets: prices.length > 0,
@@ -195,6 +200,7 @@ const plan = planRail(cfg, {
         {m === 'numbers' && <RailNumbers rows={numbers} cityName={siteConfig.cityName} />}
         {m === 'weather' && <RailWeather days={wxDays} tz={tz} />}
         {m === 'weather_today' && <RailWeatherToday days={wxToday} tz={tz} />}
+        {m === 'closure_status' && closureStatus && <RailClosureStatus line={closureStatus.line} tone={closureStatus.tone} checked={closureChecked} />}
         {m === 'open_now' && <RailOpenNow rows={openNowRows} osmChecked={osmSnapshot ? osmSnapshot.fetchedAt.slice(0, 10) : ''} lateHref={openLatePageIndexable(osmPlaces) ? '/open-late/' : null} max={openNowMax} />}
         {m === 'shows_weekend' && <RailShowsWeekend days={weekendDays} />}
         {m === 'traffic' && <a class="rail-mod__link" href="/traffic/"><TrafficWidget incidents={traffic} /></a>}

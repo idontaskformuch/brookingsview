@@ -1291,7 +1291,7 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
     if (siteConfig.trafficSource) items.push({ href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
     items.push({ href: '/events/', title: "What's on", kicker: 'Events', description: 'Community events this week.' });
     items.push({ href: '/city-hall/', title: 'City hall', kicker: 'City hall', description: 'Council and commission decisions, including school-district-adjacent items.' });
-    if (gameItem) items.push(gameItem);
+    // No arcade game here (owner spec Fas 4 2026-11-20): a page about school closures does not advertise a game.
   } else if (pageType === 'new_in_town') {
     const digest = await latestStoryByType('new_in_town_digest');
     if (digest) items.push(digest);

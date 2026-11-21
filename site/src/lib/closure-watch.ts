@@ -72,3 +72,13 @@ export function computeClosureWatchState(
   }
   return { state: 'watch', closures: [], alert: activeAlert, historicalCount };
 }
+
+/** The status in one line (Fas 4 Closure Watch, owner spec 2026-11-20: "Status på en rad + Last checked"), shared by /closures/ and the
+ *  rail module so they never disagree. Says only what has (not) been announced, never what will happen. */
+export function closureStatusLine(status: Pick<ClosureWatchStatus, 'state' | 'closures' | 'alert'>): { line: string; tone: 'alert' | 'notice' | 'quiet' } {
+  if (status.state === 'confirmed' && status.closures.length > 0) {
+    return { line: status.closures.length > 1 ? `${status.closures.length} school closure notices` : (status.closures[0].title || 'School closure notice'), tone: 'alert' };
+  }
+  if (status.state === 'watch' && status.alert) return { line: `${status.alert.event} in effect · no closure announced`, tone: 'notice' };
+  return { line: 'No school closures announced', tone: 'quiet' };
+}
