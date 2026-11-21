@@ -107,6 +107,8 @@ export interface ConfirmedFact extends FactBase {
   days?: Record<string, 'closed' | string>;
   /** Grid only: the short line under the place's name (which buildings, a phone number). */
   dayNote?: string;
+  /** Season pages: the place's short name in a day's closures line ("St Enoch closed · No trains", owner 2026-11-21). Default: `label`. */
+  dayShort?: string;
   /** Grid only, used when the grid has more than GRID_GROUP_AFTER places: its group. Default: section 'help' -> help, else city. */
   area?: GridArea;
 }

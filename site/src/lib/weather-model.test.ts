@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { buildWeatherView, conditionOf, iconFor, rainInsight, uvBand, weekInsight, yesterdayHighFrom, NEAR_HOURS, WET_POP, type WeatherEnv, type WxInput, type WxPoint } from './weather-model';
 
 const TZ = 'America/Denver';
@@ -53,7 +54,7 @@ describe('hero: the forecast for the current hour, labelled', () => {
   const input: WxInput = { periods: WEEK, hourly: hourly(H0, 24, (i) => ({ temp: 48 + i, feels: i === 0 ? 41 : 49 + i })), fetchedAt: '2026-11-05T21:05:00Z' };
   it('uses the hourly point that covers now, in the city unit', () => {
     const v = buildWeatherView(input, env());
-    expect(v.hero).toMatchObject({ label: 'Forecast now', value: 48, unit: 'F', conditions: 'Mostly Cloudy', icon: 'cloud', high: 54, low: 31 });
+    expect(v.hero).toMatchObject({ label: 'Now', value: 48, unit: 'F', conditions: 'Mostly Cloudy', icon: 'cloud', high: 54, low: 31 });
   });
   it("the build names no hour (owner 2026-11-20): hero = today's high/low and conditions, no hour marked current, no time-bound rain line", () => {
     const v = buildWeatherView(input, env({ atBuild: true }));
@@ -283,5 +284,33 @@ describe('Glasgow-style: Celsius, Met Office wording, optional fields', () => {
     expect(v.insights[0].text).toBe('Rain until 2pm');
     expect(v.days[0]).toMatchObject({ pop: 90, high: 9, low: 4 });
     expect(v.updated).toBe('10:00am');
+  });
+});
+
+describe('the summary never contradicts the hero (owner 2026-11-21)', () => {
+  // Brookings weather_snapshots row observed_for 2026-11-21 (fetched 08:00:46Z), as stored: 2 AM 22 % "Slight Chance Light Rain",
+  // every later hour 12 % or less. Live at 02:15 CST the page said "Dry for the next 24 hours" under that hero.
+  const snap = JSON.parse(readFileSync(new URL('../../../tests/fixtures/weather_brookings_2026-11-21.json', import.meta.url), 'utf8'));
+  const input: WxInput = { periods: snap.periods, hourly: snap.hourly, fetchedAt: snap.fetched_at };
+  const at = env({ now: new Date('2026-11-21T08:15:00Z'), tz: 'America/Chicago' });
+  const rainLine = (inp: WxInput) => buildWeatherView(inp, at).insights.find((i) => i.id === 'rain')?.text;
+  it('Brookings today: "Small chance of rain, up to 22%", not "Dry for the next 24 hours"', () => {
+    const v = buildWeatherView(input, at);
+    expect(v.hero).toMatchObject({ label: 'Now', value: 48, conditions: 'Slight Chance Light Rain' });
+    expect(rainLine(input)).toBe('Small chance of rain, up to 22%');
+  });
+  it('the same data with one change, 2 AM at 12 % and "Mostly Cloudy": no hour at 15 % and a dry hero -> "Dry for the next 24 hours"', () => {
+    const dry = { ...input, hourly: snap.hourly.map((h: WxPoint, i: number) => (i === 0 ? { ...h, pop: 12, short: 'Mostly Cloudy' } : h)) };
+    expect(rainLine(dry)).toBe('Dry for the next 24 hours');
+  });
+  it('the same data with one change, 2 AM at 22 % but "Mostly Cloudy": an hour at 15 % or more is enough', () => {
+    const cloudy = { ...input, hourly: snap.hourly.map((h: WxPoint, i: number) => (i === 0 ? { ...h, short: 'Mostly Cloudy' } : h)) };
+    expect(rainLine(cloudy)).toBe('Small chance of rain, up to 22%');
+  });
+  it('the word follows the conditions: snow, showers', () => {
+    const snow = { ...input, hourly: snap.hourly.map((h: WxPoint, i: number) => (i === 0 ? { ...h, short: 'Slight Chance Light Snow' } : h)) };
+    expect(rainLine(snow)).toBe('Small chance of snow, up to 22%');
+    const showers = { ...input, hourly: snap.hourly.map((h: WxPoint, i: number) => (i === 0 ? { ...h, short: 'Chance Rain Showers' } : h)) };
+    expect(rainLine(showers)).toBe('Small chance of showers, up to 22%');
   });
 });

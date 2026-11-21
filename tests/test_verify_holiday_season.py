@@ -87,3 +87,17 @@ def test_one_card_with_two_markings_fails():
     assert r.returncode == 1
     assert '"ScotRail · No trains" is marked "Closed" and "Changed" on different days' in r.stderr
     assert "FAIL: 1 problem(s)" in r.stderr
+
+
+# closedline/ = fixed/ with one change: the 25 Dec section's three closure cards replaced by the closures line the page prints since
+# 2026-11-21 (owner: a named day without events keeps its section with "St Enoch closed · No trains"; data, not an empty state;
+# the line is the real 25 Dec line from the grid rows). closedgone/ = the same section with neither cards nor line.
+def test_a_day_with_only_its_closures_line_passes():
+    r = run(FIX / "closedline", "--today", "2026-11-14")
+    assert r.returncode == 0, r.stderr
+
+
+def test_a_day_with_neither_cards_nor_closures_line_fails():
+    r = run(FIX / "closedgone", "--today", "2026-11-14")
+    assert r.returncode == 1
+    assert "/christmas/: the day 2026-12-25 has no card" in r.stderr

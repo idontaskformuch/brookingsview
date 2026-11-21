@@ -85,7 +85,7 @@ describe.skipIf(!browser)('live weather in a real browser', { timeout: 30_000 },
   it('rewrites the sign strip and the whole answer block (hero for this hour, hourly strip, day rows) from the answer', async () => {
     const r = await run('ok');
     expect(r.sign).toBe('High 55°F sunny');
-    expect(r.label).toEqual(['Forecast now']);   // 13:30 in Chicago: the 18:00Z point covers now (hero 43°)
+    expect(r.label).toEqual(['Now']);   // 13:30 in Chicago: the 18:00Z point covers now (hero 43°)
     expect(r.hero).toEqual(['43°']);
     expect(r.hours).toEqual(['1 PM', '2 PM', '3 PM']);
     expect(r.current).toEqual(['1 PM']);
@@ -114,7 +114,7 @@ describe.skipIf(!browser)('live weather in a real browser', { timeout: 30_000 },
       return { label: q('.ui-hero__label'), hero: q('.ui-hero__value > span:first-child'), current: q('.ui-hr.is-current .ui-hr__time') };
     }, NOW.toISOString());
     await page.close();
-    expect(out).toEqual({ label: ['Forecast now'], hero: ['43°'], current: ['1 PM'] });
+    expect(out).toEqual({ label: ['Now'], hero: ['43°'], current: ['1 PM'] });
   });
   // Round 4 (2026-11-02): CityStatus' Weather/Worker Pulse rows and the heat box followed only the build's forecast.
   const statusHtml = `<section class="city-status"><ul>

@@ -24,7 +24,7 @@ import {
   buildHolidayMeta, buildHolidayEventsJsonLd, checkedSpan, checkTitleLength, formatCheckedSpan, formatIsoDate, localToday,
   type ConfirmedEvent, type ConfirmedFact, type HolidayPageData,
 } from '../lib/holiday-page';
-import { groupSources, seasonClosureGrid } from '../lib/holiday-view';
+import { gridClosedLine, groupSources, seasonClosureGrid } from '../lib/holiday-view';
 import HolidayDayGrid from './HolidayDayGrid.astro';
 import { daysWithCards, eventPopDays, seasonEvents, seasonHero } from '../lib/holiday-season';
 import { BANK_HOLIDAYS_SOURCE } from '../config/holiday-pages/gb/bank-holidays';
@@ -50,8 +50,8 @@ const pageUrl = new URL(Astro.url.pathname, Astro.site ?? siteConfig.siteUrl).hr
 const webPage = { '@context': 'https://schema.org', '@type': 'WebPage', name: meta.title, url: pageUrl, dateModified: page.dataUpdatedOn };
 
 const confirmedEvents = page.events.filter((e): e is ConfirmedEvent => e.status === 'confirmed');
-const days = daysWithCards(page, confirmedEvents, today);
 const grid = seasonClosureGrid(page);
+const days = daysWithCards(page, confirmedEvents, today, (date) => gridClosedLine(grid, date) !== null);
 const hero = seasonHero(page.season.days, today);
 const later = seasonEvents(confirmedEvents, page.season.days, today);
 const help = page.facts.filter((f): f is ConfirmedFact => f.status === 'confirmed' && f.section === 'help');
@@ -102,6 +102,7 @@ const jsonLd = buildHolidayEventsJsonLd(page, tz, countryProfile(siteConfig.coun
     <section class="hs-day" id={d.anchor} data-hp-day={d.date} aria-labelledby={`${d.anchor}-h`}>
       <h2 class="tc-day-h" id={`${d.anchor}-h`}>{d.heading}</h2>
       <p class="hs-label" data-hp-item data-source={BANK_HOLIDAYS_SOURCE.url}>{d.label}</p>
+      {d.events.length === 0 && (() => { const line = gridClosedLine(grid, d.date)!; return <p class="hs-closed" data-hp-item data-hp-closed-line data-source={line.source}>{line.text}</p>; })()}
       {d.events.length > 0 && <PopEventList days={eventPopDays(d.events, tz)} tile={d.events.every((e) => e.startTime) ? 'time' : 'date'} idPrefix={d.anchor} />}
     </section>
   ))}
@@ -207,6 +208,7 @@ const jsonLd = buildHolidayEventsJsonLd(page, tz, countryProfile(siteConfig.coun
   .hs-days a[hidden], .hs-day[hidden] { display: none; }
   .hs-day { scroll-margin-top: var(--ui-5); }
   .hs-day .tc-day-h { margin-bottom: 0.25rem; }
+  .hs-closed { margin: 0; font-family: var(--font-ui); font-size: var(--ui-primary); color: var(--ink); }
   .hs-label { margin: 0 0 var(--ui-3); font-family: var(--font-ui); font-weight: 600; color: var(--ink-soft); }
   .hp-group { margin: var(--ui-group-gap) 0 0; }
   .hs-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ui-3); grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }

@@ -70,12 +70,12 @@ const GLASGOW_FACTS: HolidayFact[] = [
   /* closures and changed hours, per day (Winter Wonderland FAQ, read again 2026-11-14: same as 2026-11-04) */
   { section: 'closures', status: 'confirmed', change: 'changed', label: ENOCH, value: '10am–8pm', on: ['2026-12-24'], source: WW_FAQ, checkedOn: READ },
   {
-    section: 'closures', status: 'confirmed', change: 'closed', label: ENOCH, value: 'Closed', on: ['2026-12-25'], closedOn: ['2026-12-25'],
+    section: 'closures', status: 'confirmed', change: 'closed', label: ENOCH, dayShort: 'St Enoch', value: 'Closed', on: ['2026-12-25'], closedOn: ['2026-12-25'],
     metaGroup: 'Winter Wonderland', meta: 'closed 25 Dec', source: WW_FAQ, checkedOn: READ,
   },
   { section: 'closures', status: 'confirmed', change: 'changed', label: ENOCH, value: '12 noon–8pm', on: ['2026-12-26', '2026-12-27'], source: WW_FAQ, checkedOn: READ },
   { section: 'closures', status: 'confirmed', change: 'changed', label: GREEN, value: 'Closes at 8pm', on: ['2026-12-24'], source: WW_FAQ, checkedOn: READ },
-  { section: 'closures', status: 'confirmed', change: 'closed', label: GREEN, value: 'Closed', on: ['2026-12-25'], closedOn: ['2026-12-25'], source: WW_FAQ, checkedOn: READ },
+  { section: 'closures', status: 'confirmed', change: 'closed', label: GREEN, dayShort: 'Glasgow Green', value: 'Closed', on: ['2026-12-25'], closedOn: ['2026-12-25'], source: WW_FAQ, checkedOn: READ },
   { section: 'closures', status: 'confirmed', change: 'open', label: GREEN, value: '12 noon–10pm', on: ['2026-12-26', '2026-12-28', '2026-12-31', '2027-01-02'], source: WW_FAQ, checkedOn: READ },
   { section: 'closures', status: 'confirmed', change: 'changed', label: GREEN, value: '2pm–10pm', on: ['2027-01-01'], source: WW_FAQ, checkedOn: READ },
   {

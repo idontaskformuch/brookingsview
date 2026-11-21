@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
-  buildGroups, closedPlaces, countHeld, holidayOverviewLine, isTimeless, timelessGroups, detailFor, FOLD_AFTER, GROUP_HEADING, GROUP_ORDER, groupSources, holidayStatus, holidayInsights, closureGrid, regularHoursRows, statusDay, shortHourRange, phoneHours, dayList, seasonClosureGrid,
+  buildGroups, closedPlaces, countHeld, holidayOverviewLine, isTimeless, timelessGroups, detailFor, FOLD_AFTER, GROUP_HEADING, GROUP_ORDER, groupSources, holidayStatus, holidayInsights, closureGrid, regularHoursRows, statusDay, shortHourRange, phoneHours, dayList, seasonClosureGrid, gridClosedLine,
 } from './holiday-view';
 import { occurrenceDay, resolvePageState } from './holiday-calendar';
 import { holidayPageDef } from '../config/holiday-pages/calendar';
@@ -472,6 +472,17 @@ describe('Glasgow Christmas closures grid and the compact phone card (owner 2026
   });
   it('a date in the phone card never breaks over two lines (26–27 Dec wrapped after the dash at 390px)', () => {
     expect(rows[0].summary).toContain('26–\u206027\u00a0Dec');
+  });
+  it('a named day without events gets one closures line (owner 2026-11-21): short names, the source\'s own word, closures only', () => {
+    expect(gridClosedLine(g, '2026-12-25')).toEqual({ text: 'St Enoch closed · Glasgow Green closed · No trains', source: 'https://www.glasgowswinterwonderland.com/faq/' });
+    expect(gridClosedLine(g, '2027-01-01')?.text).toBe('No trains');
+    // 26 Dec has changed hours but nothing shut: no line. 4 Jan is not a grid day.
+    expect(gridClosedLine(g, '2026-12-26')).toBeNull();
+    expect(gridClosedLine(g, '2027-01-04')).toBeNull();
+  });
+  it('more than three closures: three, then "+N more" (the real 25 Dec rows with one change: a fourth place, St Enoch copied)', () => {
+    const four = { ...g, groups: [{ heading: null, rows: [...rows, { ...rows[0], name: 'Copy', short: 'Copy' }] }] };
+    expect(gridClosedLine(four, '2026-12-25')?.text).toBe('St Enoch closed · Glasgow Green closed · No trains · +1 more');
   });
   it("Glasgow Green's 'open' rows (12 noon–10pm, its usual hours) are plain cells, not changes", () => {
     const green = rows[1];

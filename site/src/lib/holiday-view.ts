@@ -201,7 +201,7 @@ export type GridCellKind = 'closed' | 'hours' | 'usual';
 export interface GridCell { kind: GridCellKind; text: string; short?: string }
 /** `href`: the page the row was read from (season pages, where every place links to its source). `summary`: the phone card of a
  *  grid with more than GRID_COMPACT_AFTER days, only the days that differ from usual (owner 2026-11-21). */
-export interface GridRow { name: string; note?: string; href?: string; cells: GridCell[]; summary: string }
+export interface GridRow { name: string; note?: string; href?: string; cells: GridCell[]; summary: string; short?: string }
 export interface ClosureGridView {
   days: { iso: string; label: string }[];
   groups: { heading: string | null; rows: GridRow[] }[];
@@ -302,7 +302,7 @@ function gridFromRows(page: HolidayPageData, src: GridSourceRow[]): ClosureGridV
   const row = ({ fact: f, href, cells: byDay }: GridSourceRow): GridRow => {
     const note = [f.dayNote, f.clarify].filter(Boolean).join(' ');
     const cells = isos.map((iso): GridCell => byDay[iso] ?? { ...(f.section === 'transit' ? REGULAR_CELL : USUAL_CELL) });
-    return { name: f.label, ...(note ? { note } : {}), ...(href ? { href } : {}), cells, summary: gridSummary(cells, isos, page.locale) };
+    return { name: f.label, ...(note ? { note } : {}), ...(href ? { href } : {}), cells, summary: gridSummary(cells, isos, page.locale), ...(f.dayShort ? { short: f.dayShort } : {}) };
   };
   const area = (f: ConfirmedFact): GridArea => f.area ?? (f.section === 'help' ? 'help' : 'city');
   const groups = src.length > GRID_GROUP_AFTER
@@ -330,11 +330,29 @@ export function closureGrid(page: HolidayPageData): ClosureGridView | null {
  *  (what the day cards showed), merged per place in data order. A 'closed' row is Closed with its own word (ScotRail "No trains"),
  *  an 'open' row is the place's usual hours on those days (plain, not bold, left out of the phone card), anything else is changed
  *  hours. Each place links to the page its first row was read from. */
+/** MAX_CLOSED_LINE places in a day's closures line, then "+N more". */
+export const MAX_CLOSED_LINE = 3;
+
+/** A season day without events (owner 2026-11-21): one line of what is shut that day, from the closures grid, closures only:
+ *  "St Enoch closed · Glasgow Green closed · No trains" (a place's own word when the source has one, else "<short name> closed"),
+ *  at most MAX_CLOSED_LINE, then "+N more". `source`: the first of those places' pages. Null when nothing is shut that day. */
+export function gridClosedLine(grid: ClosureGridView | null, iso: string): { text: string; source: string } | null {
+  const i = grid?.days.findIndex((d) => d.iso === iso) ?? -1;
+  if (!grid || i < 0) return null;
+  const shut = grid.groups.flatMap((g) => g.rows).filter((r) => r.cells[i].kind === 'closed');
+  if (shut.length === 0) return null;
+  const words = shut.map((r) => (r.cells[i].text === 'Closed' ? `${r.short ?? r.name} closed` : r.cells[i].text));
+  const more = words.length - MAX_CLOSED_LINE;
+  const text = words.slice(0, MAX_CLOSED_LINE).join(' · ') + (more > 0 ? ` · +${more} more` : '');
+  return { text, source: shut.find((r) => r.href)?.href ?? '' };
+}
+
 export function seasonClosureGrid(page: HolidayPageData): ClosureGridView | null {
   const rows = new Map<string, GridSourceRow>();
   for (const f of page.facts) {
     if (f.status !== 'confirmed' || !f.on || f.section === 'hours' || f.section === 'help') continue;
     const r = rows.get(f.label) ?? { fact: f, href: f.source.url, cells: {} };
+    if (f.dayShort && !r.fact.dayShort) r.fact = { ...r.fact, dayShort: f.dayShort };
     const cell: GridCell = f.change === 'closed' ? { kind: 'closed', text: f.value }
       : f.change === 'open' ? { kind: 'usual', text: f.value }
       : hoursCell(f.value);

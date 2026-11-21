@@ -5,7 +5,8 @@
  *  - a day section or day chip (data-hp-day="YYYY-MM-DD") before today fails;
  *  - an event row (data-pop-row) whose end (or start) date is before today fails;
  *  - a card or row (li.tc-card, li.pl__li) without data-hp-item, or a data-hp-item without an http(s) data-source, fails;
- *  - a day section without a card fails (owner 2026-11-14: no card, no section; Mon 4 Jan was built empty);
+ *  - a day section without a card fails (owner 2026-11-14: no card, no section; Mon 4 Jan was built empty); a closures line from the
+ *    grid (data-hp-closed-line, owner 2026-11-21: 25 Dec "St Enoch closed · No trains") counts as data;
  *  - the same card (title and value) with different status pills on different days fails (owner 2026-11-14: one fact, one marking);
  *  - the same title at the same venue (data-hp-venue, else the row's place) twice in one day section or twice in the season list fails (owner 2026-11-15:
  *    several performances are one series card);
@@ -54,7 +55,7 @@ export function checkSeasonPage(html, url, day) {
     if (!/^https?:\/\//.test(attr(tag, 'data-source') ?? '')) bad.push(`${url}: an item without a source link (${tag.slice(0, 80)})`);
   }
   for (const [, tag, body] of html.matchAll(/(<section\b[^>]*class="hs-day\b[^"]*"[^>]*>)([\s\S]*?)<\/section>/g)) {
-    if (!/<li\b[^>]*class="[^"]*\b(?:tc-card|pl__li)\b/.test(body)) bad.push(`${url}: the day ${attr(tag, 'data-hp-day')} has no card`);
+    if (!/<li\b[^>]*class="[^"]*\b(?:tc-card|pl__li)\b/.test(body) && !/\sdata-hp-closed-line\b/.test(body)) bad.push(`${url}: the day ${attr(tag, 'data-hp-day')} has no card`);
   }
   // The same card (place and value) carries the same status pill on every day it is shown.
   const text = (body, cls) => body.match(new RegExp(`class="${cls}\\b[^"]*"[^>]*>([^<]*)<`))?.[1].trim() ?? '';

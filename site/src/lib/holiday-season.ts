@@ -118,14 +118,15 @@ export function factsOn(page: HolidayPageData, date: string): ConfirmedFact[] {
   return page.facts.filter((f): f is ConfirmedFact => f.status === 'confirmed' && f.section !== 'hours' && !!f.on?.includes(date));
 }
 
-/** The day sections to build: the days still to come that have at least one event card. No card, no section and no day chip
- *  (owner 2026-11-14, Mon 4 Jan); the day comes back by itself once a row for it exists. Closures are not day cards since
- *  2026-11-21 (owner: they moved to the closures grid, lib/holiday-view.ts seasonClosureGrid). */
-export function daysWithCards(page: HolidayPageData, events: ConfirmedEvent[], today: string): (SeasonDay & { events: ConfirmedEvent[] })[] {
+/** The day sections to build: the days still to come that have an event card, or (every season day has a holiday name) a
+ *  closures line from the grid (`hasClosures`, owner 2026-11-21: 25 Dec and 1 Jan keep their section with "St Enoch closed · No
+ *  trains"; that is data, not an empty state). Nothing at all, no section and no day chip (owner 2026-11-14, Mon 4 Jan); the day
+ *  comes back by itself once a row for it exists. Closures are not day cards since 2026-11-21 (lib/holiday-view.ts seasonClosureGrid). */
+export function daysWithCards(page: HolidayPageData, events: ConfirmedEvent[], today: string, hasClosures: (date: string) => boolean = () => false): (SeasonDay & { events: ConfirmedEvent[] })[] {
   if (!page.season) return [];
   return upcomingDays(page.season.days, today)
     .map((d) => ({ ...d, events: eventsOn(events, d.date) }))
-    .filter((d) => d.events.length > 0);
+    .filter((d) => d.events.length > 0 || hasClosures(d.date));
 }
 
 const byStart = (a: ConfirmedEvent, b: ConfirmedEvent) => (a.date + (a.startTime ?? '')).localeCompare(b.date + (b.startTime ?? ''));

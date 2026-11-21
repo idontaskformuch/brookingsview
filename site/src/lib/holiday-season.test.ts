@@ -8,6 +8,7 @@ import { holidayPageDef } from '../config/holiday-pages/calendar';
 import {
   daysWithCards, eventPopDays, eventsOn, hoursRowsMissingRunStart, factsOn, lastSeasonBankHoliday, seasonBankHolidays, seasonDays, seasonEvents, seasonHero, upcomingDays,
 } from './holiday-season';
+import { gridClosedLine, seasonClosureGrid } from './holiday-view';
 import { matchRegisterRows, matchTicketmasterEvents } from './holiday-calendar-events';
 import { calendarExcludesFor } from '../config/holiday-pages/registry';
 import type { TicketmasterFeedItem } from './ticketmaster';
@@ -77,8 +78,11 @@ describe('cards per day', () => {
 
   it('no card, no section: Mon 4 Jan is left out while it has none and comes back with one (owner 2026-11-14)', () => {
     const events = page.events.filter((e): e is ConfirmedEvent => e.status === 'confirmed');
-    // Since 2026-11-21 closures are in the grid, not day cards: only days with a one-day event have a section (Toyland, 24 Dec).
+    // Since 2026-11-21 closures are in the grid, not day cards: a day has a section with a one-day event (Toyland, 24 Dec) or a
+    // closures line from the grid (25 Dec, 1 Jan: owner 2026-11-21). 26, 28, 31 Dec, 2 and 4 Jan have neither in the config data.
     expect(daysWithCards(page, events, '2026-11-14').map((d) => d.anchor)).toEqual(['dec-24']);
+    const grid = seasonClosureGrid(page);
+    expect(daysWithCards(page, events, '2026-11-14', (date) => gridClosedLine(grid, date) !== null).map((d) => d.anchor)).toEqual(['dec-24', 'dec-25', 'jan-01']);
     // The real Toyland row with one changed field: date 2027-01-04 (it is 2026-12-24 in the data).
     const toyland = events.find((e) => e.name === 'The McDougalls: Christmas in Toyland')!;
     const moved = [...events, { ...toyland, date: '2027-01-04' }];

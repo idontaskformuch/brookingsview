@@ -108,7 +108,7 @@ export function uvBand(uv: number): string {
 }
 
 /** The hero's label when it shows the current hour (set in the browser only). A forecast, not a measurement: About this page says so. */
-export const HERO_NOW_LABEL = 'Forecast now';
+export const HERO_NOW_LABEL = 'Now';
 
 // ---- view types ----
 export interface HeroView {
@@ -187,6 +187,26 @@ export function rainInsight(hours: (Pick<WxPoint, 'pop' | 'short'> & { start: st
   return flip === -1 ? `${noun} for the next ${hours.length} hours` : `${noun} until ${when(hours[flip])}`;
 }
 
+/** The summary never contradicts the hero (owner 2026-11-21, Brookings: "Slight Chance Light Rain" over "Dry for the next 24 hours").
+ *  "Dry for the next N hours" stands only when no hour has a chance of precipitation of SMALL_CHANCE_POP or more AND the hero's
+ *  conditions name no precipitation. Otherwise "Small chance of rain, up to 22%": the highest hour's chance, the word from the
+ *  hero's conditions (else from that hour's), rain/snow/showers/sleet. With no chance given at all the line is left out. */
+export const SMALL_CHANCE_POP = 15;
+const PRECIP = /rain|shower|drizzle|snow|sleet|flurr|thunder|storm/i;
+export function precipWord(text: string | null | undefined): string | null {
+  if (!text || !PRECIP.test(text)) return null;
+  return /snow|flurr/i.test(text) ? 'snow' : /sleet/i.test(text) ? 'sleet' : /shower/i.test(text) ? 'showers' : 'rain';
+}
+export function reconcileDry(line: string | null, hours: Pick<WxPoint, 'pop' | 'short'>[], heroConditions: string | null): string | null {
+  if (!line || !line.startsWith('Dry for the next')) return line;
+  const pops = hours.map((h) => (isNum(h.pop) ? h.pop : null));
+  const max = Math.max(-1, ...pops.filter(isNum));
+  if (max < SMALL_CHANCE_POP && !precipWord(heroConditions)) return line;
+  if (max <= 0) return null;
+  const word = precipWord(heroConditions) ?? precipWord(hours[pops.indexOf(max)]?.short) ?? 'rain';
+  return `Small chance of ${word}, up to ${max}%`;
+}
+
 // ---- the model ----
 export function buildWeatherView(input: WxInput, env: WeatherEnv): WeatherView {
   const { now, tz, unit } = env;
@@ -261,7 +281,7 @@ export function buildWeatherView(input: WxInput, env: WeatherEnv): WeatherView {
 
   // insights
   const insights: Insight[] = [];
-  const rain = covers ? rainInsight(hours, env) : null;
+  const rain = covers ? reconcileDry(rainInsight(hours, env), hours, hero?.conditions ?? null) : null;
   if (rain) insights.push({ id: 'rain', icon: rain.startsWith('Dry') ? 'sun' : 'rain', text: rain });
   const step = TEMP_DIFF[unit];
   const todayHigh = todayRow?.high ?? null;
