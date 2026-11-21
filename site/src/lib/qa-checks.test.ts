@@ -327,7 +327,7 @@ describe('old event row markup vs the design system EventRow (Fas 4, 2026-11-21)
     const doc = parse(readFileSync(new URL(dir + f, import.meta.url), 'utf8'));
     // ultrahtml takes one selector at a time; the quoted attribute in .tc-cat:not([data-bucket="late"]) is unquoted for it (same meaning)
     const hits = sel.split(/,\s*/).flatMap((one) => querySelectorAll(doc, one.replace(/="([^"]*)"/g, '=$1')));
-    const eventBigTiles = hits.map((n: { attributes: Record<string, string> }) => `old event list markup (.${n.attributes.class.split(/\s+/)[0]}) where the date-tile list belongs`);
+    const eventBigTiles = hits.map((n) => `old event list markup (.${(n as { attributes: Record<string, string> }).attributes.class.split(/\s+/)[0]}) where the date-tile list belongs`);
     return (checkPage({ ...base, eventBigTiles }, 'glasgow', compiled) as { check: string }[]).map((x) => x.check);
   };
   it('reads the selector from the probe', () => expect(sel).toMatch(/\.ev-card/));
