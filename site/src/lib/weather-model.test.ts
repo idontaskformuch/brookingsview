@@ -53,7 +53,17 @@ describe('hero: the forecast for the current hour, labelled', () => {
   const input: WxInput = { periods: WEEK, hourly: hourly(H0, 24, (i) => ({ temp: 48 + i, feels: i === 0 ? 41 : 49 + i })), fetchedAt: '2026-11-05T21:05:00Z' };
   it('uses the hourly point that covers now, in the city unit', () => {
     const v = buildWeatherView(input, env());
-    expect(v.hero).toMatchObject({ label: 'Forecast for 2pm', value: 48, unit: 'F', conditions: 'Mostly Cloudy', icon: 'cloud', high: 54, low: 31 });
+    expect(v.hero).toMatchObject({ label: 'Forecast now', value: 48, unit: 'F', conditions: 'Mostly Cloudy', icon: 'cloud', high: 54, low: 31 });
+  });
+  it("the build names no hour (owner 2026-11-20): hero = today's high/low and conditions, no hour marked current, no time-bound rain line", () => {
+    const v = buildWeatherView(input, env({ atBuild: true }));
+    expect(v.hero).toMatchObject({ label: 'Today’s high', value: 54, high: 54, low: 31, conditions: 'Mostly Cloudy' });
+    expect(v.hero?.label).not.toMatch(/\d/);
+    expect(v.hours.some((h) => h.current)).toBe(false);
+    expect(v.hours.length).toBeGreaterThan(0);
+    expect(v.insights.find((i) => i.id === 'rain')).toBeUndefined();
+    // The same input in the browser: the hour is back.
+    expect(buildWeatherView(input, env()).hours[0].current).toBe(true);
   });
   it('feels-like only when it differs by 2 or more degrees', () => {
     expect(buildWeatherView(input, env()).hero?.feels).toBe(41);

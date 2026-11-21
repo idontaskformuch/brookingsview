@@ -85,7 +85,7 @@ describe.skipIf(!browser)('live weather in a real browser', { timeout: 30_000 },
   it('rewrites the sign strip and the whole answer block (hero for this hour, hourly strip, day rows) from the answer', async () => {
     const r = await run('ok');
     expect(r.sign).toBe('High 55°F sunny');
-    expect(r.label).toEqual(['Forecast for 1 PM']);   // 13:30 in Chicago: the 18:00Z point covers now
+    expect(r.label).toEqual(['Forecast now']);   // 13:30 in Chicago: the 18:00Z point covers now (hero 43°)
     expect(r.hero).toEqual(['43°']);
     expect(r.hours).toEqual(['1 PM', '2 PM', '3 PM']);
     expect(r.current).toEqual(['1 PM']);
@@ -102,6 +102,19 @@ describe.skipIf(!browser)('live weather in a real browser', { timeout: 30_000 },
       expect(out.label, r).toEqual(['old']);
       expect(out.hours, r).toEqual([]);
     }
+  });
+  it('redrawFromPage: the forecast built into the page is redrawn with the browser clock, no request (owner 2026-11-20: the build names no hour)', async () => {
+    const page = await browser!.newPage();
+    const withData = `${html}<script type="application/json" data-weather-data>${JSON.stringify(answer)}</script>`;
+    await page.setContent(`<!doctype html><html lang="en" data-timezone="America/Chicago"><body>${withData}</body></html>`);
+    await page.addScriptTag({ content: bundle });
+    const out = await page.evaluate((nowIso) => {
+      (window as any).LW.redrawFromPage(document, new Date(nowIso));
+      const q = (s: string) => Array.from(document.querySelectorAll(s)).map((e) => e.textContent);
+      return { label: q('.ui-hero__label'), hero: q('.ui-hero__value > span:first-child'), current: q('.ui-hr.is-current .ui-hr__time') };
+    }, NOW.toISOString());
+    await page.close();
+    expect(out).toEqual({ label: ['Forecast now'], hero: ['43°'], current: ['1 PM'] });
   });
   // Round 4 (2026-11-02): CityStatus' Weather/Worker Pulse rows and the heat box followed only the build's forecast.
   const statusHtml = `<section class="city-status"><ul>

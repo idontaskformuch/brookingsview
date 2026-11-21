@@ -15,7 +15,7 @@ export interface WeatherConfig {
   yesterday?: { for: string; value: number } | null;
 }
 
-export function weatherEnv(cfg: WeatherConfig, now: Date): WeatherEnv {
+export function weatherEnv(cfg: WeatherConfig, now: Date, atBuild = false): WeatherEnv {
   const y = localYMD(now, cfg.tz);
   const today = `${y.y}-${String(y.m).padStart(2, '0')}-${String(y.d).padStart(2, '0')}`;
   return {
@@ -23,11 +23,13 @@ export function weatherEnv(cfg: WeatherConfig, now: Date): WeatherEnv {
     hourLabel: (d) => hourLabel(d.toISOString(), cfg.tz, cfg.country),
     clock: (d) => clockLabel(d, cfg.tz, cfg.country),
     yesterdayHigh: cfg.yesterday && cfg.yesterday.for === today ? cfg.yesterday.value : null,
+    atBuild,
   };
 }
 
-export function viewFor(input: WxInput, cfg: WeatherConfig, now: Date): WeatherView {
-  return buildWeatherView(input, weatherEnv(cfg, now));
+/** `atBuild`: the page's own build (no hour named, see WeatherEnv.atBuild); the browser calls it without. */
+export function viewFor(input: WxInput, cfg: WeatherConfig, now: Date, atBuild = false): WeatherView {
+  return buildWeatherView(input, weatherEnv(cfg, now, atBuild));
 }
 
 /** The answer block. '' when there is nothing to show (the page then prints its own empty state). */

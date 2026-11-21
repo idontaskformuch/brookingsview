@@ -85,6 +85,18 @@ function redrawRegion(doc: Document, region: HTMLElement, w: WeatherAnswer, now:
   }
 }
 
+/** /weather/ in the browser (owner 2026-11-20): the build names no hour, so the answer block is redrawn at once from the forecast the
+ *  page carries (data-weather-data, the build's own snapshot) with the browser's clock: the hero becomes the current hour and the
+ *  strip marks it. Also on every refresh tick, so the hour moves on while /api/weather is down. No embedded data: nothing changes. */
+export function redrawFromPage(doc: Document, now: Date = new Date()): void {
+  const region = doc.querySelector<HTMLElement>('[data-weather-region]');
+  const data = doc.querySelector('[data-weather-data]');
+  if (!region || !data) return;
+  let w: WeatherAnswer;
+  try { w = JSON.parse(data.textContent || ''); } catch { return; }
+  if (w && Array.isArray(w.periods) && w.periods.length) redrawRegion(doc, region, w, now);
+}
+
 export async function refreshLiveWeather(doc: Document, fetcher: typeof fetch = fetch, now: Date = new Date()): Promise<void> {
   if (!doc.querySelector('[data-weather-sign], [data-weather-region], [data-weather-today], [data-status-module="weather"], [data-status-module="worker_pulse"], [data-heat-advisory]')) return;
   const tz = doc.documentElement.dataset.timezone || 'America/Chicago';

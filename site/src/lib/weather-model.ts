@@ -45,6 +45,10 @@ export interface WeatherEnv {
   clock: (d: Date) => string;
   /** The high that yesterday's stored forecast gave for yesterday, in `unit`; null/undefined when there is none. */
   yesterdayHigh?: number | null;
+  /** The build (owner 2026-11-20, Fas 3/4): a static page never names an hour. The hero is today's high/low and conditions, no hour
+   *  in the strip is marked current and the time-bound rain line ("Dry until 3pm") is left out; the browser redraws the block with
+   *  its own clock (components/LiveWeather.astro) and then shows the current hour. */
+  atBuild?: boolean;
 }
 
 // ---- thresholds (each one is tested at its edge) ----
@@ -103,9 +107,12 @@ export function uvBand(uv: number): string {
   return uv < 3 ? 'low' : uv < 6 ? 'moderate' : uv < 8 ? 'high' : uv < 11 ? 'very high' : 'extreme';
 }
 
+/** The hero's label when it shows the current hour (set in the browser only). A forecast, not a measurement: About this page says so. */
+export const HERO_NOW_LABEL = 'Forecast now';
+
 // ---- view types ----
 export interface HeroView {
-  /** "Forecast for 2pm" (the current hour), or the period's own name ("Today") when there is no hourly point for this hour. */
+  /** HERO_NOW_LABEL (the current hour, browser only), else "Today’s high" / "Tonight’s low" (the build, or no hourly point for this hour). */
   label: string;
   value: number;
   unit: 'F' | 'C';
@@ -237,7 +244,7 @@ export function buildWeatherView(input: WxInput, env: WeatherEnv): WeatherView {
       short: h.short ?? '', pop: isNum(h.pop) ? h.pop : null, current: false,
     }));
   const first = hours[0];
-  const covers = first && new Date(first.start).getTime() <= now.getTime();
+  const covers = !env.atBuild && first && new Date(first.start).getTime() <= now.getTime();
   if (covers) first.current = true;
 
   // hero: the forecast for this hour (labelled), else the first period that is not over
@@ -246,7 +253,7 @@ export function buildWeatherView(input: WxInput, env: WeatherEnv): WeatherView {
   if (covers) {
     const raw = (input.hourly ?? []).find((h) => h.start === first.start)!;
     const feels = isNum(raw.feels) && Math.abs(raw.feels - first.temp) >= FEELS_DIFF ? raw.feels : null;
-    hero = { label: `Forecast for ${first.time}`, value: first.temp, unit, conditions: first.short || null, icon: first.icon, feels, high: todayRow?.high ?? null, low: todayRow?.low ?? null };
+    hero = { label: HERO_NOW_LABEL, value: first.temp, unit, conditions: first.short || null, icon: first.icon, feels, high: todayRow?.high ?? null, low: todayRow?.low ?? null };
   } else if (todayRow && (todayRow.high !== null || todayRow.low !== null)) {
     const value = todayRow.high ?? (todayRow.low as number);
     hero = { label: todayRow.high !== null ? 'Today’s high' : 'Tonight’s low', value, unit, conditions: todayRow.short || null, icon: todayRow.icon, feels: null, high: todayRow.high, low: todayRow.low };

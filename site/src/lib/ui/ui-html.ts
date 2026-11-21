@@ -64,7 +64,6 @@ export interface HourCell { time: string; temp: number; icon?: IconName | null; 
 export const HOUR_COL = 56;
 const PLOT_H = 44;
 const RAIN_H = 26;
-const POP_LABEL_MIN = 10;
 const WET = 50;
 const round = (n: number) => Math.round(n * 10) / 10;
 
@@ -87,18 +86,20 @@ export function hourStripHtml(hours: HourCell[], unit: TempUnit, label = 'Next 2
   const lo = Math.min(...temps), hi = Math.max(...temps), pad = 6;
   const y = (t: number) => (hi === lo ? PLOT_H / 2 : round(pad + ((hi - t) / (hi - lo)) * (PLOT_H - 2 * pad)));
   const pts = hours.map((h, i) => ({ x: i * HOUR_COL + HOUR_COL / 2, y: y(h.temp) }));
-  const anyPop = hours.some((h) => typeof h.pop === 'number');
+  // Precipitation only where it is above 0 % (owner 2026-11-20, Fas 4 Weather): a 0 % hour has no bar and no label, and a strip
+  // with no such hour has no rain row at all (it was a row of empty dashes).
+  const anyPop = hours.some((h) => typeof h.pop === 'number' && h.pop > 0);
   const w = hours.length * HOUR_COL;
   const dots = hours.map((h, i) => `<circle cx="${pts[i].x}" cy="${pts[i].y}" r="3" fill="var(--temp-${tempStop(h.temp, unit)})"/>`).join('');
   const cols = hours.map((h) => {
-    const pop = typeof h.pop === 'number' ? h.pop : null;
-    const bar = pop === null ? '' : `<i class="ui-hr__bar${pop >= WET ? ' is-wet' : ''}" style="height:${pop > 0 ? Math.max(2, Math.round((pop / 100) * RAIN_H)) : 0}px"></i>`;
+    const pop = typeof h.pop === 'number' && h.pop > 0 ? h.pop : null;
+    const bar = pop === null ? '' : `<i class="ui-hr__bar${pop >= WET ? ' is-wet' : ''}" style="height:${Math.max(2, Math.round((pop / 100) * RAIN_H))}px"></i>`;
     return `<li class="ui-hr${h.current ? ' is-current' : ''}"${h.current ? ' aria-current="time"' : ''}>`
       + `<span class="ui-hr__time">${esc(h.time)}</span>`
       + `<span class="ui-hr__icon">${h.icon ? iconHtml(h.icon, 24, h.short || undefined) : ''}</span>`
       + `<span class="ui-hr__temp">${Math.round(h.temp)}°</span>`
       + '<span class="ui-hr__plot"></span>'
-      + (anyPop ? `<span class="ui-hr__rain" role="img" aria-label="${pop === null ? 'No rain chance given' : `${pop}% chance of precipitation`}">${bar}</span><span class="ui-hr__pop">${pop !== null && pop >= POP_LABEL_MIN ? `${pop}%` : ''}</span>` : '')
+      + (anyPop ? `<span class="ui-hr__rain" role="img" aria-label="${pop === null ? 'No precipitation expected' : `${pop}% chance of precipitation`}">${bar}</span><span class="ui-hr__pop">${pop !== null ? `${pop}%` : ''}</span>` : '')
       + '</li>';
   }).join('');
   return `<div class="ui-hours" role="region" tabindex="0" aria-label="${esc(label)} (scrollable)"><div class="ui-hours__inner" style="width:${w}px">`

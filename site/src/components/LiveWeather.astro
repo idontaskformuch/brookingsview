@@ -1,9 +1,12 @@
 ---
 /** Newer forecast from GET /api/weather (see lib/live-weather.ts). No markup of its own: it rewrites the sign strip and, on /weather/, the
- *  hourly strip and day list that the build already rendered. With no JavaScript, or the API down, the built forecast stays. */
+ *  hourly strip and day list that the build already rendered. On /weather/ the block is first redrawn from the page's own forecast with the
+ *  browser's clock (the build names no hour). With no JavaScript the built block (today's high/low) stays. */
 ---
 <script>
-  import { refreshLiveWeather } from '../lib/live-weather';
+  import { redrawFromPage, refreshLiveWeather } from '../lib/live-weather';
+  // /weather/: the current hour from the forecast built into the page first, then a newer forecast if the API has one.
+  redrawFromPage(document);
   refreshLiveWeather(document);
-  setInterval(() => refreshLiveWeather(document), 15 * 60_000);
+  setInterval(() => { redrawFromPage(document); refreshLiveWeather(document); }, 15 * 60_000);
 </script>

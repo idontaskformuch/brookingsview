@@ -41,7 +41,11 @@ const config: WeatherConfig = {
   unit: profile.temperatureUnit, lat: siteConfig.townCenter.lat, lon: siteConfig.townCenter.lon, tz, country: siteConfig.country,
   yesterday: yesterdayHigh === null ? null : { for: `${today.y}-${String(today.m).padStart(2, '0')}-${String(today.d).padStart(2, '0')}`, value: yesterdayHigh },
 };
-const view = viewFor({ periods: snapshot.periods, hourly: snapshot.hourly, fetchedAt: snapshot.fetchedAt }, config, buildNow);
+// The build names no hour (owner 2026-11-20): today's high/low in the hero, no current hour in the strip. The browser redraws the
+// block from `pageData` with its own clock (lib/live-weather.ts redrawFromPage). Hours from an hour before the build to three days on.
+const view = viewFor({ periods: snapshot.periods, hourly: snapshot.hourly, fetchedAt: snapshot.fetchedAt }, config, buildNow, true);
+const inWindow = (start: string | null) => !!start && Date.parse(start) >= buildNow.getTime() - 3_600_000 && Date.parse(start) < buildNow.getTime() + 72 * 3_600_000;
+const pageData = { periods: snapshot.periods, hourly: (snapshot.hourly ?? []).filter((h) => inWindow(h.start)), fetched_at: snapshot.fetchedAt ?? null };
 const region = weatherRegionHtml(view);
 const authority = profile.weather.authority;
 const official = profile.weather.officialLink;
@@ -63,6 +67,7 @@ const official = profile.weather.officialLink;
     {region ? <Fragment set:html={region} /> : <EmptyState href={authority.url} linkLabel={`${authority.name} forecast`}>The forecast is not available right now.</EmptyState>}
   </div>
   <script type="application/json" data-weather-config set:html={JSON.stringify(config)}></script>
+  <script type="application/json" data-weather-data set:html={JSON.stringify(pageData).replace(/</g, '\\u003c')}></script>
 
   {siteConfig.hasHeatAdvisory && alerts.some((a) => /heat/i.test(a.title)) && (
     <p class="wx-note">Active heat alert: see <a href="/workplace-watch/">Worker Pulse</a> for outdoor and loading-dock work risk guidance.</p>
@@ -75,7 +80,7 @@ const official = profile.weather.officialLink;
   <AboutThisPage slot="about" sources={[{ name: `${authority.name} forecast`, href: authority.url }]}>
     <p>The forecast for {siteConfig.cityName}: hour by hour for the next day and day by day for the week{siteConfig.hasMetOfficeWarnings ? ', with any Met Office weather warning in force shown first' : ', plus any active weather alerts'}.</p>
     <p>Use the hourly view to time a commute or an outdoor plan, and open an alert for what it means and how long it lasts. Forecasts change: the {authority.name} page is the authority.</p>
-    <p>The large temperature is the forecast for the current hour, not a measurement. Sunrise and sunset are calculated from the location. Chance of precipitation, feels-like and gusts appear when the forecast gives them.</p>
+    <p>The large temperature is the forecast for the current hour, not a measurement (without JavaScript, today's forecast high and low). Sunrise and sunset are calculated from the location. Chance of precipitation, feels-like and gusts appear when the forecast gives them.</p>
     {hubBacklink && <p>Looking for a specific address instead? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</p>}
   </AboutThisPage>
 </BaseLayout>

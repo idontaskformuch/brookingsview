@@ -68,13 +68,20 @@ describe('hourStripHtml', () => {
     expect(h).toContain('width="168"');
     expect(h).toContain('aria-label="Next 24 hours (scrollable)"');
   });
-  it('rain bars and percentages only when the forecast gives chance of precipitation; wet hours are marked, tiny chances get no label', () => {
+  it('rain bars and percentages only above 0 %; wet hours are marked; no hour above 0 %, no rain row (owner 2026-11-20: a row of empty dashes)', () => {
     const h = hourStripHtml(hrs, 'F');
     expect(h).toContain('is-wet');
     expect(h).toContain('>70%<');
-    expect(h).not.toContain('>5%<');
+    expect(h).toContain('>5%<');
     const none = hourStripHtml(hrs.map((x) => ({ ...x, pop: null })), 'F');
     expect(none).not.toContain('ui-hr__rain');
+    // Before the fix a 0 % strip printed a rain cell per hour (an empty bar each): the row of dashes.
+    const dry = hourStripHtml(hrs.map((x) => ({ ...x, pop: 0 })), 'F');
+    expect(dry).not.toContain('ui-hr__rain');
+    expect(dry).not.toContain('ui-hr__bar');
+    const one = hourStripHtml(hrs.map((x, i) => ({ ...x, pop: i === 1 ? 20 : 0 })), 'F');
+    expect((one.match(/ui-hr__bar/g) ?? []).length).toBe(1);
+    expect(one).not.toContain('>0%<');
   });
   it('a flat temperature gives a flat curve, a rising one slopes upwards (smaller y = higher)', () => {
     expect(curvePath([{ x: 28, y: 22 }, { x: 84, y: 22 }])).toBe('M28 22 L84 22');

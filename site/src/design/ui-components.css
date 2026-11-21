@@ -8,7 +8,8 @@
   line-height: 0.95; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .ui-hero--accent .ui-hero__value { color: var(--accent); }
 .ui-hero__unit { font-size: 0.4em; font-weight: var(--ui-primary-weight); letter-spacing: 0; color: var(--ink-soft); }
-.ui-hero__icon { margin-left: auto; align-self: center; color: var(--accent); line-height: 0; }
+/* Next to the number, not pushed to the right edge; neutral ink (owner spec Fas 4 Weather). */
+.ui-hero__icon { margin-left: var(--ui-2); align-self: center; color: var(--ink-soft); line-height: 0; }
 .ui-hero__sub { margin: var(--ui-2) 0 0; font-size: var(--ui-primary); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .ui-hero__meta { margin: var(--ui-1) 0 0; font-size: var(--ui-meta); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 
