@@ -31,6 +31,7 @@ from pathlib import Path
 
 from db.db import get_conn
 from qa.report import report
+from scrapers.alert_state import reconcile
 from scrapers.alerts import send_alert
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -202,6 +203,18 @@ def _alert(msg: str, towns: list[str]) -> None:
     send_alert(msg, title=f"[{','.join(towns)}] stale data jobs")
 
 
+def notify(conn, findings: list[dict], only_checks: set[str]) -> None:
+    """One alert when a problem appears, one reminder a day while it lasts, one "resolved" when it is gone (scrapers/alert_state.py), per check.
+    Falls back to the old alert on every run if the state cannot be kept, so an alert is never lost."""
+    for check in sorted(only_checks):
+        mine = [f for f in findings if f["check"] == check]
+        active = {f"freshness|{check}|{f['town']}|{f['path']}": f"{f['town']}: {f['message']}" for f in mine}
+        towns = sorted({f["town"] for f in mine})
+        title = f"[{','.join(towns)}] {check}" if towns else check
+        if reconcile(conn, f"freshness|{check}|", active, title=title) is None and mine:
+            _alert("Stale data jobs:\n  " + "\n  ".join(f"{f['check']} {f['town']}: {f['message']}" for f in mine), towns)
+
+
 def _run_url() -> str:
     repo, run = os.environ.get("GITHUB_REPOSITORY"), os.environ.get("GITHUB_RUN_ID")
     return f"https://github.com/{repo}/actions/runs/{run}" if repo and run else ""
@@ -215,18 +228,15 @@ def main() -> int:
     now = datetime.now(timezone.utc)
     with get_conn() as conn:
         findings, lines = collect(conn, now, only, now.date())
+        only_checks = {CHECK_ID[k] for k in only}
+        notify(conn, findings, only_checks)
     print("\n".join(lines))
-    only_checks = {CHECK_ID[k] for k in only}
     try:  # always called (also with no findings) so a fixed item closes its own issue; only this script's own check ids are in scope
         report(findings, report_only=False, scope_towns=set(ALL_TOWNS) | {TOKEN_TOWN}, clean_to_close=2, run_url=_run_url(),
                scope_checks=lambda c: c in only_checks)
     except Exception as exc:  # pragma: no cover -- the red X below must never depend on GitHub's API
         print(f"  [freshness] issue reporting failed: {exc}", file=sys.stderr)
-    if findings:
-        _alert("Stale data jobs:\n  " + "\n  ".join(f"{f['check']} {f['town']}: {f['message']}" for f in findings),
-               sorted({f["town"] for f in findings}))
-        return 1
-    return 0
+    return 1 if findings else 0
 
 
 if __name__ == "__main__":

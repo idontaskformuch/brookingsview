@@ -27,6 +27,7 @@ from datetime import datetime, timedelta, timezone
 
 from db.db import get_conn
 from qa.report import report
+from scrapers.alert_state import reconcile
 from scrapers.alerts import send_alert
 
 MAX_HOURS = 26  # scrape runs twice a day (11:00 and 23:00 UTC): one missed slot is 13 h late, two missed is 26 h
@@ -80,10 +81,17 @@ def main() -> int:
                run_url=_run_url(), scope_checks=lambda c: c == "ops.scrape-liveness")
     except Exception as exc:  # pragma: no cover -- the red X below must never depend on GitHub's API
         print(f"  [liveness] issue reporting failed: {exc}", file=sys.stderr)
+    sent: dict | None = {}
+    with get_conn() as conn:  # one alert when it appears, a daily reminder, one "resolved" (scrapers/alert_state.py); per town, so a town's run never resolves another's
+        for town in args.towns:
+            active = {f"liveness|{f['town']}": f"[{f['town']}] {f['message']}" for f in findings if f["town"] == town}
+            if reconcile(conn, f"liveness|{town}", active, title=f"[{town}] no recent scrape", priority="high") is None:
+                sent = None
     if stale:
-        _alert("No recent successful scrape:\n  " + "\n  ".join(stale)
-               + "\nCheck the Cloudflare cron-dispatcher Worker and its GITHUB_TOKEN expiry.",
-               [f["town"] for f in findings])
+        if sent is None:  # state unavailable: the old alert on every run, never a lost one
+            _alert("No recent successful scrape:\n  " + "\n  ".join(stale)
+                   + "\nCheck the Cloudflare cron-dispatcher Worker and its GITHUB_TOKEN expiry.",
+                   [f["town"] for f in findings])
         return 1
     return 0
 
