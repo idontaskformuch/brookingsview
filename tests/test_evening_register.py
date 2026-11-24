@@ -518,3 +518,10 @@ def test_a_heading_whose_weekday_does_not_fit_its_date_is_ignored():
     # "Saturday November 15th": the one changed field is the weekday (Nov 15 2026 is a Sunday)
     assert er._heading_date("Saturday November 15th", NOV13) is None
     assert er._heading_date("Sunday November 15th", NOV13) == date(2026, 11, 15)
+
+
+def test_extraction_token_limit_is_above_what_the_longest_page_needs():
+    """Oran Mor 2026-11-24: stop_reason max_tokens at 2500 with a 6 784-character reply cut the JSON in half, three runs in a row."""
+    assert refresh.MAX_TOKENS >= 8000
+    import inspect
+    assert "max_tokens=MAX_TOKENS" in inspect.getsource(refresh)
