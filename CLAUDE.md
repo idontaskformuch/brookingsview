@@ -81,6 +81,8 @@
 17. dist-kopior i scratch_tmp/ tas bort av samma session som skapade dem,
     senast innan sessionen avslutas.
 
+18. Före varje commit som rör site/: kör astro check och standard-layout-testet.
+
 ## Redaktionell grundregel
 
 Varje sida ska hjälpa en invånare att förstå eller göra något. Listor och
