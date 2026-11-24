@@ -100,7 +100,10 @@ def test_paused_sources_are_left_out_of_the_freshness_query():
     res = check_source_staleness(conn, "moreno_valley_ca", "events", _moreno_events_cfg())
     sql, params = conn.log[0]
     assert "source <> ALL" in sql and params == ("moreno_valley_ca", ["city_events", "library"])
-    assert res.is_stale  # farm_house_collective is the only active source and it is 10 days quiet: that is still reported
+    # farm_house_collective is the only active source and posts rarely: the Moreno events block has staleness_days 21 (owner 2026-11-24)
+    assert res.threshold_days == 21 and not res.is_stale
+    stale = check_source_staleness(_Conn(datetime.now(timezone.utc) - timedelta(days=25)), "moreno_valley_ca", "events", _moreno_events_cfg())
+    assert stale.is_stale
 
 
 def test_a_block_with_every_source_paused_is_not_checked_and_never_stale():

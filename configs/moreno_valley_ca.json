@@ -167,6 +167,8 @@
     "events": {
       "type": "multi",
       "enabled": true,
+      "staleness_days": 21,
+      "_staleness_note": "2026-11-24 (owner): Tockify city_events + library are paused (permission), so farm_house_collective is the only active source and it posts rarely: 21 days, not the default 7.",
       "sources": [
         {
           "name": "city_events",
