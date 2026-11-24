@@ -20,7 +20,7 @@ import { getSignData } from '../lib/db';
 import { getTodayEntries } from '../lib/today-instants';
 import { signGameText } from '../lib/sign-game';
 import { siteConfig, ALL_SITES } from '../lib/site-config';
-import { ga4IdProblem, ga4NeedsOptIn } from '../lib/ga4';
+import { ga4GuardProblem, ga4NeedsOptIn } from '../lib/ga4';
 import { fitDescription, requireDescription } from '../lib/meta-description';
 import { placeLabel, countryProfile } from '../lib/country-profile';
 import { footerCredits } from '../lib/footer-credits';
@@ -108,10 +108,11 @@ const buildSha = import.meta.env.GITHUB_SHA ?? 'local';
 // ISO time of this build: scripts/check_deployed_content.py requires it to be recent. It exists on every page of every town,
 // whatever content they have (no dependence on story links or events).
 const builtAt = new Date().toISOString();
-// GA4: a placeholder or malformed id must never be built into a production page (owner 2026-11-24). UK towns load it only after "Accept".
-const ga4Problem = import.meta.env.PROD ? ga4IdProblem(siteConfig.ga4MeasurementId) : null;
-if (ga4Problem) throw new Error(`${siteConfig.townId}: ga4MeasurementId refused: ${ga4Problem}`);
+// GA4 (owner 2026-11-24): no id = no script and (in the UK) no banner, never a build error. The build stops only for a UK town with an id
+// whose country profile is not in opt-in mode. Opt-in towns load GA4 only after "Accept".
 const ga4OptIn = ga4NeedsOptIn(siteConfig.country);
+const ga4Problem = ga4GuardProblem(siteConfig.country, siteConfig.ga4MeasurementId, ga4OptIn);
+if (ga4Problem) throw new Error(`${siteConfig.townId}: ${ga4Problem}`);
 const siblingSiteUrls = ALL_SITES.filter((s) => s.townId !== siteConfig.townId).map((s) => s.siteUrl);
 const now = new Date();
 const year = now.getFullYear();

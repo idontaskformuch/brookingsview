@@ -16,7 +16,6 @@ import { TOWN_REGISTRY } from './town-registry.mjs';
 import type { NavConfig } from './nav-sections';
 import type { TodayPageConfig } from './today-page';
 import type { TrafficIndexingRule } from './traffic-verdict';
-import { GA4_PLACEHOLDER } from './ga4';
 import { validatePlaceConfig, type CountryId, type NationId } from './country-profile';
 import type { RestrictionSource } from './restrictions';
 
@@ -866,9 +865,8 @@ const CITIES: Record<string, SiteConfig> = {
     contentTrackRetired: true,
     // Launched 2026-10-28/29 (owner's yes): indexable, sitemap on (noindexSite in town-registry.mjs); thin facility pages keep noindex (lib/noindex.ts THIN_FACILITY_MIN_OWN_WORDS).
     hasMetOfficeWarnings: true,
-    // GA4 (owner 2026-11-24): opt-in for every visitor (BaseLayout loads it only after "Accept"). The build REFUSES to run with this placeholder:
-    // replace it with the real G-ID of Glasgow's own GA4 property (lib/ga4.ts).
-    ga4MeasurementId: GA4_PLACEHOLDER,
+    // GA4 (owner 2026-11-24): no id yet, so no GA4 script and no cookie banner. Add `ga4MeasurementId: 'G-…'` (Glasgow's own property) here:
+    // BaseLayout then loads it for every visitor only after "Accept" (opt-in, lib/ga4.ts), with "Cookie settings" in the footer.
     // What's On (owner 2026-10-28): Ticketmaster GB within 15 miles of the centre; venue tiers in lib/venue-tiers.ts. Mirrors configs/glasgow.json.
     hasWhatsOn: true,
     ticketmaster: { enabled: true, latitude: 55.8642, longitude: -4.2518, radiusMiles: 15, marqueeSize: 6 },

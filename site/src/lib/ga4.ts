@@ -1,15 +1,15 @@
-/** GA4 measurement ids. A town whose property does not exist yet carries GA4_PLACEHOLDER; ga4IdProblem() says why an id may not be built with,
- *  and BaseLayout throws on it, so a placeholder can never reach production (owner 2026-11-24). Real ids are "G-" + 8-12 capital letters/digits. */
-export const GA4_PLACEHOLDER = 'G-PLACEHOLDER';
+/** GA4 consent mode per country (owner 2026-11-24). A town with no ga4MeasurementId renders no GA4 script and no banner of its own, and the
+ *  build carries on. The ONE thing that stops the build: a UK town with an id while its country profile is not in opt-in mode, because then
+ *  GA4 would load before the visitor has agreed (PECR). */
+import { countryProfile, type CountryId } from './country-profile';
 
-export function ga4IdProblem(id: string | undefined): string | null {
-  if (id === undefined) return null; // no GA4 for this town: nothing is rendered
-  if (id === GA4_PLACEHOLDER) return 'it is still the placeholder; put the real G-ID of the town\'s own GA4 property in site-config.ts';
-  if (!/^G-[A-Z0-9]{8,12}$/.test(id)) return `"${id}" is not a GA4 measurement id (G- followed by 8-12 capital letters or digits)`;
-  return null;
+/** Opt-in = GA4 loads only after "Accept" (config/countries/<id>.json legal.consent starts with "opt-in"); otherwise the opt-out gate. */
+export function ga4NeedsOptIn(country: CountryId): boolean {
+  return countryProfile(country).legal.consent.startsWith('opt-in');
 }
 
-/** Towns where analytics needs the visitor's opt-in first (PECR/UK GDPR): GA4 loads only after "Accept". The others keep the opt-out gate. */
-export function ga4NeedsOptIn(country: string): boolean {
-  return country === 'gb';
+/** Why this build must stop, or null. Only gb + an id + no opt-in mode. */
+export function ga4GuardProblem(country: CountryId, id: string | undefined, optIn: boolean): string | null {
+  if (country === 'gb' && id && !optIn) return 'a UK town has a GA4 id but its country profile is not in opt-in mode (GA4 would load before consent, PECR)';
+  return null;
 }

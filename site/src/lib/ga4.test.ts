@@ -1,31 +1,30 @@
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { describe, expect, it } from 'vitest';
-import { GA4_PLACEHOLDER, ga4IdProblem, ga4NeedsOptIn } from './ga4';
+import { ga4GuardProblem, ga4NeedsOptIn } from './ga4';
 
 // GA4 for Glasgow (owner 2026-11-24): opt-in for every visitor, a way to change the choice, a placeholder the build refuses.
 const layout = readFileSync(new URL('../layouts/BaseLayout.astro', import.meta.url), 'utf8');
 const banner = readFileSync(new URL('../components/CookieBanner.astro', import.meta.url), 'utf8');
 const cookiesGb = readFileSync(new URL('../components/legal/gb/CookiesBody.astro', import.meta.url), 'utf8');
 
-describe('ga4IdProblem', () => {
-  it('accepts a real id, ignores an unset one, refuses the placeholder and anything malformed', () => {
-    expect(ga4IdProblem('G-L7JGXKQVNV')).toBeNull(); // Moreno Valley's real id (site-config.ts)
-    expect(ga4IdProblem(undefined)).toBeNull();
-    expect(ga4IdProblem(GA4_PLACEHOLDER)).toMatch(/placeholder/);
-    expect(ga4IdProblem('UA-12345-1')).toMatch(/not a GA4/);
-    expect(ga4IdProblem('G-short')).toMatch(/not a GA4/);
+describe('ga4GuardProblem', () => {
+  it('stops the build only for a UK town with an id that is not in opt-in mode', () => {
+    expect(ga4GuardProblem('gb', 'G-ABCDEFGH12', false)).toMatch(/opt-in/);
+    expect(ga4GuardProblem('gb', 'G-ABCDEFGH12', true)).toBeNull();
+    expect(ga4GuardProblem('gb', undefined, false)).toBeNull(); // no id: nothing rendered, no build error
+    expect(ga4GuardProblem('us', 'G-L7JGXKQVNV', false)).toBeNull(); // Moreno Valley's real id, opt-out as before
   });
-  it('only UK towns need opt-in', () => {
+  it('the opt-in mode comes from the country profile: gb opt-in, us opt-out', () => {
     expect(ga4NeedsOptIn('gb')).toBe(true);
     expect(ga4NeedsOptIn('us')).toBe(false);
   });
 });
 
 describe('BaseLayout wiring', () => {
-  it('throws at build on a placeholder or malformed id, and the opt-in script is separate from the opt-out one', () => {
-    expect(layout).toContain('ga4IdProblem(siteConfig.ga4MeasurementId)');
-    expect(layout).toContain('throw new Error(`${siteConfig.townId}: ga4MeasurementId refused');
+  it('throws only through ga4GuardProblem, and the opt-in script is separate from the opt-out one', () => {
+    expect(layout).toContain('ga4GuardProblem(siteConfig.country, siteConfig.ga4MeasurementId, ga4OptIn)');
+    expect(layout).not.toContain('PLACEHOLDER');
     expect(layout).toContain('import.meta.env.PROD && !ga4OptIn');
     expect(layout).toContain('import.meta.env.PROD && ga4OptIn');
   });
@@ -38,6 +37,11 @@ describe('BaseLayout wiring', () => {
   it('the opt-in banner gives Accept and Decline the same style', () => {
     expect(banner).toContain("optIn ? 'banner__equal' : 'banner__accept'");
     expect(banner).not.toMatch(/\.banner__equal\s*\{/);
+  });
+  it('without an id there is no GA4 script, no footer "Cookie settings" and (UK) no banner', () => {
+    expect(layout).toContain('{siteConfig.ga4MeasurementId && import.meta.env.PROD && !ga4OptIn && (');
+    expect(layout).toContain('{siteConfig.ga4MeasurementId && import.meta.env.PROD && ga4OptIn && (');
+    expect(layout).toContain('{ga4OptIn && siteConfig.ga4MeasurementId && <button');
   });
   it('a UK town without GA4 shows no banner (nothing needs consent)', () => {
     expect(layout).toContain("(siteConfig.country !== 'gb' || !!siteConfig.ga4MeasurementId) && <CookieBanner");
