@@ -37,6 +37,7 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from scrapers.alert_state import reconcile
 from scrapers.alerts import send_alert
 
 # source_key (as used in configs/<town>.json's data_sources) -> (table,
@@ -98,6 +99,17 @@ class StalenessResult:
         return (datetime.now(timezone.utc) - newest).total_seconds() / 86400
 
 
+def paused_names(source_cfg: dict) -> list[str]:
+    """Names of the sub-sources (source_cfg["sources"][]) the owner has paused ("paused": {"since", "reason"}, e.g. waiting for a permission
+    answer, owner 2026-11-24). Their rows say nothing about whether the scraper works, so they are left out of the freshness measure."""
+    return [s["name"] for s in source_cfg.get("sources") or [] if isinstance(s, dict) and s.get("paused")]
+
+
+def all_sources_paused(source_cfg: dict) -> bool:
+    sources = [s for s in source_cfg.get("sources") or [] if isinstance(s, dict)]
+    return bool(sources) and all(s.get("paused") for s in sources)
+
+
 def check_source_staleness(conn, town_id: str, source_key: str, source_cfg: dict) -> StalenessResult | None:
     """None if source_key has no known (table, column) mapping -- nothing
     to check, not a guess. A None `newest` (the table has zero rows for
@@ -107,9 +119,15 @@ def check_source_staleness(conn, town_id: str, source_key: str, source_cfg: dict
         return None
     table, column = spec
     threshold_days = int(source_cfg.get("staleness_days", DEFAULT_STALENESS_DAYS.get(source_key, 7)))
+    if all_sources_paused(source_cfg):
+        return None  # nothing is being fetched on purpose: not stale, just paused (reported by check_all_sources)
+    paused = paused_names(source_cfg) if table == "events" else []  # only the events table has a per-source column
 
     with conn.cursor() as cur:
-        cur.execute(f"SELECT max({column}) FROM {table} WHERE town_id = %s", (town_id,))  # noqa: S608 -- table/column from a fixed internal mapping, never user input
+        if paused:
+            cur.execute(f"SELECT max({column}) FROM {table} WHERE town_id = %s AND source <> ALL(%s)", (town_id, paused))  # noqa: S608 -- fixed internal mapping
+        else:
+            cur.execute(f"SELECT max({column}) FROM {table} WHERE town_id = %s", (town_id,))  # noqa: S608 -- table/column from a fixed internal mapping, never user input
         newest = cur.fetchone()[0]
 
     if newest is None:
@@ -129,6 +147,9 @@ def check_all_sources(conn, cfg: dict) -> list[StalenessResult]:
     for source_key, source_cfg in cfg.get("data_sources", {}).items():
         if not source_cfg.get("enabled", False):
             continue
+        for name in paused_names(source_cfg):
+            p = next(s["paused"] for s in source_cfg["sources"] if s.get("name") == name)
+            print(f"  [staleness] {source_key}/{name}: paused since {p.get('since')} ({p.get('reason')}) -- not checked")
         result = check_source_staleness(conn, town_id, source_key, source_cfg)
         if result is not None:
             results.append(result)
@@ -160,6 +181,9 @@ def report_and_alert(conn, cfg: dict) -> bool:
         age = f"{r.age_days:.1f}d" if r.newest is not None else "no rows"
         print(f"  [staleness] {r.source_key} ({r.table}): {status} -- newest is {age} old "
               f"(threshold {r.threshold_days}d)")
-    if stale:
+    # One alert when it appears, one reminder a day, one "resolved" (scrapers/alert_state.py); the old alert on every run if the state is unavailable.
+    active = {f"staleness|{cfg['town_id']}|{r.source_key}": f"[{r.town_id}] '{r.source_key}' ({r.table}): newest is "
+              + (f"{r.age_days:.1f}d" if r.newest is not None else "no rows at all") + f" old (threshold {r.threshold_days}d)" for r in stale}
+    if reconcile(conn, f"staleness|{cfg['town_id']}|", active, title=f"[{cfg['town_id']}] source staleness") is None and stale:
         _alert(stale)
     return not stale

@@ -538,6 +538,7 @@ export async function getRecentCompactContent(limit = 3): Promise<Story[]> {
 export async function getPastStories(
   sourceTypes: SourceType[],
   limit = 20,
+  maxAgeDays: number | null = null, // "Recently" only: with a paused source nothing refreshes the list, so it must not drift into old news (owner 2026-11-24)
 ): Promise<Story[]> {
   const hidden = await frozenHidden();
   return (await sql`
@@ -549,6 +550,7 @@ export async function getPastStories(
        AND source_type = ANY(${sourceTypes})
        AND source_type != ALL(${RETIRED_TYPES})
        AND slug != ALL(${hidden}::text[]) -- FROZEN_FILTER
+       AND (${maxAgeDays}::int IS NULL OR occurs_at > now() - make_interval(days => ${maxAgeDays}::int))
        AND occurs_at < now() - CASE WHEN source_type = 'meeting' AND ${siteConfig.meetingsHaveTime ?? false}::boolean THEN interval '2 hours' ELSE interval '12 hours' END
        -- "Recently" is what has ENDED. A recurring programme is not a past event
        -- (its occurs_at is just the date it was first seen), and a multi-week

@@ -179,6 +179,15 @@ describe('every reader-facing stories listing excludes superseded rows', () => {
     expect(body).toContain("ev.raw_data->>'kind' = 'recurring'");
   });
 
+  it('getPastStories can cap "Recently" by age, and /events/ asks for 14 days (paused source, owner 2026-11-24)', () => {
+    const start = dbSource.indexOf('function getPastStories(');
+    const body = dbSource.slice(start, dbSource.indexOf('\nexport ', start + 1));
+    expect(body).toContain('maxAgeDays');
+    expect(body).toContain('occurs_at > now() - make_interval(days =>');
+    const events = readFileSync(new URL('../pages/events.astro', import.meta.url), 'utf8');
+    expect(events).toContain("getPastStories(['event'], 12, 14)");
+  });
+
   it('upcoming/recent split treats a timed meeting as held 2 h after it starts', () => {
     for (const fn of ['function getUpcomingStories(', 'function getPastStories(']) {
       const start = dbSource.indexOf(fn);

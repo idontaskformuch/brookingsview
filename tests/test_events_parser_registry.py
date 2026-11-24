@@ -125,3 +125,27 @@ def test_parse_reconstructs_from_raw_snapshot_when_blobs_not_cached():
         }]
     finally:
         _remove_stub_kind()
+
+
+def test_paused_source_is_not_fetched_at_all(capsys):
+    """owner 2026-11-24: Tockify city_events (configs/moreno_valley_ca.json) is paused while we wait for permission: not even robots.txt is requested."""
+    import json
+    from pathlib import Path
+
+    from scrapers.event_sources import EVENT_SOURCE_KINDS
+    from scrapers.parsers.events import EventsParser
+
+    cfg = json.loads((Path(__file__).resolve().parent.parent / "configs" / "moreno_valley_ca.json").read_text(encoding="utf-8"))
+    src = next(s for s in cfg["data_sources"]["events"]["sources"] if s["name"] == "city_events")
+    assert src["paused"]["since"] == "2026-11-13"
+    calls = []
+    original = EVENT_SOURCE_KINDS["ical"]
+    EVENT_SOURCE_KINDS["ical"] = type(original)(fetch=lambda s, h: calls.append(s["name"]), parse=original.parse)
+    try:
+        parser = EventsParser.__new__(EventsParser)
+        parser.town_id, parser.source_cfg = "moreno_valley_ca", {"sources": [src]}
+        parser.fetch()
+    finally:
+        EVENT_SOURCE_KINDS["ical"] = original
+    assert calls == []
+    assert "pausad sedan 2026-11-13" in capsys.readouterr().out

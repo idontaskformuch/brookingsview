@@ -47,3 +47,69 @@ def test_source_tables_only_covers_verified_mappings():
     for source_key, (table, column) in SOURCE_TABLES.items():
         assert source_key in DEFAULT_STALENESS_DAYS, f"{source_key} has a table mapping but no default threshold"
         assert table and column
+
+
+# --- paused sources (owner 2026-11-24) -----------------------------------------------------------------------------------------------
+# Real names from configs/moreno_valley_ca.json data_sources.events: city_events and library (Tockify, paused since 2026-11-13) and
+# farm_house_collective (active).
+import json
+from pathlib import Path
+
+from scrapers.staleness import all_sources_paused, check_all_sources, paused_names
+
+PAUSED = {"since": "2026-11-13", "reason": "waiting for permission"}
+
+
+class _Cur:
+    def __init__(self, log, newest):
+        self.log, self.newest = log, newest
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def execute(self, sql, params):
+        self.log.append((sql, params))
+
+    def fetchone(self):
+        return (self.newest,)
+
+
+class _Conn:
+    def __init__(self, newest):
+        self.log, self.newest = [], newest
+
+    def cursor(self):
+        return _Cur(self.log, self.newest)
+
+
+def _moreno_events_cfg():
+    cfg = json.loads((Path(__file__).resolve().parent.parent / "configs" / "moreno_valley_ca.json").read_text(encoding="utf-8"))
+    return cfg["data_sources"]["events"]
+
+
+def test_moreno_tockify_sources_are_paused_in_config_and_the_others_are_not():
+    assert paused_names(_moreno_events_cfg()) == ["city_events", "library"]
+    assert not all_sources_paused(_moreno_events_cfg())
+
+
+def test_paused_sources_are_left_out_of_the_freshness_query():
+    conn = _Conn(datetime.now(timezone.utc) - timedelta(days=10))
+    res = check_source_staleness(conn, "moreno_valley_ca", "events", _moreno_events_cfg())
+    sql, params = conn.log[0]
+    assert "source <> ALL" in sql and params == ("moreno_valley_ca", ["city_events", "library"])
+    assert res.is_stale  # farm_house_collective is the only active source and it is 10 days quiet: that is still reported
+
+
+def test_a_block_with_every_source_paused_is_not_checked_and_never_stale():
+    cfg = {"enabled": True, "sources": [{"name": "city_events", "paused": PAUSED}, {"name": "library", "paused": PAUSED}]}
+    assert check_source_staleness(None, "moreno_valley_ca", "events", cfg) is None  # conn=None: no query is made
+    assert check_all_sources(None, {"town_id": "moreno_valley_ca", "data_sources": {"events": cfg}}) == []
+
+
+def test_unpaused_block_queries_the_whole_town_as_before():
+    conn = _Conn(datetime.now(timezone.utc) - timedelta(days=1))
+    res = check_source_staleness(conn, "brookings_sd", "events", {"sources": [{"name": "library"}]})
+    assert "source <>" not in conn.log[0][0] and not res.is_stale

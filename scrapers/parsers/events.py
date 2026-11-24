@@ -72,6 +72,11 @@ class EventsParser(BaseParser):
             name = src.get("name")
             kind = src.get("kind")
 
+            paused = src.get("paused")
+            if paused:  # owner 2026-11-24: no request at all (not even robots.txt) while we wait for permission; staleness.py skips it too
+                print(f"    [events:{name}] pausad sedan {paused.get('since')}: {paused.get('reason')} -- ingen hämtning")
+                continue
+
             if kind in _INERT_KINDS:
                 print(f"    [events:{name}] {_INERT_KINDS[kind]}")
                 continue

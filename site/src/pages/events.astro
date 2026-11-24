@@ -53,7 +53,7 @@ const townwideKicker = siteConfig.country === 'gb' ? undefined : TOWN_EVENT_KICK
 
 const [upcoming, past, artsEvents, facilities] = await Promise.all([
   getUpcomingStories(['event'], 120),
-  getPastStories(['event'], 12),
+  getPastStories(['event'], 12, 14), // "Recently" = the last 14 days; /events/past/ is the archive
   // Brookings-specifikt (SDSU) -- tom lista för andra orter, samma
   // ofarliga "town-scoped, naturally empty elsewhere"-mönster som
   // getNextRegionalGame/getUpcomingSdsuEvents. Musik/Special Events/
