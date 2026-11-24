@@ -23,11 +23,11 @@ describe('Glasgow skeleton config', () => {
     expect(glasgow.domain).toBe('glasgowloop.co.uk');
   });
 
-  it('is launched (indexable, listed as a sibling site on the other towns) and has no GA id', () => {
+  it('is launched (indexable, listed as a sibling site on the other towns) and has its own GA4 id, loaded only after opt-in', () => {
     expect(glasgow.noindexSite).toBe(false);
     expect(glasgow.listedInNetwork).not.toBe(false);
     expect(ALL_SITES.map((s) => s.townId)).toContain('glasgow');
-    expect(glasgow.ga4MeasurementId).toBeUndefined();
+    expect(glasgow.ga4MeasurementId).toBe('G-FHNM6DZ8PQ'); // owner 2026-11-24, Glasgow's own GA4 property
   });
 
   it("has every feature off except What's On", () => {

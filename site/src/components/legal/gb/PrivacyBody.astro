@@ -39,9 +39,17 @@ import { siteConfig } from '../../../lib/site-config';
   <p>It is cookie-free: it does not set cookies or build a profile of you, and it does not track you between sites.</p>
   <p>Our lawful basis is legitimate interests: understanding how the site is used and keeping it fast. See
   <a href="https://www.cloudflare.com/privacypolicy/" rel="noopener">Cloudflare's privacy policy</a>.</p>
+  {siteConfig.ga4MeasurementId && (
+    <>
+      <p>With your consent only, we also use Google Analytics (GA4) to count visits and see which pages are read. It is off
+      until you press Accept in the cookie banner, and it sets cookies in your browser when you do. Our lawful basis is your
+      consent, which you can withdraw at any time with "Cookie settings" in the footer or on the
+      <a href="/cookies/">cookies page</a>. Google may process this data outside the UK, including in the United States.</p>
+    </>
+  )}
   <h3>Advertising</h3>
   <p>This site shows no advertising and sets no advertising cookies.</p>
-  <p>If that ever changes, or if we add any other analytics that uses cookies or tracks you, we will ask for your consent
+  <p>If that ever changes, or if we add any other analytics that uses cookies or tracks you without your consent, we will ask for your consent
   <em>before</em> anything is set, make refusing as easy as accepting, and update this page and the
   <a href="/cookies/">cookies page</a> first.</p>
 

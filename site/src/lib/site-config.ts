@@ -865,6 +865,9 @@ const CITIES: Record<string, SiteConfig> = {
     contentTrackRetired: true,
     // Launched 2026-10-28/29 (owner's yes): indexable, sitemap on (noindexSite in town-registry.mjs); thin facility pages keep noindex (lib/noindex.ts THIN_FACILITY_MIN_OWN_WORDS).
     hasMetOfficeWarnings: true,
+    // GA4 (owner 2026-11-24): Glasgow's own property. Opt-in for every visitor: BaseLayout loads it only after "Accept" (lib/ga4.ts),
+    // "Cookie settings" in the footer and on /cookies/ opens the banner again.
+    ga4MeasurementId: 'G-FHNM6DZ8PQ',
     // What's On (owner 2026-10-28): Ticketmaster GB within 15 miles of the centre; venue tiers in lib/venue-tiers.ts. Mirrors configs/glasgow.json.
     hasWhatsOn: true,
     ticketmaster: { enabled: true, latitude: 55.8642, longitude: -4.2518, radiusMiles: 15, marqueeSize: 6 },
