@@ -7,14 +7,15 @@ import { siteConfig } from '../../../lib/site-config';
 ---
 <article class="prose">
   <h1>Cookies</h1>
-  <p><em>Last updated October 2026.</em></p>
+  <p><em>Last updated {siteConfig.ga4MeasurementId ? 'November' : 'October'} 2026.</em></p>
 
   {siteConfig.ga4MeasurementId ? (
     <>
       <p>{siteConfig.siteName} asks before it sets any analytics cookie. We would like to use Google Analytics (GA4) to count
       visits and see which pages are read. It is switched off until you press <strong>Accept</strong> in the cookie banner; if you
-      press <strong>Decline</strong>, or do not answer, it is not loaded and no Google Analytics cookie is set. We do not set any
-      advertising cookies.</p>
+      press <strong>Decline</strong>, or do not answer, it is not loaded and no Google Analytics cookie is set. After Accept, Google
+      Analytics sets the cookies <code>_ga</code> and <code>_ga_{siteConfig.ga4MeasurementId.replace(/^G-/, '')}</code>, which Google lets
+      last up to two years. We do not set any advertising cookies.</p>
 
       <p>You can change your choice at any time:
       <button type="button" class="linklike" data-cookie-settings>Cookie settings</button>. This opens the banner again. If you
@@ -37,8 +38,8 @@ import { siteConfig } from '../../../lib/site-config';
   <p>Your browser's local storage may hold display preferences such as light or dark mode. These stay on your
   device and are not sent to us.</p>
 
-  <p>If we ever add advertising, or any analytics that uses cookies or tracks you, we will ask for your consent
-  before any such cookie is set, make refusing as easy as accepting, and update this page first.</p>
+  <p>If we ever add advertising, or any {siteConfig.ga4MeasurementId ? 'other ' : ''}analytics that uses cookies or tracks you, we will ask for
+  your consent before any such cookie is set, make refusing as easy as accepting, and update this page first.</p>
 
   <p>Questions? <a href="/contact/">Contact us</a>. See also our <a href="/privacy/">privacy notice</a>.</p>
 </article>

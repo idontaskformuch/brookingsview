@@ -21,6 +21,21 @@ describe('ga4GuardProblem', () => {
   });
 });
 
+describe('gb legal texts match what the site does (owner 2026-11-24)', () => {
+  const privacyGb = readFileSync(new URL('../components/legal/gb/PrivacyBody.astro', import.meta.url), 'utf8');
+  it('cookies page: Cloudflare is cookie-free, GA4 only after Accept, change via Cookie settings, the _ga cookies named', () => {
+    expect(cookiesGb).toContain('It is cookie-free');
+    expect(cookiesGb).toContain('switched off until you press <strong>Accept</strong>');
+    expect(cookiesGb).toContain('data-cookie-settings>Cookie settings</button>');
+    expect(cookiesGb).toContain('<code>_ga</code>');
+  });
+  it('privacy page: Google as recipient, consent only, 14-month retention', () => {
+    expect(privacyGb).toContain('The recipient is Google');
+    expect(privacyGb).toContain('Our lawful basis is your consent');
+    expect(privacyGb).toContain('keep this data for 14 months');
+  });
+});
+
 describe('BaseLayout wiring', () => {
   it('throws only through ga4GuardProblem, and the opt-in script is separate from the opt-out one', () => {
     expect(layout).toContain('ga4GuardProblem(siteConfig.country, siteConfig.ga4MeasurementId, ga4OptIn)');

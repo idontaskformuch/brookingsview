@@ -8,7 +8,7 @@ import { siteConfig } from '../../../lib/site-config';
 ---
 <article class="prose">
   <h1>Privacy</h1>
-  <p><em>Last updated October 2026.</em></p>
+  <p><em>Last updated {siteConfig.ga4MeasurementId ? 'November' : 'October'} 2026.</em></p>
 
   <p>{siteConfig.siteName} is a simple website with no user accounts or logins.</p>
   <p>This page explains what personal data we handle, why, and what your rights are under UK data protection law
@@ -42,9 +42,14 @@ import { siteConfig } from '../../../lib/site-config';
   {siteConfig.ga4MeasurementId && (
     <>
       <p>With your consent only, we also use Google Analytics (GA4) to count visits and see which pages are read. It is off
-      until you press Accept in the cookie banner, and it sets cookies in your browser when you do. Our lawful basis is your
-      consent, which you can withdraw at any time with "Cookie settings" in the footer or on the
-      <a href="/cookies/">cookies page</a>. Google may process this data outside the UK, including in the United States.</p>
+      until you press Accept in the cookie banner, and it sets cookies in your browser when you do. Nothing is sent to Google
+      before you accept.</p>
+      <p>The recipient is Google (Google Ireland Limited, with Google LLC in the United States), which processes the data for us
+      and receives your browser's IP address, device and browser details and the pages you view. Google may process it outside
+      the UK, including in the United States. We have set Google Analytics to keep this data for 14 months; after that it is
+      deleted. See <a href="https://policies.google.com/privacy" rel="noopener">Google's privacy policy</a>.</p>
+      <p>Our lawful basis is your consent, which you can withdraw at any time with "Cookie settings" in the footer or on the
+      <a href="/cookies/">cookies page</a>; Google Analytics then stops loading from your next page view.</p>
     </>
   )}
   <h3>Advertising</h3>
@@ -54,7 +59,7 @@ import { siteConfig } from '../../../lib/site-config';
   <a href="/cookies/">cookies page</a> first.</p>
 
   <h2>Where data goes</h2>
-  <p>Our hosting and email providers may process data outside the UK, including in the United States.</p>
+  <p>Our hosting and email providers{siteConfig.ga4MeasurementId ? ', and Google Analytics if you accept it,' : ''} may process data outside the UK, including in the United States.</p>
   <p>Where they do, they rely on the safeguards UK law requires, such as the UK's approved transfer mechanisms.</p>
 
   <h2>Your rights</h2>
