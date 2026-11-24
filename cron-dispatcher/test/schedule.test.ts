@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ALERTS_CRON } from '../src/alerts/towns';
-import { GLASGOW_SPORTS_WORKFLOW, MORNING_CRON, OSM_WORKFLOW, REGISTER_WORKFLOW, SCRAPE_CRON, SCRAPE_WORKFLOWS, SPORTS_UTC_HOUR, SPORTS_WORKFLOW, TRAFFIC_UTC_HOURS, TRAFFIC_WORKFLOW, dueWorkflows } from '../src/schedule';
+import { GLASGOW_SPORTS_WORKFLOW, MORNING_BUILDS, MORNING_CRON, OSM_WORKFLOW, REGISTER_WORKFLOW, SCRAPE_CRON, SCRAPE_WORKFLOWS, SPORTS_UTC_HOUR, SPORTS_WORKFLOW, TRAFFIC_UTC_HOURS, TRAFFIC_WORKFLOW, dueWorkflows } from '../src/schedule';
+
+const dueWorkflowsAll = dueWorkflows;
 
 const at = (iso: string) => Date.parse(iso);
 
@@ -14,14 +16,14 @@ describe('wrangler.jsonc', () => {
 
 describe('scrape cron', () => {
   it('dispatches all four scrape workflows (Glasgow included)', () => {
-    expect(dueWorkflows(SCRAPE_CRON, at('2026-10-21T06:00:00Z'))).toEqual(SCRAPE_WORKFLOWS);
+    expect(dueWorkflowsAll(SCRAPE_CRON, at('2026-10-21T06:00:00Z'))).toEqual(SCRAPE_WORKFLOWS);
   });
   it('adds the OpenStreetMap snapshot on Monday and Thursday 11:00 UTC, the venue register on Monday only', () => {
-    expect(dueWorkflows(SCRAPE_CRON, at('2026-11-02T11:00:00Z'))).toEqual([...SCRAPE_WORKFLOWS, OSM_WORKFLOW, REGISTER_WORKFLOW]);
-    expect(dueWorkflows(SCRAPE_CRON, at('2026-11-02T23:00:00Z'))).toEqual(SCRAPE_WORKFLOWS);
-    expect(dueWorkflows(SCRAPE_CRON, at('2026-11-03T11:00:00Z'))).toEqual(SCRAPE_WORKFLOWS);
-    expect(dueWorkflows(SCRAPE_CRON, at('2026-11-05T11:00:00Z'))).toEqual([...SCRAPE_WORKFLOWS, OSM_WORKFLOW]);
-    expect(dueWorkflows(SCRAPE_CRON, at('2026-11-05T23:00:00Z'))).toEqual(SCRAPE_WORKFLOWS);
+    expect(dueWorkflowsAll(SCRAPE_CRON, at('2026-11-02T11:00:00Z'))).toEqual([...SCRAPE_WORKFLOWS, OSM_WORKFLOW, REGISTER_WORKFLOW]);
+    expect(dueWorkflowsAll(SCRAPE_CRON, at('2026-11-02T23:00:00Z'))).toEqual(SCRAPE_WORKFLOWS);
+    expect(dueWorkflowsAll(SCRAPE_CRON, at('2026-11-03T11:00:00Z'))).toEqual(SCRAPE_WORKFLOWS);
+    expect(dueWorkflowsAll(SCRAPE_CRON, at('2026-11-05T11:00:00Z'))).toEqual([...SCRAPE_WORKFLOWS, OSM_WORKFLOW]);
+    expect(dueWorkflowsAll(SCRAPE_CRON, at('2026-11-05T23:00:00Z'))).toEqual(SCRAPE_WORKFLOWS);
   });
   it('the OpenStreetMap workflow file exists and can be dispatched', () => {
     const yml = readFileSync(new URL(`../../.github/workflows/${OSM_WORKFLOW}`, import.meta.url), 'utf8');
@@ -33,13 +35,15 @@ describe('scrape cron', () => {
     expect(yml).toContain('ANTHROPIC_API_KEY');
   });
   it('unknown cron dispatches nothing', () => {
-    expect(dueWorkflows('* * * * *', at('2026-10-21T06:00:00Z'))).toEqual([]);
+    expect(dueWorkflowsAll('* * * * *', at('2026-10-21T06:00:00Z'))).toEqual([]);
   });
 });
 
 describe('morning closure-watch', () => {
   const CHI = 'closure-watch-morning.yml';
   const LA = 'moval-closure-watch-morning.yml';
+  // The forced builds (own describe below) share the cron; these tests are about the closure-watch runs only.
+  const dueWorkflows = (cron: string, t: number) => dueWorkflowsAll(cron, t).filter((w) => w.includes('closure-watch'));
 
   it('summer (DST): Central fires 10:30Z, Pacific 12:30Z', () => {
     expect(dueWorkflows(MORNING_CRON, at('2026-07-15T10:30:00Z'))).toEqual([CHI]);
@@ -81,9 +85,37 @@ describe('morning closure-watch', () => {
     expect(dueWorkflows(MORNING_CRON, at('2026-10-21T10:00:00Z'))).toEqual([]);
   });
 
-  it('Broomfield has no morning workflow (school_alerts sources disabled)', () => {
+  it('Broomfield has no closure-watch workflow (school_alerts sources disabled)', () => {
     const all = ['10', '11', '12', '13'].flatMap((h) => dueWorkflows(MORNING_CRON, at(`2026-10-21T${h}:30:00Z`)));
     expect(all.some((w) => w.includes('broomfield'))).toBe(false);
+  });
+});
+
+describe('forced morning build (owner 2026-11-24)', () => {
+  const MOVAL = 'moval-deploy.yml';
+  const BROOM = 'broomfield-deploy.yml';
+  const GLA = 'glasgow-deploy.yml';
+  const builds = (day: string) =>
+    ['04', '05', '06', '10', '11', '12', '13'].flatMap((h) => dueWorkflowsAll(MORNING_CRON, at(`${day}T${h}:30:00Z`)).filter((w) => !w.includes('closure-watch')).map((w) => `${h}:${w}`));
+
+  it('every dispatched workflow exists and can be dispatched', () => {
+    for (const { workflow } of MORNING_BUILDS) {
+      expect(readFileSync(new URL(`../../.github/workflows/${workflow}`, import.meta.url), 'utf8')).toContain('workflow_dispatch');
+    }
+  });
+  it('summer (DST): Glasgow 04:30Z (BST), Broomfield 11:30Z (MDT), Moreno 12:30Z (PDT) on a Saturday', () => {
+    expect(builds('2026-07-18')).toEqual([`04:${GLA}`, `11:${BROOM}`, `12:${MOVAL}`]);
+  });
+  it('winter: Glasgow 05:30Z (GMT), Broomfield 12:30Z (MST), Moreno 13:30Z (PST) on a Sunday', () => {
+    expect(builds('2026-12-20')).toEqual([`05:${GLA}`, `12:${BROOM}`, `13:${MOVAL}`]);
+  });
+  it('on a weekday Moreno is covered by moval-closure-watch-morning.yml, never also by moval-deploy.yml (no double deploy)', () => {
+    expect(builds('2026-07-15')).toEqual([`04:${GLA}`, `11:${BROOM}`]);
+    expect(builds('2026-12-16')).toEqual([`05:${GLA}`, `12:${BROOM}`]);
+    expect(dueWorkflowsAll(MORNING_CRON, at('2026-12-16T13:30:00Z'))).toEqual(['moval-closure-watch-morning.yml']);
+  });
+  it('Brookings is not part of the forced build', () => {
+    expect(MORNING_BUILDS.some((b) => (b.workflow as string) === 'deploy.yml')).toBe(false);
   });
 });
 

@@ -11,13 +11,11 @@ import { ALERTS_CRON } from './alerts/towns';
 // Twice a day (owner 2026-10-28, Actions minutes): 11:00 UTC = early morning in the US towns, 23:00 UTC = evening. Warnings no longer
 // depend on this: the 15-minute alerts cron (src/alerts/) writes them. Deploy order matters -- see cron-dispatcher/README.md.
 export const SCRAPE_CRON = '0 11,23 * * *';
-// One trigger covers every UTC hour a 05:30 local time can land on (Central
-// 10:30/11:30Z, Pacific 12:30/13:30Z, across DST); dueWorkflows() then keeps
-// only the towns whose LOCAL clock actually reads 05:30. Cloudflare's free
-// plan caps cron triggers per account, so this is one trigger, not four.
-// Day names, not 1-5: Cloudflare numbers weekdays 1-7 with 1 = Sunday, so "1-5"
-// meant Sun-Thu and silently skipped Friday (found 2026-10-23).
-export const MORNING_CRON = '30 10-13 * * MON-FRI';
+// One trigger covers every UTC hour a 05:30 local time can land on (Glasgow 04:30/05:30Z, Central 10:30/11:30Z, Mountain 11:30/12:30Z,
+// Pacific 12:30/13:30Z, across DST); dueWorkflows() then keeps only the towns whose LOCAL clock actually reads 05:30 on a day that town runs.
+// Cloudflare's free plan caps cron triggers per account, so this is one trigger, not one per town. Every day (the weekday filter is in
+// dueWorkflows(), by LOCAL weekday): the forced morning build (owner 2026-11-24) also runs on weekends.
+export const MORNING_CRON = '30 4-13 * * *';
 
 export const SCRAPE_WORKFLOWS = [
   'scrape.yml',
@@ -56,6 +54,16 @@ export const MORNING_TOWNS = [
   { workflow: 'moval-closure-watch-morning.yml', timeZone: 'America/Los_Angeles' },
 ] as const;
 
+// Forced morning build (owner 2026-11-24): the town's own deploy workflow (workflow_dispatch builds and deploys without a paths/changed check)
+// at 05:30 local, so "today"-dependent pages roll over even when no data changed. Moreno Valley's weekdays are covered by
+// moval-closure-watch-morning.yml (which now deploys unconditionally); dispatching moval-deploy.yml as well would start two deploys at once.
+// Broomfield and Glasgow have no closure-watch run, so they get the deploy workflow every day.
+export const MORNING_BUILDS = [
+  { workflow: 'moval-deploy.yml', timeZone: 'America/Los_Angeles', days: 'weekend' },
+  { workflow: 'broomfield-deploy.yml', timeZone: 'America/Denver', days: 'all' },
+  { workflow: 'glasgow-deploy.yml', timeZone: 'Europe/London', days: 'all' },
+] as const;
+
 export const MORNING_LOCAL_HOUR = 5;
 // Cloudflare fires on the minute; tolerate a small skew either way.
 const MORNING_MINUTE_FROM = 25;
@@ -83,16 +91,20 @@ export function dueWorkflows(cron: string, scheduledTime: number): string[] {
     return [...SCRAPE_WORKFLOWS];
   }
   if (cron === MORNING_CRON) {
-    return MORNING_TOWNS.filter(({ timeZone }) => {
+    const atMorning = (timeZone: string, days: 'weekday' | 'weekend' | 'all') => {
       const { hour, minute, weekday } = localParts(scheduledTime, timeZone);
+      const weekend = weekday === 'Sat' || weekday === 'Sun';
       return (
         hour === MORNING_LOCAL_HOUR &&
         minute >= MORNING_MINUTE_FROM &&
         minute <= MORNING_MINUTE_TO &&
-        weekday !== 'Sat' &&
-        weekday !== 'Sun'
+        (days === 'all' || (days === 'weekend' ? weekend : !weekend))
       );
-    }).map((t) => t.workflow);
+    };
+    return [
+      ...MORNING_TOWNS.filter((t) => atMorning(t.timeZone, 'weekday')).map((t) => t.workflow),
+      ...MORNING_BUILDS.filter((t) => atMorning(t.timeZone, t.days)).map((t) => t.workflow),
+    ];
   }
   if (cron === ALERTS_CRON) {
     const at = new Date(scheduledTime);

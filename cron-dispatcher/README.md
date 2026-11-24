@@ -8,11 +8,11 @@ late on this repo; Cloudflare cron fires on the minute. Background and numbers:
 | Cron (UTC) | What it dispatches |
 |---|---|
 | `0 11,23 * * *` | `scrape.yml`, `moval-scrape.yml`, `broomfield-scrape.yml`, `glasgow-scrape.yml` (scrape; they build and deploy only if the data changed, `scripts/ci_changed.py`) |
-| `30 10-13 * * MON-FRI` | `closure-watch-morning.yml` when it is 05:30 in Chicago, `moval-closure-watch-morning.yml` when it is 05:30 in Los Angeles (DST handled in `src/schedule.ts`) |
+| `30 4-13 * * *` | At 05:30 local (DST handled in `src/schedule.ts`): weekdays `closure-watch-morning.yml` (Chicago) and `moval-closure-watch-morning.yml` (Los Angeles; builds and deploys even when nothing changed); every day `broomfield-deploy.yml` (Denver) and `glasgow-deploy.yml` (London); Saturday and Sunday also `moval-deploy.yml`. The deploy workflows build and deploy unconditionally on dispatch (forced morning build, owner 2026-11-24) |
 
 | `*/15 * * * *` | not a workflow (on the whole hour it also writes the forecasts: NWS `/points` + forecast + hourly for the US towns, Met Office Site Specific for Glasgow, into `weather_snapshots`; the pages read them through `/api/weather`):  `src/alerts/` fetches NWS alerts (Brookings, Moreno Valley, Broomfield) and Met Office warnings (Glasgow) and writes them to the `events` table. Costs no Actions minutes. The pages read them through `/api/alerts` and `/api/weather-warnings` in the browser |
 
-Broomfield has no morning run: its school_alerts sources are disabled.
+Broomfield has no closure-watch run (its school_alerts sources are disabled), only the forced morning build.
 
 ## Token (the only secret)
 
