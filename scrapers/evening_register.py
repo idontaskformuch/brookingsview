@@ -255,6 +255,19 @@ def age_from_quote(quote: str) -> str | None:
     return None
 
 
+NOT_JSON = "response is not the expected JSON"
+
+
+def extract_validated(extract: Callable[[str, str], str], system: str, text: str, today: date) -> tuple[list[Rule], list[Rejected]]:
+    """One model reply, validated. A reply that is not the expected JSON at all (Haiku now and then answers with a cut-off or malformed object;
+    Oran Mor 2026-11-23: 0 rules, the same page read fine minutes later) is asked for ONCE more, with the same page text: no extra page fetch."""
+    rules, rejected = validate_extraction(extract(system, text), text, today)
+    if not rules and len(rejected) == 1 and rejected[0].why == NOT_JSON:
+        retry_rules, retry_rejected = validate_extraction(extract(system, text), text, today)
+        return retry_rules, retry_rejected
+    return rules, rejected
+
+
 def validate_extraction(raw: str, page_text: str, today: date) -> tuple[list[Rule], list[Rejected]]:
     """Parse the model's JSON and keep only entries the page itself supports. Returns (kept, rejected-with-reason)."""
     try:
@@ -262,7 +275,7 @@ def validate_extraction(raw: str, page_text: str, today: date) -> tuple[list[Rul
         entries = data["entries"]
         assert isinstance(entries, list)
     except (ValueError, KeyError, TypeError, AssertionError):
-        return [], [Rejected(raw[:200], "response is not the expected JSON")]
+        return [], [Rejected(raw[:200], NOT_JSON)]
     page_norm = _norm(page_text)
     kept: list[Rule] = []
     rejected: list[Rejected] = []
@@ -572,7 +585,7 @@ def check_venue(venue: dict, fetcher: PoliteFetcher, extract: Callable[[str, str
     page, text = parse_page(html)
     if len(text) < 200:
         return VenueResult(vid, "ok", "page has almost no text (script-rendered?): nothing extracted", final_url=final)
-    rules, rejected = validate_extraction(extract(system_prompt(today), text), text, today)
+    rules, rejected = extract_validated(extract, system_prompt(today), text, today)
     res = VenueResult(vid, "ok", "", rules, rejected, final)
     seen = {r.key for r in rules}
     for durl in detail_links(rejected, page.links, final):
@@ -598,7 +611,7 @@ def check_venue(venue: dict, fetcher: PoliteFetcher, extract: Callable[[str, str
         _, dtext = parse_page(dhtml)
         if len(dtext) < 100:
             continue
-        drules, drej = validate_extraction(extract(system_prompt(today), dtext), dtext, today)
+        drules, drej = extract_validated(extract, system_prompt(today), dtext, today)
         for r in drules:
             if r.key not in seen:
                 seen.add(r.key)

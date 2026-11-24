@@ -202,6 +202,35 @@ def test_flow_ok_extracts_and_keeps_rules():
     assert res.status == "ok" and len(res.rules) == 1 and calls
 
 
+def test_flow_malformed_reply_is_asked_for_once_more_without_a_second_fetch():
+    """Oran Mor 2026-11-23: the model's reply was a cut-off ```json object (entry "Ivo Graham: Orange Crush", 2026-11-26), the venue got 0 rules
+    and fell out of the register; the same page read fine on the next call. One more model call on the same text, never a second page fetch."""
+    broken = '```json\n{\n  "entries": [\n    {\n      "kind": "dated",\n      "title": "Ivo Graham: Orange Crush",\n      "weekdays": [],\n      "date": "2026-11-26"'
+    replies = [broken, reply(entry())]
+    calls = []
+
+    def extract(system, text):
+        calls.append(text)
+        return replies[len(calls) - 1]
+
+    sess = FakeSession({"https://venue.example/robots.txt": (404, "", None), URL: (200, page("The Stand Comedy Club", LONG), None)})
+    res = er.check_venue(VENUE, fx(sess), extract, TODAY)
+    assert res.status == "ok" and len(res.rules) == 1 and not res.rejected
+    assert len(calls) == 2 and calls[0] == calls[1]
+
+
+def test_flow_malformed_reply_twice_is_rejected_after_exactly_two_calls():
+    calls = []
+
+    def extract(system, text):
+        calls.append(text)
+        return "```json\n{ not json"
+
+    sess = FakeSession({"https://venue.example/robots.txt": (404, "", None), URL: (200, page("The Stand Comedy Club", LONG), None)})
+    res = er.check_venue(VENUE, fx(sess), extract, TODAY)
+    assert not res.rules and [r.why for r in res.rejected] == [er.NOT_JSON] and len(calls) == 2
+
+
 def test_flow_llm_excluded_page_never_reaches_the_model():
     """robots.txt names an AI crawler (and lets us in): the page may be fetched, but its text never goes to the model."""
     sess = FakeSession({"https://venue.example/robots.txt": (200, "User-agent: GPTBot\nDisallow: /", None),
