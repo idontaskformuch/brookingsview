@@ -17,9 +17,11 @@ import { resolveHubBacklink } from '../lib/clusters';
 import { sportsHref as townSportsHref } from '../lib/sections';
 import { groupWeekItems } from '../lib/week-groups';
 import { storyHref } from '../lib/content-slugs';
+import { getLiveFacetSlugs } from '../lib/event-facets-live';
 
 type Props = ThisWeekProps;
 const { week, days, lead, weeklyStory, prevWeek, isCurrent, isRecent, isThin } = Astro.props;
+const liveFacets = await getLiveFacetSlugs(); // an empty event facet is not linked (owner 2026-11-24)
 
 // Model-written text is never printed (lib/ai-text.ts): an AI weekly story gives no intro, the generic line below shows instead.
 const weeklyParagraphs = (weeklyStory ? publicBody(weeklyStory) : '').split('\n').map((p) => p.trim()).filter(Boolean);
@@ -88,10 +90,10 @@ const itemListJsonLd = hasAnyItems ? {
 
   <nav class="cross-links" aria-label="Related sections">
     <a href="/events/">All events →</a>
-    <a href="/events/free/">Free events</a>
-    <a href="/events/kids/">Kids &amp; family</a>
+    {liveFacets.has('free') && <a href="/events/free/">Free events</a>}
+    {liveFacets.has('kids') && <a href="/events/kids/">Kids &amp; family</a>}
     <a href="/city-hall/">City hall</a>
-    {isBrookings
+    {isBrookings && liveFacets.has('campus')
       ? <a href="/events/campus/">SDSU</a>
       : null}
     {sportsHref && <a href={sportsHref}>Sports</a>}

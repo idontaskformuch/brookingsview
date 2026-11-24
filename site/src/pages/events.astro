@@ -18,7 +18,7 @@ import { siteConfig, isQuietSection } from '../lib/site-config';
 import { isSectionBuilt } from '../lib/sections';
 import { metaDescription } from '../lib/meta-description';
 import { countryProfile, forCountry } from '../lib/country-profile';
-import { EVENT_FACETS } from '../lib/event-facets';
+import { getLiveFacetSlugs, townFacets } from '../lib/event-facets-live';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { buildEventJsonLd } from '../lib/event-jsonld';
 import { linkTarget } from '../lib/ai-text';
@@ -88,6 +88,7 @@ const todaysHomeGame = regionalGames.find((g) => {
 }) ?? null;
 
 const bigShows = await getBigShows(siteConfig);
+const liveFacets = await getLiveFacetSlugs(); // an empty facet is not linked (owner 2026-11-24)
 
 function hrefOf(item: FeedItem): string | null {
   return item.sourceKind === 'arts' ? item.event.event_url : linkTarget(item.story); // withheld text = no page of our own (lib/ai-text.ts)
@@ -194,7 +195,7 @@ const webPageJsonLd = dateModified ? {
   <HolidayContextCard />
 
   <nav class="facet-nav" aria-label="Event filters">
-    {EVENT_FACETS.filter((f) => !f.brookingsOnly || isBrookings).map((f) => (
+    {townFacets().filter((f) => liveFacets.has(f.slug)).map((f) => (
       <a href={`/events/${f.slug}/`}>{f.navLabel}</a>
     ))}
   </nav>

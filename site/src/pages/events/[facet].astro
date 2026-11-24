@@ -19,52 +19,42 @@ import AboutThisPage from '../../components/ui/AboutThisPage.astro';
 import SectionRule from '../../components/SectionRule.astro';
 import StoryCard from '../../components/StoryCard.astro';
 import ShareButton from '../../components/ShareButton.astro';
-import CalendarEmpty from '../../components/events/CalendarEmpty.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
-import {
-  getUpcomingStories, getUpcomingArtsEvents, getFacilities, FACILITY_CATEGORY_LABELS, type Facility,
-} from '../../lib/db';
-import {
-  buildEventFeed, artsEventAsStory, withAttribution, todayUtcMidnight, FREE_VENUE_CATEGORIES, ARTS_EVENT_KICKER, type FeedItem,
-} from '../../lib/events';
+import { FACILITY_CATEGORY_LABELS, type Facility } from '../../lib/db';
+import { artsEventAsStory, withAttribution, FREE_VENUE_CATEGORIES, ARTS_EVENT_KICKER, type FeedItem } from '../../lib/events';
+import { getFacetData, liveFacetSlugs, townFacets } from '../../lib/event-facets-live';
 import { buildEventJsonLd } from '../../lib/event-jsonld';
-import { EVENT_FACETS, type EventFacet } from '../../lib/event-facets';
+import { type EventFacet } from '../../lib/event-facets';
 import { siteConfig } from '../../lib/site-config';
-import { withoutEnded } from '../../lib/local-day';
 import { countryProfile } from '../../lib/country-profile';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
 import { linkTarget } from '../../lib/ai-text';
 
 export async function getStaticPaths() {
-  const isBrookings = siteConfig.townId === 'brookings_sd';
-  const [upcoming, artsEvents, facilities] = await Promise.all([
-    getUpcomingStories(['event'], 200),
-    getUpcomingArtsEvents(60),
-    getFacilities(),
-  ]);
-  const { items, alsoListedBy } = buildEventFeed(withoutEnded(upcoming, new Date(), siteConfig.timezone), artsEvents, siteConfig.timezone);
-  const today = todayUtcMidnight(siteConfig.timezone);
-  const ctx = { facilities, today, timezone: siteConfig.timezone };
+  const { items, alsoListedBy, facilities, ctx } = await getFacetData();
+  const facets = townFacets();
+  // Every facet page is built (the URL keeps working; all are noindex), but an empty one is left out of the navigation (owner 2026-11-24).
+  const live = [...liveFacetSlugs(facets, items, ctx)];
 
-  return EVENT_FACETS
-    .filter((f) => !f.brookingsOnly || isBrookings)
-    .map((facet) => ({
-      params: { facet: facet.slug },
-      props: {
-        facet,
-        items: items.filter((item) => facet.matches(item, ctx)),
-        alsoListedBy,
-        facilities,
-      },
-    }));
+  return facets.map((facet) => ({
+    params: { facet: facet.slug },
+    props: {
+      facet,
+      items: items.filter((item) => facet.matches(item, ctx)),
+      alsoListedBy,
+      facilities,
+      live,
+    },
+  }));
 }
 
-const { facet, items, alsoListedBy, facilities } = Astro.props as {
+const { facet, items, alsoListedBy, facilities, live } = Astro.props as {
   facet: EventFacet;
   items: FeedItem[];
   alsoListedBy: Map<FeedItem, string[]>;
   facilities: Facility[];
+  live: string[];
 };
 
 const title = facet.titleTemplate(siteConfig.cityName, siteConfig.siteName);
@@ -150,9 +140,7 @@ const itemListJsonLd = items.length > 0 ? {
   }),
 } : null;
 
-const siblingFacets = EVENT_FACETS.filter(
-  (f) => f.slug !== facet.slug && (!f.brookingsOnly || siteConfig.townId === 'brookings_sd')
-);
+const siblingFacets = townFacets().filter((f) => f.slug !== facet.slug && live.includes(f.slug));
 
 const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('events/facet', siteConfig, { label: facet.navLabel, href: canonicalUrl });
 const hubBacklink = resolveHubBacklink('events/facet', siteConfig);
@@ -171,14 +159,10 @@ const hubBacklink = resolveHubBacklink('events/facet', siteConfig);
 
   {facet.slug === 'free' && items.length > 0 && <SectionRule label="Free events" />}
 
-  {/* Free Things To Do, Decision 2: if this town's free events come back
-      completely empty (e.g. Broomfield, whose WebTrac source is currently
-      blocked), skip this sub-section entirely rather than force an empty
-      grid or empty-state message onto a page that still has real content
-      below it. Every other facet keeps its existing empty-state behavior. */}
-  {(facet.slug === 'free' ? items.length > 0 : true) && (
-    items.length > 0 ? (
-      <div class="grid" data-hide-ended={facet.slug === 'today' || facet.slug === 'this-weekend' ? '' : undefined}>
+  {/* No events: no list and no empty-state text on any facet (owner 2026-11-24). The page is noindex and hidden from the facet navigation
+      until it has content; 'free' still shows its always-free facilities below. When every card has ended in the browser, the list hides. */}
+  {items.length > 0 && (
+      <div class="grid" data-hide-ended={facet.slug === 'today' || facet.slug === 'this-weekend' ? '' : undefined} data-hide-when-empty>
         {items.map((item) => (
           <div class="event-cell"
             data-start={item.occurs_at ? new Date(item.occurs_at).toISOString() : undefined}
@@ -189,14 +173,6 @@ const hubBacklink = resolveHubBacklink('events/facet', siteConfig);
           </div>
         ))}
       </div>
-    ) : facet.calendarLead ? (
-      <CalendarEmpty lead={facet.calendarLead} calendar={facet.calendar} fallback={facet.emptyMessage} />
-    ) : (
-      <p class="empty">{facet.emptyMessage}</p>
-    )
-  )}
-  {(facet.slug === 'today' || facet.slug === 'this-weekend') && items.length > 0 && (
-    <CalendarEmpty lead={facet.calendarLead!} calendar={facet.calendar} fallback={facet.emptyMessage} id="facet-empty-fallback" hidden />
   )}
 
   {facilityGroups.length > 0 && (
