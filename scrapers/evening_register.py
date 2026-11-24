@@ -258,14 +258,36 @@ def age_from_quote(quote: str) -> str | None:
 NOT_JSON = "response is not the expected JSON"
 
 
-def extract_validated(extract: Callable[[str, str], str], system: str, text: str, today: date) -> tuple[list[Rule], list[Rejected]]:
-    """One model reply, validated. A reply that is not the expected JSON at all (Haiku now and then answers with a cut-off or malformed object;
-    Oran Mor 2026-11-23: 0 rules, the same page read fine minutes later) is asked for ONCE more, with the same page text: no extra page fetch."""
-    rules, rejected = validate_extraction(extract(system, text), text, today)
-    if not rules and len(rejected) == 1 and rejected[0].why == NOT_JSON:
-        retry_rules, retry_rejected = validate_extraction(extract(system, text), text, today)
-        return retry_rules, retry_rejected
-    return rules, rejected
+CUT_OFF = "cut-off reply (the model stopped at max_tokens)"
+
+
+class Reply(str):
+    """The model's text plus whether it was cut off at max_tokens (stop_reason "max_tokens"). A plain str counts as not cut off."""
+    truncated: bool = False
+
+    def __new__(cls, text: str, truncated: bool = False):
+        obj = super().__new__(cls, text)
+        obj.truncated = truncated
+        return obj
+
+
+def _validated(extract: Callable[[str, str], str], system: str, text: str, today: date) -> tuple[list[Rule], list[Rejected], bool]:
+    reply = extract(system, text)
+    rules, rejected = validate_extraction(reply, text, today)
+    cut = bool(getattr(reply, "truncated", False))
+    if cut and not rules:  # say WHY nothing was kept, never a silent "0 rules" (owner 2026-11-24)
+        rejected = [Rejected(r.entry, CUT_OFF) if r.why == NOT_JSON else r for r in rejected]
+    return rules, rejected, cut
+
+
+def extract_validated(extract: Callable[[str, str], str], system: str, text: str, today: date) -> tuple[list[Rule], list[Rejected], bool]:
+    """One model reply, validated; returns (rules, rejected, cut_off). A reply that is not the expected JSON at all is asked for ONCE more with
+    the same page text (no extra page fetch). Oran Mor 2026-11-23/24: the reply was cut off at max_tokens mid-JSON; the reply length varies from
+    run to run, so the second try often fits. `cut_off` is True when the reply we end up with was cut off: the caller logs and alerts it."""
+    rules, rejected, cut = _validated(extract, system, text, today)
+    if not rules and len(rejected) == 1 and rejected[0].why in (NOT_JSON, CUT_OFF):
+        return _validated(extract, system, text, today)
+    return rules, rejected, cut
 
 
 def validate_extraction(raw: str, page_text: str, today: date) -> tuple[list[Rule], list[Rejected]]:
@@ -552,6 +574,7 @@ class VenueResult:
     final_url: str = ""
     detail_urls: list[str] = field(default_factory=list)  # detail pages fetched (for the once-a-day record)
     notes: list[str] = field(default_factory=list)
+    cut_off: bool = False  # a model reply was cut off at max_tokens (main page or a detail page): logged and alerted, never silent
 
 
 def _registrable(host: str) -> str:
@@ -585,8 +608,8 @@ def check_venue(venue: dict, fetcher: PoliteFetcher, extract: Callable[[str, str
     page, text = parse_page(html)
     if len(text) < 200:
         return VenueResult(vid, "ok", "page has almost no text (script-rendered?): nothing extracted", final_url=final)
-    rules, rejected = extract_validated(extract, system_prompt(today), text, today)
-    res = VenueResult(vid, "ok", "", rules, rejected, final)
+    rules, rejected, cut = extract_validated(extract, system_prompt(today), text, today)
+    res = VenueResult(vid, "ok", "", rules, rejected, final, cut_off=cut)
     seen = {r.key for r in rules}
     for durl in detail_links(rejected, page.links, final):
         if not detail_allowed(durl):
@@ -611,7 +634,8 @@ def check_venue(venue: dict, fetcher: PoliteFetcher, extract: Callable[[str, str
         _, dtext = parse_page(dhtml)
         if len(dtext) < 100:
             continue
-        drules, drej = extract_validated(extract, system_prompt(today), dtext, today)
+        drules, drej, dcut = extract_validated(extract, system_prompt(today), dtext, today)
+        res.cut_off = res.cut_off or dcut
         for r in drules:
             if r.key not in seen:
                 seen.add(r.key)
@@ -619,6 +643,8 @@ def check_venue(venue: dict, fetcher: PoliteFetcher, extract: Callable[[str, str
                 res.rules.append(r)
         res.rejected.extend(drej)
     res.reason = f"{len(res.rules)} rules kept, {len(res.rejected)} rejected, {len(res.detail_urls)} detail pages read"
+    if res.cut_off:
+        res.reason = f"{CUT_OFF}; " + res.reason
     return res
 
 

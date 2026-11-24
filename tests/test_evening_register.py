@@ -525,3 +525,53 @@ def test_extraction_token_limit_is_above_what_the_longest_page_needs():
     assert refresh.MAX_TOKENS >= 8000
     import inspect
     assert "max_tokens=MAX_TOKENS" in inspect.getsource(refresh)
+
+
+# --- cut-off replies are logged and alerted, never a silent "0 rules" (owner 2026-11-24) --------------------------------------------
+# The real cut-off: Oran Mor 2026-11-24, stop_reason max_tokens at 2500, the reply ended inside the entry "Craig Hill - You're Not Even Safe Up The Back!".
+CUT = '```json\n{\n  "entries": [\n    {\n      "kind": "dated",\n      "title": "Craig Hill \u2013 You\'re Not Even Safe Up The Back!",\n      "weekdays": [],\n      "'
+
+
+def _venue_with(replies):
+    calls = []
+
+    def extract(system, text):
+        calls.append(text)
+        return replies[len(calls) - 1]
+
+    sess = FakeSession({"https://venue.example/robots.txt": (404, "", None), URL: (200, page("The Stand Comedy Club", LONG), None)})
+    return er.check_venue(VENUE, fx(sess), extract, TODAY), calls
+
+
+def test_cut_off_twice_is_named_in_the_reason_and_flagged():
+    res, calls = _venue_with([er.Reply(CUT, truncated=True), er.Reply(CUT, truncated=True)])
+    assert len(calls) == 2 and res.cut_off and not res.rules
+    assert [r.why for r in res.rejected] == [er.CUT_OFF]
+    assert res.reason.startswith(er.CUT_OFF)
+
+
+def test_cut_off_then_a_complete_reply_is_not_flagged():
+    res, calls = _venue_with([er.Reply(CUT, truncated=True), er.Reply(reply(entry()), truncated=False)])
+    assert len(calls) == 2 and not res.cut_off and len(res.rules) == 1
+
+
+def test_cut_off_alert_goes_through_alert_state_once_then_resolves(monkeypatch):
+    from tests.test_alert_state import FakeConn
+    sent = []
+    monkeypatch.setattr(refresh, "reconcile", lambda conn, scope, active, title, **k: __import__("scrapers.alert_state", fromlist=["x"]).reconcile(
+        conn, scope, active, title, send=lambda m, title=None, priority="default": sent.append((title, m)) or True))
+    conn = FakeConn()
+    cut = er.VenueResult("oran-mor", "ok", er.CUT_OFF + "; 0 rules kept, 1 rejected, 0 detail pages read", cut_off=True)
+    refresh.alert_cut_off(conn, "glasgow", "oran-mor", cut)
+    refresh.alert_cut_off(conn, "glasgow", "oran-mor", cut)  # same day, same problem: silent
+    assert len(sent) == 1 and "cut-off reply" in sent[0][0] and "oran-mor" in sent[0][1]
+    refresh.alert_cut_off(conn, "glasgow", "oran-mor", er.VenueResult("oran-mor", "ok", "21 rules kept, 22 rejected, 10 detail pages read"))
+    assert len(sent) == 2 and sent[1][0].endswith("resolved")
+
+
+def test_cut_off_alert_falls_back_to_a_plain_alert_without_the_state_table(monkeypatch):
+    from tests.test_alert_state import FakeConn
+    sent = []
+    monkeypatch.setattr(refresh, "send_alert", lambda m, title=None, **k: sent.append(title) or True)
+    refresh.alert_cut_off(FakeConn(fail=True), "glasgow", "oran-mor", er.VenueResult("oran-mor", "ok", er.CUT_OFF, cut_off=True))
+    assert sent == ["[glasgow] evening register: cut-off reply"]

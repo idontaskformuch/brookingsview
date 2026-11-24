@@ -21,7 +21,9 @@ from pathlib import Path
 from typing import Any
 
 from ai_pipeline.generator_switch import generator_enabled
-from scrapers.evening_register import VenueResult, check_venue, local_today
+from scrapers.alert_state import reconcile
+from scrapers.evening_register import Reply, VenueResult, check_venue, local_today
+from scrapers.alerts import send_alert
 from scrapers.polite_fetch import PoliteFetcher
 
 CONFIG_DIR = Path(__file__).resolve().parent.parent / "configs"
@@ -69,7 +71,7 @@ def make_extractor(town_id: str, log_usage: bool):
         else:
             with api_usage.usage_context(generator="evening_register", town_id=town_id):
                 msg = safe_create(client, **kwargs)
-        return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
+        return Reply("".join(b.text for b in msg.content if getattr(b, "type", "") == "text"), truncated=msg.stop_reason == "max_tokens")
 
     return extract
 
@@ -79,6 +81,8 @@ def report(town_id: str, venue: dict, res: VenueResult, show: bool) -> None:
     print(f"  [{mark}] {town_id}/{venue['venue_id']}: {res.reason}")
     if res.status == "flagged":
         print(f"::warning::evening register: {town_id}/{venue['venue_id']} flagged for the owner: {res.reason}")
+    if res.cut_off:
+        print(f"::warning::evening register: {town_id}/{venue['venue_id']}: cut-off model reply (max_tokens {MAX_TOKENS}): {res.reason}")
     for note in res.notes:
         print(f"      note: {note}")
     if show:
@@ -117,6 +121,15 @@ def write_result(cur, town_id: str, venue: dict, res: VenueResult) -> None:
     for durl in res.detail_urls:
         cur.execute("INSERT INTO evening_register_detail_fetches (url, town_id, fetched_at) VALUES (%s, %s, now()) "
                     "ON CONFLICT (url) DO UPDATE SET fetched_at = now()", (durl, town_id))
+
+
+def alert_cut_off(conn, town_id: str, venue_id: str, res: VenueResult) -> None:
+    """A cut-off reply (max_tokens) is one problem per venue: one alert, a daily reminder while it lasts, one "resolved" (scrapers/alert_state.py).
+    Per venue, and only for a venue checked in THIS run, so a venue the 20-hour guard skipped is never marked resolved by mistake."""
+    key = f"register-cutoff|{town_id}|{venue_id}"
+    active = {key: f"{town_id}/{venue_id}: {res.reason}"} if res.cut_off else {}
+    if reconcile(conn, key, active, title=f"[{town_id}] evening register: cut-off reply") is None and res.cut_off:
+        send_alert(f"{town_id}/{venue_id}: {res.reason}", title=f"[{town_id}] evening register: cut-off reply")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -181,6 +194,7 @@ def main(argv: list[str] | None = None) -> int:
                     with conn.cursor() as cur:
                         write_result(cur, town["town_id"], venue, res)
                     conn.commit()
+                    alert_cut_off(conn, town["town_id"], venue["venue_id"], res)
         if args.apply:
             with conn.cursor() as cur:
                 cur.execute("UPDATE evening_register_entries SET active = false WHERE active AND last_confirmed_at < now() - make_interval(days => %s)",
