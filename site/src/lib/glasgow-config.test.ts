@@ -23,11 +23,11 @@ describe('Glasgow skeleton config', () => {
     expect(glasgow.domain).toBe('glasgowloop.co.uk');
   });
 
-  it('is launched (indexable, listed as a sibling site on the other towns) and has no GA id', () => {
+  it('is launched (indexable, listed as a sibling site on the other towns) and carries the GA4 placeholder the build refuses', () => {
     expect(glasgow.noindexSite).toBe(false);
     expect(glasgow.listedInNetwork).not.toBe(false);
     expect(ALL_SITES.map((s) => s.townId)).toContain('glasgow');
-    expect(glasgow.ga4MeasurementId).toBeUndefined();
+    expect(glasgow.ga4MeasurementId).toBe('G-PLACEHOLDER'); // owner 2026-11-24: replaced by the real G-ID before the first Glasgow build
   });
 
   it("has every feature off except What's On", () => {

@@ -10,17 +10,27 @@
  * som medvetet inte kör tunga ramverk för enkla saker.
  */
 import { siteConfig } from '../lib/site-config';
+interface Props { optIn?: boolean }
+const { optIn = false } = Astro.props;
 ---
 <div id="cookie-banner" class="banner" role="region" aria-label="Cookie notice" hidden>
   <div class="banner__inner">
-    <p>
-      This site may show ads that use cookies to personalize what you see.
-      Accepting lets those load; declining keeps them off.
-      <a href="/cookies/">Read more</a>
-    </p>
+    {optIn ? (
+      <p>
+        We would like to use Google Analytics cookies to count visits and see which pages are read. Nothing is set unless you accept.
+        You can change your choice at any time with "Cookie settings" in the footer.
+        <a href="/cookies/">Read more</a>
+      </p>
+    ) : (
+      <p>
+        This site may show ads that use cookies to personalize what you see.
+        Accepting lets those load; declining keeps them off.
+        <a href="/cookies/">Read more</a>
+      </p>
+    )}
     <div class="banner__actions">
       <button type="button" data-consent="declined">Decline</button>
-      <button type="button" data-consent="accepted" class="banner__accept">Okay</button>
+      <button type="button" data-consent="accepted" class:list={[optIn ? 'banner__equal' : 'banner__accept']}>{optIn ? 'Accept' : 'Okay'}</button>
     </div>
   </div>
 </div>
@@ -90,6 +100,12 @@ import { siteConfig } from '../lib/site-config';
     (window as any).bvConsent = choice;
     window.dispatchEvent(new CustomEvent('bv:consent', { detail: record }));
   }
+
+  // "Cookie settings" (footer, cookies page): open the banner again so the visitor can change the choice. The new choice is saved by the
+  // same buttons; GA4 reacts to bv:consent (BaseLayout) and a Decline means it is not loaded on the next page view.
+  document.addEventListener('click', (e) => {
+    if ((e.target as Element | null)?.closest('[data-cookie-settings]') && banner) banner.hidden = false;
+  });
 
   const existing = readConsent();
   if (existing) {

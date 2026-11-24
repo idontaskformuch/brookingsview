@@ -20,6 +20,7 @@ import { getSignData } from '../lib/db';
 import { getTodayEntries } from '../lib/today-instants';
 import { signGameText } from '../lib/sign-game';
 import { siteConfig, ALL_SITES } from '../lib/site-config';
+import { ga4IdProblem, ga4NeedsOptIn } from '../lib/ga4';
 import { fitDescription, requireDescription } from '../lib/meta-description';
 import { placeLabel, countryProfile } from '../lib/country-profile';
 import { footerCredits } from '../lib/footer-credits';
@@ -107,9 +108,10 @@ const buildSha = import.meta.env.GITHUB_SHA ?? 'local';
 // ISO time of this build: scripts/check_deployed_content.py requires it to be recent. It exists on every page of every town,
 // whatever content they have (no dependence on story links or events).
 const builtAt = new Date().toISOString();
-if (siteConfig.country === 'gb' && siteConfig.ga4MeasurementId) {
-  throw new Error(`${siteConfig.townId}: a UK town cannot set ga4MeasurementId yet -- GA4 must not load before opt-in consent (PECR), and the opt-in-first banner is not built. `);
-}
+// GA4: a placeholder or malformed id must never be built into a production page (owner 2026-11-24). UK towns load it only after "Accept".
+const ga4Problem = import.meta.env.PROD ? ga4IdProblem(siteConfig.ga4MeasurementId) : null;
+if (ga4Problem) throw new Error(`${siteConfig.townId}: ga4MeasurementId refused: ${ga4Problem}`);
+const ga4OptIn = ga4NeedsOptIn(siteConfig.country);
 const siblingSiteUrls = ALL_SITES.filter((s) => s.townId !== siteConfig.townId).map((s) => s.siteUrl);
 const now = new Date();
 const year = now.getFullYear();
@@ -281,7 +283,7 @@ const footerGroups = FOOTER_GROUPS
   </script>
 )}
 
-{siteConfig.ga4MeasurementId && import.meta.env.PROD && (
+{siteConfig.ga4MeasurementId && import.meta.env.PROD && !ga4OptIn && (
   /* GA4 (gtag.js) -- Mediavine Journey verification (2026-10-08).
      Per-town measurement ID lives ONLY in site-config.ts
      (siteConfig.ga4MeasurementId); a town with none yet renders nothing
@@ -347,7 +349,63 @@ const footerGroups = FOOTER_GROUPS
   </script>
 )}
 
+{siteConfig.ga4MeasurementId && import.meta.env.PROD && ga4OptIn && (
+  /* GA4 for opt-in towns (UK, owner 2026-11-24): NOTHING is loaded or sent until the visitor has pressed "Accept" in the cookie banner.
+     Read straight from localStorage ('bv_cookie_consent', CookieBanner.astro's key) because this <head> script runs before the banner's own.
+     No stored choice, "declined", or unreadable storage = not loaded. "Accept" during this page view loads it from then on (bv:consent).
+     A later change to "Decline" (footer "Cookie settings") sets Google's documented window['ga-disable-<ID>'] flag, deletes the _ga cookies,
+     and the next page view does not load GA4 at all. The gtag calls are Google's standard snippet. */
+  <script is:inline data-ga4-id={siteConfig.ga4MeasurementId}>
+    (function () {
+      var ID = document.currentScript.dataset.ga4Id;
+      function load() {
+        if (window.__bvGaLoaded) return;
+        window.__bvGaLoaded = true;
+        window['ga-disable-' + ID] = false;
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(ID);
+        document.head.appendChild(s);
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { window.dataLayer.push(arguments); }
+        window.gtag = gtag;
+        gtag('js', new Date());
+        gtag('config', ID);
+      }
+      function accepted() {
+        try {
+          var raw = localStorage.getItem('bv_cookie_consent');
+          var record = raw ? JSON.parse(raw) : null;
+          return !!record && record.choice === 'accepted';
+        } catch (e) {
+          return false;
+        }
+      }
+      function clearGaCookies() {
+        var host = location.hostname, parts = host.split('.'), domains = ['', host, '.' + host];
+        if (parts.length > 2) domains.push('.' + parts.slice(-3).join('.'));
+        domains.push('.' + parts.slice(-2).join('.'));
+        document.cookie.split(';').forEach(function (c) {
+          var name = c.split('=')[0].trim();
+          if (name === '_ga' || name.indexOf('_ga_') === 0 || name === '_gid') {
+            domains.forEach(function (d) {
+              document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/' + (d ? '; domain=' + d : '');
+            });
+          }
+        });
+      }
+      if (accepted()) load();
+      window.addEventListener('bv:consent', function (e) {
+        if (!e.detail) return;
+        if (e.detail.choice === 'accepted') load();
+        else { window['ga-disable-' + ID] = true; clearGaCookies(); }
+      });
+    })();
+  </script>
+)}
+
 <style is:global>
+.linklike { background: none; border: 0; padding: 0; font: inherit; color: var(--navy); text-decoration: underline; cursor: pointer; } /* a button that reads as a link ("Cookie settings" on the cookies page) */
   /* Expired time-limited items (see the data-ends sweep script) must vanish
      even from elements whose own CSS sets display. */
   [data-ends][hidden], [data-start][hidden], [data-alert-slug][hidden], #sign-events-today[hidden] { display: none !important; }
@@ -629,6 +687,8 @@ main { padding-block: 1.75rem 3.5rem; }
 }
 .colophon__links a { color: var(--ink); text-decoration: none; }
 .colophon__links a:hover { color: var(--navy); text-decoration: underline; }
+.colophon__cookie-settings { background: none; border: 0; padding: 0; font: inherit; color: var(--ink); cursor: pointer; }
+.colophon__cookie-settings:hover { color: var(--navy); text-decoration: underline; }
 .colophon__sections {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
@@ -824,6 +884,7 @@ main { padding-block: 1.75rem 3.5rem; }
       {isSectionBuilt('advertising', siteConfig) && <a href="/advertising/">Advertising</a>}
       <a href="/privacy/">Privacy</a>
       <a href="/cookies/">Cookies</a>
+      {ga4OptIn && siteConfig.ga4MeasurementId && <button type="button" class="colophon__cookie-settings" data-cookie-settings>Cookie settings</button>}
       <a href="/terms/">Terms</a>
       <a href="/rss.xml">RSS</a>
     </nav>
@@ -836,8 +897,8 @@ main { padding-block: 1.75rem 3.5rem; }
   </div>
 </footer>
 
-{/* UK towns (PECR): no banner while nothing needs consent. A gb town with analytics is refused above until an opt-in-first banner exists. */}
-{!(siteConfig.country === 'gb') && <CookieBanner />}
+{/* US towns: the banner as before. UK towns: only when GA4 is configured, and then it asks BEFORE anything loads, with equal Accept and Decline; no analytics = no banner (PECR). */}
+{(siteConfig.country !== 'gb' || !!siteConfig.ga4MeasurementId) && <CookieBanner optIn={ga4OptIn} />}
 
 <script is:inline>
 if ('serviceWorker' in navigator) {
