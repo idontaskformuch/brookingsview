@@ -141,12 +141,12 @@ export function initTonightCards(doc: Document): void {
     if (count) count.textContent = String(hero.count ?? 0);
     if (label) label.textContent = hero.label ?? '';
     if (emptyBox) {
-      emptyBox.hidden = hero.kind !== 'empty';
+      emptyBox.hidden = hero.kind !== 'empty' || (!hero.text && !hero.tomorrow);
       const text = emptyBox.querySelector<HTMLElement>('[data-tc-empty-text]');
       const link = emptyBox.querySelector<HTMLAnchorElement>('[data-tc-tomorrow]');
       if (text) text.textContent = hero.text ?? '';
       const sep = emptyBox.querySelector<HTMLElement>('[data-tc-empty-sep]');
-      if (sep) sep.hidden = !hero.tomorrow;
+      if (sep) sep.hidden = !(hero.text && hero.tomorrow);
       if (link) { link.hidden = !hero.tomorrow; link.textContent = hero.tomorrow ?? ''; link.href = `#${second?.querySelector('h2')?.id ?? 'tn-tomorrow-h'}`; }
     }
     const bigEl = doc.querySelector<HTMLElement>('[data-tc-big]');

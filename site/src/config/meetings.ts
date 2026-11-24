@@ -80,7 +80,6 @@ export const MEETINGS_TOWNS: Record<string, MeetingsTownConfig> = {
       { lead: 'New to following the council?', href: '/how-city-council-works/', label: 'How it works, how to watch and how to speak →' },
       { lead: 'Garbage, recycling and yard waste:', href: '/trash-recycling/', label: 'pickup days and what goes where →' },
     ],
-    emptyNote: null,
   },
   broomfield_co: {
     bodies: BROOMFIELD_BODIES,
@@ -96,7 +95,6 @@ export const MEETINGS_TOWNS: Record<string, MeetingsTownConfig> = {
     // site never links (lib/sandbox-url.ts); verified 2026-11-05 with one read of this page.
     portal: { href: 'https://broomfield.org/4079/Broomfield-Council-Meetings', label: 'Council agendas on broomfield.org' },
     extraLinks: [],
-    emptyNote: null,
   },
   moreno_valley_ca: {
     bodies: MORENO_BODIES,
@@ -110,8 +108,6 @@ export const MEETINGS_TOWNS: Record<string, MeetingsTownConfig> = {
     authority: 'City of Moreno Valley',
     portal: { href: 'https://pub-morenovalley.escribemeetings.com/', label: 'Meetings and agendas on eSCRIBE' },
     extraLinks: [],
-    // eSCRIBE publishes a meeting 4-7 days before it (our own data: council 4-5 days, planning commission 6-7), so an empty list is the normal state between meetings.
-    emptyNote: 'Moreno Valley usually posts agendas 4–7 days ahead.',
   },
   glasgow: GLASGOW_MEETINGS,
 };

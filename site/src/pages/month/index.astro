@@ -54,9 +54,7 @@ const itemListJsonLd = months.length > 0 ? {
         </li>
       ))}
     </ul>
-  ) : (
-    <p class="empty">No months published yet.</p>
-  )}
+  ) : null}
 
   {itemListJsonLd && (
     <script type="application/ld+json" is:inline set:html={JSON.stringify(itemListJsonLd)} />
@@ -77,5 +75,4 @@ const itemListJsonLd = months.length > 0 ? {
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
 .list { list-style: none; margin: 1.5rem 0 0; padding: 0; max-width: 40rem; }
 .list li { padding: 0.625rem 0; border-top: 1px solid var(--rule); font-size: 0.9375rem; }
-.empty { color: var(--ink-soft); }
 </style>

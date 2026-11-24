@@ -306,14 +306,17 @@ describe('empty evening (owner 2026-11-05)', () => {
     expect(heroFor({ ...world, events: 5 })).toMatchObject({ kind: 'count', count: 5, label: 'things on tonight' });
     expect(heroFor({ ...world, events: 1 }).label).toBe('thing on tonight');
   });
-  it('nothing left but Open late places: says so and counts them, no tomorrow link', () => {
-    expect(heroFor({ ...world, late: 3, tomorrow: 8 })).toEqual({ kind: 'empty', text: 'Nothing else scheduled tonight · 3 places open late', tomorrow: null });
-    expect(heroFor({ ...world, late: 1 }).text).toBe('Nothing else scheduled tonight · 1 place open late');
+  it('nothing left but Open late places: leads with them, no "Nothing" text, no tomorrow link', () => {
+    expect(heroFor({ ...world, late: 3, tomorrow: 8 })).toEqual({ kind: 'empty', text: '3 places open late', tomorrow: null });
+    expect(heroFor({ ...world, late: 1 }).text).toBe('1 place open late');
   });
-  it('nothing at all: "Nothing else on tonight", and tomorrow when there is something there', () => {
-    expect(heroFor({ ...world, tomorrow: 4 })).toEqual({ kind: 'empty', text: 'Nothing else on tonight', tomorrow: 'Tomorrow: 4 things' });
+  it('nothing at all: no empty-state text (owner 2026-11-24), only tomorrow when there is something there', () => {
+    expect(heroFor({ ...world, tomorrow: 4 })).toEqual({ kind: 'empty', text: '', tomorrow: 'Tomorrow: 4 things' });
     expect(heroFor({ ...world, tomorrow: 1 }).tomorrow).toBe('Tomorrow: 1 thing');
-    expect(heroFor(world).tomorrow).toBeNull();
+    expect(heroFor(world)).toEqual({ kind: 'empty', text: '', tomorrow: null });
+    for (const late of [0, 1, 4]) for (const tomorrow of [0, 1, 7]) {
+      expect(heroFor({ ...world, late, tomorrow }).text ?? '').not.toMatch(/nothing/i);
+    }
   });
   it('the evening heading and event rows hide when nothing is left; Open late alone keeps its row', () => {
     expect(dayView({ events: 2, late: 0 })).toBe('full');
@@ -338,7 +341,7 @@ describe('empty evening (owner 2026-11-05)', () => {
     expect(after.hero.text).toMatch(/1 place open late/);
     const none = at('2026-11-05T08:30:00Z'); // Open late over too
     expect(none.view).toBe('hidden');
-    expect(none.hero).toEqual({ kind: 'empty', text: 'Nothing else on tonight', tomorrow: 'Tomorrow: 3 things' });
+    expect(none.hero).toEqual({ kind: 'empty', text: '', tomorrow: 'Tomorrow: 3 things' });
   });
   it('the browser script and the page both use the shared rules (no second copy of the wording)', () => {
     const client = readFileSync(new URL('./tonight-cards-client.ts', import.meta.url), 'utf8');

@@ -51,9 +51,7 @@ const CORRECTIONS: Correction[] = [];
           </li>
         ))}
       </ul>
-    ) : (
-      <p class="empty">No corrections have been logged yet.</p>
-    )}
+    ) : null}
   </article>
 </BaseLayout>
 
@@ -65,5 +63,4 @@ const CORRECTIONS: Correction[] = [];
 .log__date { color: var(--ink-soft); font-size: 0.8125rem; margin: 0 0 0.25rem; }
 .log__summary { font-weight: 600; margin: 0 0 0.25rem; }
 .log__detail { color: var(--ink-soft); font-size: 0.9375rem; margin: 0; }
-.empty { color: var(--ink-soft); font-style: italic; }
 </style>

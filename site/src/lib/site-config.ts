@@ -254,8 +254,7 @@ export interface SiteConfig {
    *  sync with that config file by hand, same convention as
    *  hasClosureWatch above. */
   hasEventsSource?: boolean;
-  /** The town's own event calendars (owner 2026-11-13, frozen sources): an event list that comes up empty shows one sentence with a
-   *  plain link to the city's or the library's calendar instead of the generic empty text (components/events/CalendarEmpty.astro). */
+  /** The town's own event calendars (owner 2026-11-13, frozen sources): plain links on /events/ (pages/events.astro). */
   eventCalendars?: { city: { label: string; url: string }; library?: { label: string; url: string } };
   /** Broomfield place-layer handoff, Section 7: gates /place/[slug],
    *  /places/ and their nav link -- a per-town test, not a permanent

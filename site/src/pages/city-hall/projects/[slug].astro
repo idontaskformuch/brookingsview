@@ -162,8 +162,9 @@ const itemListJsonLd = updates.length > 0 ? {
       <ShareButton title={`${project.title} — ${siteConfig.siteName}`} url={canonicalUrl} />
     </header>
 
-    <h2 class="timeline-heading">Timeline</h2>
     {updates.length > 0 ? (
+      <>
+      <h2 class="timeline-heading">Timeline</h2>
       <ol class="timeline">
         {updates.map((u) => (
           <li class="timeline__item" data-outcome={u.outcome_override ? overrideOutcomeAttr(u.outcome_override) : u.outcome}>
@@ -191,9 +192,8 @@ const itemListJsonLd = updates.length > 0 ? {
           </li>
         ))}
       </ol>
-    ) : (
-      <p class="empty">No meeting updates recorded yet for this project.</p>
-    )}
+      </>
+    ) : null}
 
     <p class="back"><a href="/city-hall/projects/">← All active projects</a> · <a href="/city-hall/">City hall</a></p>
   </article>
@@ -257,6 +257,5 @@ const itemListJsonLd = updates.length > 0 ? {
 .timeline__item[data-outcome="Failed"] .timeline__outcome { color: var(--alert); }
 .timeline__outcome .reason { color: var(--ink-soft); font-size: 0.875rem; }
 .timeline__sources { font-size: 0.8125rem; margin: 0.25rem 0 0; }
-.empty { color: var(--ink-soft); }
 .back { margin-top: 2rem; font-size: 0.9375rem; }
 </style>

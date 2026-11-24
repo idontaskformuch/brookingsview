@@ -6,7 +6,6 @@
 // like everything else) plus a submit form whose client-side script talks
 // to the Function directly.
 import type { WorkerPulseComment } from '../lib/db';
-import { EMPTY_STATES } from '../lib/empty-states';
 import { siteConfig } from '../lib/site-config';
 
 interface Props {
@@ -34,9 +33,6 @@ function formatCommentDate(iso: string): string {
         <p class="wp-comments__meta">{formatCommentDate(c.created_at)}</p>
       </li>
     ))}
-    {comments.length === 0 && (
-      <li class="wp-comments__empty" data-empty-state>{EMPTY_STATES.comments}</li>
-    )}
   </ul>
 
   <form class="wp-comments__form" data-comment-form>
@@ -87,7 +83,6 @@ function formatCommentDate(iso: string): string {
         } else {
           const data = await resp.json();
           if (data.status === 'published') {
-            root.querySelector('[data-empty-state]')?.remove();
             const item = document.createElement('li');
             item.className = 'wp-comments__item';
             const p = document.createElement('p');
@@ -125,7 +120,6 @@ function formatCommentDate(iso: string): string {
   .wp-comments__item { padding: 0.75rem 0; border-top: 1px solid var(--rule); }
   .wp-comments__body { margin: 0 0 0.25rem; white-space: pre-wrap; }
   .wp-comments__meta { margin: 0; font-size: 0.78rem; color: var(--ink-soft); }
-  .wp-comments__empty { color: var(--ink-soft); font-size: 0.9rem; padding: 0.5rem 0; }
 
   .wp-comments__form { border-top: 1px solid var(--rule); padding-top: 1rem; }
   .wp-comments__textarea {

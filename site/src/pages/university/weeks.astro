@@ -30,9 +30,7 @@ const canonicalUrl = new URL('/university/weeks/', Astro.site ?? siteConfig.site
     <ul class="weeks">
       {earlier.map((d) => <li><a href={ownPageHref(d)!}>{d.title.replace(/^Brookings:\s*/, '')}</a></li>)}
     </ul>
-  ) : (
-    <p class="empty">No earlier weeks yet.</p>
-  )}
+  ) : null}
   <AboutThisPage slot="about">
     <p>One page per week, from the university's own calendar. This week is on <a href="/university/">the SDSU page</a>.</p>
   </AboutThisPage>
@@ -43,5 +41,4 @@ const canonicalUrl = new URL('/university/weeks/', Astro.site ?? siteConfig.site
 .kicker { margin: 0 0 0.25rem; font-family: var(--font-ui); font-size: 0.8125rem; }
 .lede p { color: var(--ink-soft); }
 .weeks { list-style: none; margin: 1.5rem 0; padding: 0; display: grid; gap: 0.5rem; max-width: 38rem; }
-.empty { color: var(--ink-soft); }
 </style>

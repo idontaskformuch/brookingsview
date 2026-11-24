@@ -105,9 +105,7 @@ const itemListJsonLd = events.length > 0 ? {
           : <StoryCard story={story} compact facilities={facilities} />)}
       </div>
     </section>
-  )) : (
-    <p class="empty">No past events recorded yet.</p>
-  )}
+  )) : null}
 
   {itemListJsonLd && (
     <script type="application/ld+json" is:inline set:html={JSON.stringify(itemListJsonLd)} />
@@ -133,7 +131,6 @@ const itemListJsonLd = events.length > 0 ? {
   margin: 0 0 0.875rem;
 }
 .grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
-.empty { color: var(--ink-soft); }
 .pruned { margin: 0; padding: 0.5rem 0; border-bottom: 1px solid var(--rule); font-size: 0.9375rem; }
 .pruned__date { color: var(--ink-soft); white-space: nowrap; }
 </style>

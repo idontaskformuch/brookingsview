@@ -59,8 +59,6 @@ export interface MeetingsTownConfig {
   portal: { href: string; label: string } | null;
   /** Plain links under "About this page" that only this town has a page for. */
   extraLinks: { lead: string; href: string; label: string }[];
-  /** A sentence added to the empty state ("Moreno Valley usually posts agendas 4–7 days ahead.") */
-  emptyNote: string | null;
 }
 
 // No default town (audit Fas 2, P4-3): every caller passes its town's MEETINGS_TOWNS entry.

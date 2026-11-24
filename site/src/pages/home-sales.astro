@@ -26,7 +26,6 @@ import { fitDescription, descriptionFillers } from '../lib/meta-description';
 import { placeAbbr } from '../lib/country-profile';
 import { resolvePageMeta } from '../lib/page-meta';
 import { isWithinRenderWindow } from '../lib/render-window';
-import { EMPTY_STATES } from '../lib/empty-states';
 import { SECTION_THEME } from '../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../lib/clusters';
@@ -163,9 +162,7 @@ function monthYear(occursAt: string | null): string {
       </table>
       <p class="pager-status" id="pager-status" aria-live="polite"></p>
     </>
-  ) : (
-    <p class="empty">{EMPTY_STATES.homeSales}</p>
-  )}
+  ) : null}
 
   <p class="source">
     Source: <a href="https://www.rivcoacr.org/property-sales-report" rel="noopener">Riverside County Assessor's Property Sales Report</a>,
@@ -269,7 +266,6 @@ function monthYear(occursAt: string | null): string {
 .outlier-flag { margin-left: 0.25rem; color: var(--ink-soft); cursor: help; }
 .footnote { margin-top: 0.5rem; font-size: 0.8125rem; color: var(--ink-soft); }
 .pager-status { margin-top: 0.25rem; font-size: 0.8125rem; color: var(--ink-soft); }
-.empty { color: var(--ink-soft); }
 .source { margin-top: 1.5rem; font-size: 0.875rem; color: var(--ink-soft); }
 .source a { color: var(--section-accent, var(--navy)); }
 </style>

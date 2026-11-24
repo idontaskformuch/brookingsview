@@ -1,12 +1,11 @@
 ---
 /** The top of /city-hall/: the next meeting as a hero ("in 5 days") with its agenda under it, then "This week" (the following 7 days) and
  *  "Coming up", with organ chips over the lists when there are enough meetings to filter. An organ group the town folds away (Glasgow's Area
- *  Partnerships) sits in one fold under the lists. With no meeting ahead: one designed line and a link to the town's own agenda page.
+ *  Partnerships) sits in one fold under the lists. With no meeting ahead the whole block is left out (owner 2026-11-24: no empty-state text).
  *  The build knows "today" only as of the build, so a small script re-reads it from the clock: "in 5 days" stays right, a meeting that is over
  *  hides itself, and the chips filter the lists. Without JS everything shows. */
 import SectionRule from '../SectionRule.astro';
 import HeroStat from '../ui/HeroStat.astro';
-import EmptyState from '../ui/EmptyState.astro';
 import Chips from '../ui/Chips.astro';
 import MeetingCard from './MeetingCard.astro';
 import { daysBetween, relativeDays, chipCounts, meetingTitle, type MeetingView } from '../../lib/meetings-view';
@@ -18,9 +17,8 @@ interface Props {
   commentBodyKeys: string[];
   commentHref: string | null;
   portal: { href: string; label: string } | null;
-  emptyNote: string | null;
 }
-const { meetings, todayYmd, timezone, commentBodyKeys, commentHref, portal, emptyNote } = Astro.props;
+const { meetings, todayYmd, timezone, commentBodyKeys, commentHref, portal } = Astro.props;
 const main = meetings.filter((m) => !m.collapsedGroup);
 const folded = meetings.filter((m) => m.collapsedGroup);
 // A quorum notice or a cancelled meeting is shown in the lists but never as the meeting to plan around.
@@ -34,24 +32,19 @@ const foldGroups = [...new Set(foldedOthers.map((m) => m.collapsedGroup!))];
 const hrefFor = (m: MeetingView) => (commentHref && commentBodyKeys.includes(m.bodyKey) ? commentHref : null);
 const nextEnd = next?.startMs != null ? next.startMs + 3 * 3_600_000 : null;
 ---
+{next && (
 <section class="up" data-mtg-root data-tz={timezone}>
   <SectionRule label="Next up" />
-  {next ? (
-    <article class="up__next" data-ymd={next.ymd} data-end={nextEnd ?? undefined}>
-      <HeroStat
-        label={meetingTitle(next)}
-        value={relativeDays(daysBetween(todayYmd, next.ymd))}
-        sub={`${next.dateLabel}${next.time ? ` · ${next.time}` : ''}`}
-        meta={next.location ?? undefined}
-        valueAttrs={{ 'data-mtg-rel': next.ymd }}
-      />
-      <MeetingCard m={next} bare todayYmd={todayYmd} commentHref={hrefFor(next)} portal={portal} />
-    </article>
-  ) : (
-    <EmptyState href={portal?.href} linkLabel={portal?.label}>
-      {`No meetings posted yet.${emptyNote ? ` ${emptyNote}` : ''}`}
-    </EmptyState>
-  )}
+  <article class="up__next" data-ymd={next.ymd} data-end={nextEnd ?? undefined}>
+    <HeroStat
+      label={meetingTitle(next)}
+      value={relativeDays(daysBetween(todayYmd, next.ymd))}
+      sub={`${next.dateLabel}${next.time ? ` · ${next.time}` : ''}`}
+      meta={next.location ?? undefined}
+      valueAttrs={{ 'data-mtg-rel': next.ymd }}
+    />
+    <MeetingCard m={next} bare todayYmd={todayYmd} commentHref={hrefFor(next)} portal={portal} />
+  </article>
 
   <Chips counts={chipCounts(others)} label="Filter upcoming meetings" dataKey="mtg-chip" navAttrs={{ 'data-mtg-chips': '' }} class="up__chips" />
 
@@ -74,6 +67,7 @@ const nextEnd = next?.startMs != null ? next.startMs + 3 * 3_600_000 : null;
     </details>
   ))}
 </section>
+)}
 
 <script is:inline>
   (function () {

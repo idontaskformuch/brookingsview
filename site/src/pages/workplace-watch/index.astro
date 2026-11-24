@@ -28,7 +28,6 @@ import {
 import { siteConfig, isQuietSection } from '../../lib/site-config';
 import { metaDescription } from '../../lib/meta-description';
 import { resolvePageMeta } from '../../lib/page-meta';
-import { EMPTY_STATES } from '../../lib/empty-states';
 import { SECTION_THEME } from '../../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { resolveHubNavItems } from '../../lib/clusters';
@@ -120,7 +119,7 @@ const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
   {isMorenoValley && <ShiftPollWidget results={pollResults} />}
 
   {employers.length > 0 ? (
-    <div class="wp-table" role="table">
+    <div class="wp-table" role="table" data-signature-content>
       <div class:list={['wp-row', 'wp-row--head', { 'wp-row--no-hiring': !hasJobStats }]} role="row">
         <span role="columnheader">Employer</span>
         {hasJobStats && <span role="columnheader">Hiring <abbr title="Job postings observed via Adzuna, last 30 days">ⓘ</abbr></span>}
@@ -179,9 +178,7 @@ const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
         );
       })}
     </div>
-  ) : (
-    <p class="empty">{EMPTY_STATES.workplaceWatch}</p>
-  )}
+  ) : null}
 
   <WorkerPulseComments pageSlug="workplace-watch" comments={comments} />
 
@@ -278,7 +275,6 @@ const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
 .excerpt.muted { font-style: italic; }
 .wp-summary a { font-weight: 600; font-size: 0.85rem; }
 
-.empty { text-align: center; color: var(--ink-soft); }
 
 @media (max-width: 640px) {
   .wp-row { grid-template-columns: 1fr; row-gap: 0.35rem; }

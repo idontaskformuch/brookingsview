@@ -106,9 +106,7 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
         ))}
       </tbody>
     </table>
-  ) : (
-    <p class="empty">No {category.toLowerCase()} listings available right now — check back.</p>
-  )}
+  ) : null}
 
   {[...overflowByCompany.entries()].map(([company, extra]) => (
     <details class="overflow">
@@ -183,7 +181,6 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
 .jobs tr:last-child td { border-bottom: 0; }
 .loc { display: block; font-size: 0.8125rem; color: var(--ink-soft); }
 .data { white-space: nowrap; }
-.empty { color: var(--ink-soft); }
 .overflow { margin-top: 0.75rem; font-size: 0.9375rem; }
 .overflow summary { cursor: pointer; color: var(--ink-soft); padding: 0.5rem 0; }
 .source { margin-top: 1.5rem; font-size: 0.875rem; color: var(--ink-soft); }

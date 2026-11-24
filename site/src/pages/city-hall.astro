@@ -76,7 +76,6 @@ const eventJsonLd = meetingsTown
         commentHref={meetingsTown.comment?.href ?? null}
         commentBodyKeys={meetingsTown.comment?.bodyKeys ?? []}
         portal={meetingsTown.portal}
-        emptyNote={meetingsTown.emptyNote}
       />
 
       {past.length > 0 && (
@@ -124,11 +123,11 @@ const eventJsonLd = meetingsTown
         <p class="projects-teaser">What the City itself is building, with the City's own timelines: <a href="/projects/">capital projects →</a></p>
       )}
 
-      <SectionRule label="Coming up" />
-      {upcoming.length > 0 ? (
-        <div class="stack">{upcoming.map((story) => <StoryCard story={story} />)}</div>
-      ) : (
-        <p class="empty">No meetings scheduled at the moment.</p>
+      {upcoming.length > 0 && (
+        <>
+          <SectionRule label="Coming up" />
+          <div class="stack">{upcoming.map((story) => <StoryCard story={story} />)}</div>
+        </>
       )}
 
       {past.length > 0 && (
@@ -156,7 +155,6 @@ const eventJsonLd = meetingsTown
 .lede { max-width: 42rem; }
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
 .stack { display: grid; gap: 0.75rem; max-width: 44rem; }
-.empty { color: var(--ink-soft); }
 .all-past { margin: 0.875rem 0 0; font-weight: 600; }
 .projects-teaser {
   margin: 0 0 1.25rem;

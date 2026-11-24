@@ -102,7 +102,7 @@ def test_check_homepage_built_at_marks_a_stale_page_settled(monkeypatch):
     assert "older than" in message and transient is False
 
 
-def _fake_site(monkeypatch, *, home: str, signature: str = "<p>real content</p>", status: int = 200):
+def _fake_site(monkeypatch, *, home: str, signature: str = '<div class="grid" data-signature-content><a>real content</a></div>', status: int = 200):
     def get(url, *a, **k):
         if url.endswith("/vail-resorts/") or url.endswith("/university/") or url.endswith("/workplace-watch/"):
             return _FakeResponse(200, signature)
@@ -128,8 +128,8 @@ def test_matching_sha_with_a_stale_build_time_is_not_retried(monkeypatch):
 
 
 def test_matching_sha_with_an_empty_signature_section_is_not_retried(monkeypatch):
-    empty = SIGNATURE_SECTIONS["broomfield_co"]["empty_state_text"]
-    _fake_site(monkeypatch, home=_fresh_page(), signature=empty)
+    # an empty section renders no list and no empty-state text (owner 2026-11-24): just the page around it
+    _fake_site(monkeypatch, home=_fresh_page(), signature="<h1>Vail Resorts</h1><p>About this page</p>")
     failures, retryable = _run_checks_once("broomfield_co", "https://broomfieldview.com", 14, "6573dcc1")
     assert failures and retryable is False
 

@@ -45,5 +45,4 @@ export const GLASGOW_MEETINGS: MeetingsTownConfig = {
   authority: 'Glasgow City Council',
   portal: { href: 'https://onlineservices.glasgow.gov.uk/councillorsandcommittees/', label: 'Councillors and committees on glasgow.gov.uk' },
   extraLinks: [],
-  emptyNote: null,
 };

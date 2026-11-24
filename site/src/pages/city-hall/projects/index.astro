@@ -46,9 +46,7 @@ const statuses = [...byStatus.keys()].sort((a, b) => STATUS_ORDER.indexOf(a) - S
         ))}
       </ul>
     </>
-  )) : (
-    <p class="empty">No projects tracked yet — check back as new development items come up at meetings.</p>
-  )}
+  )) : null}
 
   {siteConfig.capitalProjects && (
     <p class="back">Projects the City builds itself (roads, parks, water, buildings) are on
@@ -70,6 +68,5 @@ const statuses = [...byStatus.keys()].sort((a, b) => STATUS_ORDER.indexOf(a) - S
 .list li { padding: 0.5rem 0; border-bottom: 1px solid var(--rule); }
 .list a { font-weight: 600; }
 .loc { color: var(--ink-soft); font-size: 0.9375rem; }
-.empty { color: var(--ink-soft); }
 .back { margin-top: 1.5rem; font-size: 0.9375rem; }
 </style>

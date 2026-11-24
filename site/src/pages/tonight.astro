@@ -151,7 +151,7 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
       <section class="tc-hero" aria-label="Tonight at a glance">
         <HeroStat value={hero.count ?? 0} unit={hero.label ?? 'things on tonight'}
           rootAttrs={{ 'data-tc-count-box': '', hidden: hero.kind === 'empty' ? true : undefined }} valueAttrs={{ 'data-tc-count': '' }} unitAttrs={{ 'data-tc-count-label': '' }} />
-        <p class="tc-empty" data-tc-empty hidden={hero.kind === 'empty' ? undefined : true}><span data-tc-empty-text>{hero.text}</span><span data-tc-empty-sep hidden={hero.tomorrow ? undefined : true}> · </span><a href="#tn-tomorrow-h" data-tc-tomorrow hidden={hero.tomorrow ? undefined : true}>{hero.tomorrow}</a></p>
+        <p class="tc-empty" data-tc-empty hidden={hero.kind === 'empty' && (hero.text || hero.tomorrow) ? undefined : true}><span data-tc-empty-text>{hero.text}</span><span data-tc-empty-sep hidden={hero.text && hero.tomorrow ? undefined : true}> · </span><a href="#tn-tomorrow-h" data-tc-tomorrow hidden={hero.tomorrow ? undefined : true}>{hero.tomorrow}</a></p>
         {town.cityLabels && <InsightLine class="tc-scope" attrs={{ 'data-tc-scope': '', 'data-home': town.homeCity, hidden: scopeText ? undefined : true }}>{scopeText}</InsightLine>}
         {town.bigShows && <InsightLine class="tc-big" attrs={{ 'data-tc-big': '', hidden: bigText ? undefined : true }}>{bigText}</InsightLine>}
         <InsightLine class="tc-next" attrs={{ 'data-tc-next': '', hidden: true }} />

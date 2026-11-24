@@ -103,9 +103,6 @@ describe('Moreno Valley (eSCRIBE)', () => {
     const withAgenda = buildMeetings([escribe(2, 'City Council Regular Meeting', '2026/11/17 18:00:00', { MeetingDocumentLink: docs })], 'America/Los_Angeles', true, undefined, MV)[0];
     expect(withAgenda.agendaUrl).toBe('https://pub-morenovalley.escribemeetings.com/Meeting.aspx?Id=abc&Agenda=Agenda&lang=English');
   });
-  it('the empty state names the lead time, from config', () => {
-    expect(MV.emptyNote).toBe('Moreno Valley usually posts agendas 4–7 days ahead.');
-  });
 });
 
 const coins = (id: number, board: string, iso: string, extra: Record<string, any> = {}): MeetingRow => ({

@@ -1,26 +1,8 @@
 /**
- * Authored empty-state copy -- see NEEDS-HUMAN-REVIEW.md "Liveliness Spec",
- * §4. Hand-written constants, never generated, and they never change based
- * on data -- the whole point is that "zero results" reads as a fact stated
- * in the site's own voice, not as a database placeholder ("0 results").
- *
- * State the situation, don't apologize, don't editorialize. Empty is often
- * the correct and reassuring answer (closures, traffic) -- style it as
- * normal content, not an error or a warning.
+ * Owner 2026-11-24: no empty-state text anywhere on the sites. An empty section is left out entirely and the page leads with what
+ * it has (scripts/verify_no_empty_messages.mjs fails the build on one). The one line left is the answer to a visitor's own filter
+ * in a client-side table (lib/data-table.ts): it is never in the built HTML and only shows after the visitor narrows the list.
  */
 export const EMPTY_STATES = {
-  schoolClosures: 'No closures. Schools are open.',
-  eventsAll: 'Nothing on the calendar yet this week.',
-  eventsToday: 'Nothing today — check back, or see everything coming up.',
-  eventsWeekend: 'Nothing this weekend.',
-  eventsFree: 'No free events listed this week — check back.',
-  eventsKids: 'No kids or family events listed this week — check back.',
-  eventsLibrary: 'No library events listed this week — check back.',
-  eventsCampus: 'No campus events listed this week — check back.',
-  eventsOutdoor: 'No outdoor events listed this week — check back.',
-  workplaceWatch: 'No reviews summarized yet this month.',
-  homeSales: 'No sales recorded in the latest county report.',
-  whatsOn: 'Nothing found in the area right now — check back.',
-  comments: 'No comments yet.',
   searchFilter: 'Nothing matched. Try a broader filter.',
 } as const;

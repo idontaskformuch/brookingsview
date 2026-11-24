@@ -5,6 +5,7 @@ Gäller alla fyra sajter. Källa: ägarens handoff 2026-11-05 (.claude/specs/pre
 ## Hårda regler
 - Ingen AI-prosa. All text är källdata eller mallsträngar byggda av datafält, med tester.
 - Inget utan data. Ingen siffra, badge, insikt, chip eller ikon visas om datan saknas. Gissa aldrig.
+- Inga tomlägestexter (ägaren 2026-11-24, alla städer). En tom sektion döljs helt, rubriken också; sidan leder med det som finns. Ingen `class="empty"`/`__empty`, inga "No X yet"/"A quiet week"/"check back". Bygget fäller dem (scripts/verify_no_empty_messages.mjs, QA build.empty-state). Undantag: filtrets "Nothing matched" i klientsidans tabeller (svar på besökarens eget filter, aldrig i byggd HTML).
 - Svaret först. Det besökaren söker syns utan scroll i 390 px. Förklaringar, källor och disclaimers samlas under "About this page" längst ner (ersätter PageGuide överst, beslut 2026-11-05). Enda undantaget är aktiva varningar: banner överst.
 - Title-taggar ändras inte utan ägarens ja. H1 får kortas.
 - Inga hotlinkade bilder, ingen extern JS utöver det som redan används.
@@ -65,7 +66,7 @@ Format per layout: syfte (frågan den besvarar), komponent, config-fält, tomma 
 - Komponent: components/tonight/{TonightCard,TonightRows,TonightChips,TonightStyles}.astro + lib/tonight-cards.ts (+ -client.ts). Bygger om på ui/* i Fas 1 och ska se likadan ut.
 - Hjälte: `heroFor` ("in 26 min" / Starting soon). Insiktsrad: header per `dayView`. Chips: `chipPlan` (CHIP_MIN_*). Badges: `badgesFor`, bara stated data.
 - Config: eveningLayer.cards (regions, maxChips, hidePrice, cityLabels), venue-register, osm_places.
-- Tomt läge: `dayView` (inget kvar -> rubrik + rader dolda, "Nothing else on tonight · Tomorrow: N things"); aldrig "0 things".
+- Tomt läge: `dayView` (inget kvar -> rubrik + rader dolda, hjälten leder med det som finns: "N places open late" eller länken "Tomorrow: N things", annars ingen rad); aldrig "0 things", aldrig "Nothing else on tonight".
 - Tester: lib/tonight-cards.test.ts (48), qa-probe .tc-day/.tc-card.
 
 ### Weather
@@ -74,7 +75,7 @@ Format per layout: syfte (frågan den besvarar), komponent, config-fält, tomma 
 - Ordning: varning (bara aktiv) -> H1 "<stad> weather" + "Källa · Updated <tid>" -> hjälte (aktuell timmes temperatur, vald i webbläsaren ur timdatan; dagens hög/låg och väderläge; känns som bara om ≥2° skillnad. Fallback utan JS: dagens hög/låg, aldrig en specifik timme. Etiketten "Forecast for 2pm" krävs inte längre, ägarbeslut 2026-11-20) -> insiktsrader -> Next 24 hours -> Week ahead (rad per dygn, dag+natt ihopslagna, RangeBar på veckans gemensamma skala) -> "Cloudy all week" ovanför veckan -> About this page.
 - Insiktsregler (lib/weather-model.ts, trösklar som exporterade konstanter): regn/torrt ur nederbördssannolikhet >=50 % (annars källans ord, utan "chance"), "Dry until" om <6 h annars "Rain from", "Dry for the next N hours" kräver >=12 h data; "Warmer/Colder tomorrow" och "than yesterday" vid högst-skillnad >=2 °C / 4 °F; "<Väder> all week" = samma väderklass >=3 dygn (all week bara vid >=5 dygn); gårdagens värde är gårdagens lagrade prognos (prognos mot prognos).
 - Config: temperaturenhet (country profile), koordinater (townCenter) för sol-tider, auktoritet och officiell varningslänk (country profile `weather`), hasMetOfficeWarnings, hasHeatAdvisory. Payload: valfria pop/feels/gust/uv/precip_mm + fetched_at; saknas de visas de inte.
-- Tomt läge: ingen prognos -> EmptyState med länk till källan; ingen timdata -> hjälten faller tillbaka på dagens hög/låg, ingen 24 h-remsa, ingen regnrad.
+- Tomt läge: ingen prognos -> prognosytan renderas inte (ingen tomtext, ägaren 2026-11-24; källänken står redan i rubrikraden); ingen timdata -> hjälten faller tillbaka på dagens hög/låg, ingen 24 h-remsa, ingen regnrad.
 - Tester: lib/weather-model.test.ts, sun-times.test.ts, ui/ui-html.test.ts, live-weather.test.ts (riktig Chromium), cron-dispatcher/test/weather.test.ts + tests/test_noaa_payload.py (TS<->Python-paritet).
 
 ### Meetings
@@ -83,7 +84,7 @@ Format per layout: syfte (frågan den besvarar), komponent, config-fält, tomma 
 - Hjälte: nästa möte ("Next up"). Datarader: datum, tid, organ, plats, dagordningspunkter ordagrant från källan, länk till agenda/protokoll, .ics. Ingen AI-text (beslut 2026-11-05).
 - Config: MEETINGS_TOWNS och BODIES per stad (flyttas till per-stad-config i Fas 3; Glasgow: Area Partnerships i utfällbar grupp).
 - Regler: dedup = samma datum + normaliserat organ, Legistar behålls; tidskonflikt mellan källor visar "Time: see agenda"; quorum-notiser är inte möten; Event-JSON-LD och .ics bara med start+plats.
-- Tomt läge: inga kommande möten -> en rad + länk till arkiv/källa.
+- Tomt läge: inga kommande möten -> hela "Next up"-blocket utelämnas (ägaren 2026-11-24); Recent meetings och arkivlänken står kvar.
 - Tester: lib/meetings-view.test.ts (26+).
 
 ## Rapport per fas

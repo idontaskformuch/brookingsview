@@ -90,9 +90,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
         ))}
       </ul>
     </>
-  )) : (
-    <p class="empty">No facility information available yet.</p>
-  )}
+  )) : null}
 
   <ClusterNav clusterLabel="Places" items={clusterNavItems} />
 
@@ -135,7 +133,6 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
 .list li { padding: 0.5rem 0; border-bottom: 1px solid var(--rule); }
 .list a { font-weight: 600; }
 .addr { color: var(--ink-soft); font-size: 0.9375rem; }
-.empty { color: var(--ink-soft); }
 .badge {
   display: inline-block; margin-left: 0.5rem; font-family: var(--font-ui);
   font-size: 0.75rem; font-weight: 600;

@@ -74,9 +74,7 @@ const itemListJsonLd = businesses.length > 0 ? {
         </li>
       ))}
     </ul>
-  ) : (
-    <p class="empty">No confirmed openings or closings yet -- check back soon.</p>
-  )}
+  ) : null}
 
   <RelatedContent pageType="new_in_town" />
 
@@ -117,5 +115,4 @@ const itemListJsonLd = businesses.length > 0 ? {
 .nit-address { grid-column: 2; font-size: 0.8125rem; color: var(--ink-soft); }
 .nit-source { grid-column: 2; font-size: 0.8125rem; margin-top: 0.125rem; }
 
-.empty { text-align: center; color: var(--ink-soft); max-width: 46rem; margin: 0 auto; }
 </style>

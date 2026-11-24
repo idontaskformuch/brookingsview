@@ -124,28 +124,24 @@ def _request_headers(site_url: str) -> dict[str, str]:
 # still show older, still-technically-true content (weather, jobs) even
 # when a town's OWN generation has stalled.
 #
-# Checked by ABSENCE of the page's own already-existing empty-state string
-# (house rule 4 in this codebase: never render a feature with nothing in
-# it, every one of these pages already has a real `{ items.length > 0 ?
-# <content> : <p class="empty">...</p> }` branch) rather than by presence
-# of a "latest DB row" marker -- tried that first, it false-failed
-# immediately on Brookings: the "latest" sdsu_events row by start date was
-# a far-future one-off closure notice outside the page's own 60-day
-# rendering window, which the page correctly never shows. Checking for
-# the SAME empty-state text the page itself already renders sidesteps
-# needing to reimplement each page's own eligibility window out here.
+# Checked by PRESENCE of the page's own content marker (data-signature-content
+# on the list container, rendered only when the list has rows). Until
+# 2026-11-24 this looked for the page's empty-state text instead; the owner
+# then ruled that no page shows empty-state text (an empty section is left
+# out), so that text no longer exists and absence of it would always pass.
+# A "latest DB row" marker was tried first and false-failed on Brookings:
+# the page's own rendering window hides far-future rows, so the marker the
+# page itself renders is the only signal that does not reimplement it.
+SIGNATURE_MARKER = "data-signature-content"
 SIGNATURE_SECTIONS = {
     "brookings_sd": {
         "path": "/university/",
-        "empty_state_text": "No upcoming events listed right now.",
     },
     "moreno_valley_ca": {
         "path": "/workplace-watch/",
-        "empty_state_text": "No reviews summarized yet this month.",
     },
     "broomfield_co": {
         "path": "/vail-resorts/",
-        "empty_state_text": "No Vail Resorts news collected yet",
     },
 }
 
@@ -233,9 +229,9 @@ def check_signature_section(town_id: str, site_url: str) -> str | None:
     if r.status_code != 200:
         return f"signature section ({url}) returned HTTP {r.status_code}, expected 200"
 
-    if section["empty_state_text"] in r.text:
-        return (f"signature section ({url}) is showing its own empty state "
-                f"({section['empty_state_text']!r}) -- content generation for "
+    if SIGNATURE_MARKER not in r.text:
+        return (f"signature section ({url}) has no content rows "
+                f"(no {SIGNATURE_MARKER} marker) -- content generation for "
                 f"this section may have stalled")
     return None
 

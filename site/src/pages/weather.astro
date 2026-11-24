@@ -12,7 +12,6 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import WarningBanner from '../components/ui/WarningBanner.astro';
 import AboutThisPage from '../components/ui/AboutThisPage.astro';
-import EmptyState from '../components/ui/EmptyState.astro';
 import MetOfficeWarnings from '../components/MetOfficeWarnings.astro';
 import { getWeatherSnapshot, getActiveAlerts } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
@@ -64,7 +63,7 @@ const official = profile.weather.officialLink;
   </header>
 
   <div data-weather-region data-fetched-at={view.fetchedAt ?? ''}>
-    {region ? <Fragment set:html={region} /> : <EmptyState href={authority.url} linkLabel={`${authority.name} forecast`}>The forecast is not available right now.</EmptyState>}
+    {region && <Fragment set:html={region} />}
   </div>
   <script type="application/json" data-weather-config set:html={JSON.stringify(config)}></script>
   <script type="application/json" data-weather-data set:html={JSON.stringify(pageData).replace(/</g, '\\u003c')}></script>

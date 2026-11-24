@@ -9,6 +9,10 @@
  * /traffic/'s former "No crashes or closures reported ..." line (F4, 2026-11-11) is gone: the owner ruled 2026-11-15 that the page shows
  * no empty message in any town (lib/traffic-verdict.ts), so its wording is in EMPTY.
  *
+ * Owner 2026-11-24 (all four towns): no empty-state text anywhere. Besides the phrases, any element with class `empty` or a BEM
+ * `__empty` class fails the build (QA build.empty-state, fixture tests/fixtures/qa_empty_states_2026-11-24: real Broomfield pages
+ * built at 66dcd830, among them /this-week/2026-w48/ with "A quiet week").
+ *
  * Two more checks on the same real build:
  *  - a town without a /traffic/ page (no dist/traffic/index.html: no traffic source) has no link to /traffic/ anywhere (owner 2026-11-07);
  *  - no page mentions a domain on scripts/blocked-domains.json (a hijacked or unsafe domain);
@@ -33,7 +37,32 @@ const EMPTY = [
   'Nothing scheduled', 'No weather alerts', 'No weather warnings', 'No wildfires', 'No active weather alerts', 'No incidents in',
   'Nothing on the calendar', 'No marquee events', 'Nothing else listed', 'No alerts or traffic incidents', 'No current air-quality reading',
   'No crashes or closures reported', 'road feed has not been read since',
+  // Owner 2026-11-24 (all towns): no empty-state text at all; an empty section is left out and the page leads with what it has.
+  // The wordings removed that day, matched on the page's visible text (EMPTY_TEXT), plus the markup rule in emptyMarkup().
+  'A quiet week', 'No past meetings recorded', 'No meetings scheduled at the moment', 'No meeting updates recorded',
+  'No projects tracked yet', 'No corrections have been logged', 'No past events recorded', 'No facility information available',
+  'Prices are not available right now', 'No sales recorded', 'No digests published yet', 'No job listings available',
+  'listings available right now', 'No structured data cleared', 'No months published yet', 'No confirmed openings or closings',
+  'No games scheduled right now', 'No upcoming events listed', 'No earlier weeks yet', 'No Vail Resorts news collected',
+  'Nothing found in the area', 'No reviews summarized', 'No comments yet', 'Schools are open', 'No meetings posted yet',
+  'The forecast is not available', "We have not read the City's list", 'Nothing else on tonight', 'Nothing else scheduled',
+  'Nothing is listed for', 'are listed right now', 'listed this week — check back', 'Nothing this weekend', 'Nothing today',
 ];
+/** Owner 2026-11-24: an element whose class is `empty` or a BEM `__empty` (the markup every empty-state line used) never ships,
+ *  whatever its wording. Returns the first such class, or null. */
+function emptyMarkup(html) {
+  for (const [, cls] of html.matchAll(/\sclass="([^"]*)"/g)) {
+    const hit = cls.split(/\s+/).find((t) => t === 'empty' || /__empty$/.test(t));
+    if (hit) return hit;
+  }
+  return null;
+}
+/** The page's visible text (no script/style, tags out, common entities decoded), so "City's" matches "City&#39;s". */
+function visibleText(html) {
+  return html.replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ')
+    .replace(/&#39;|&#x27;|&apos;|&rsquo;/g, "'").replace(/&mdash;|&#8212;/g, '—').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ');
+}
 // Broomfield AdSense plan F9 (2026-11-11): a holiday row whose notice is not out yet is a plain link to the place's page
 // (lib/holiday-view.ts), never a "Not confirmed" status, and no row says its source "lists no year".
 const UNCONFIRMED = ['Not confirmed', 'Page lists no year'];
@@ -98,7 +127,10 @@ for (const file of walk(dist)) {
   pages++;
   const url = '/' + relative(dist, file).split(sep).join('/').replace(/index\.html$/, '');
   const html = readFileSync(file, 'utf8');
-  for (const phrase of EMPTY) if (html.includes(phrase)) bad.push(`${url}: empty message "${phrase}"`);
+  const text = visibleText(html);
+  for (const phrase of EMPTY) if (html.includes(phrase) || text.includes(phrase)) bad.push(`${url}: empty message "${phrase}"`);
+  const emptyClass = emptyMarkup(html);
+  if (emptyClass) bad.push(`${url}: empty-state markup class="${emptyClass}"`);
   if (!hasTrafficPage && TRAFFIC_LINK.test(html)) bad.push(`${url}: link to /traffic/ but this town has no traffic page`);
   for (const b of BLOCKED) if (html.toLowerCase().includes(b.domain)) bad.push(`${url}: blocked domain ${b.domain} (${b.reason})`);
   if (url !== EXPLAINER_PAGE) for (const phrase of BOX) if (html.includes(phrase)) bad.push(`${url}: explanation box "${phrase}"`);

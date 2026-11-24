@@ -36,7 +36,6 @@ import { placeLabel } from '../../lib/country-profile';
 import { getTicketmasterEventsForTown } from '../../lib/ticketmaster';
 import { rankTicketmasterEvents, splitMarquee, ticketmasterResolvableImage, dropEnded, collapseSeriesRows } from '../../lib/whats-on';
 import { getFacilities } from '../../lib/db';
-import { EMPTY_STATES } from '../../lib/empty-states';
 import { SECTION_THEME } from '../../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { buildTicketmasterListJsonLd } from '../../lib/ticketmaster-jsonld';
@@ -158,7 +157,6 @@ const eventsJsonLd = buildTicketmasterListJsonLd(
     )}
   </div>
 
-  {ranked.length === 0 && <p class="empty">{EMPTY_STATES.whatsOn}</p>}
   {alsoOnDays.length > 0 && (
     <>
       <SectionRule label="Also on" />
@@ -216,5 +214,4 @@ const eventsJsonLd = buildTicketmasterListJsonLd(
 .marquee-grid { display: grid; gap: 1.5rem 2rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); margin-bottom: 1.5rem; }
 .also-on-list { display: block; }
 .also-on-later { margin: 0.75rem 0 0; color: var(--ink-soft); font-size: 0.9375rem; }
-.empty { color: var(--ink-soft); }
 </style>

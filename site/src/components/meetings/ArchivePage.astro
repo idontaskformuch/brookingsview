@@ -107,9 +107,7 @@ const itemListJsonLd = shown.length > 0 ? {
         {groups.get(key)!.map((story) => <StoryCard story={story} compact />)}
       </div>
     </section>
-  )) : (
-    <p class="empty">No past meetings recorded yet.</p>
-  )}
+  )) : null}
 
   {pageCount > 1 && (
     <nav class="pager" aria-label="Archive pages">
@@ -143,7 +141,6 @@ const itemListJsonLd = shown.length > 0 ? {
   margin: 0 0 0.875rem;
 }
 .stack { display: grid; gap: 0.75rem; max-width: 44rem; }
-.empty { color: var(--ink-soft); }
 .pager { display: flex; justify-content: space-between; align-items: center; gap: 1rem; max-width: 44rem; margin: 2rem 0 0; padding-top: 0.75rem; border-top: 2px solid var(--rule-strong); font-weight: 600; }
 .pager a { display: inline-flex; align-items: center; min-height: 2.75rem; }
 </style>

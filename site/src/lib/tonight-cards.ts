@@ -244,7 +244,8 @@ export interface Hero {
   /** kind 'count': the big number and the words after it. */
   count?: number;
   label?: string;
-  /** kind 'empty': the line, and the link to tomorrow night when there is something to point at. */
+  /** kind 'empty' (nothing left tonight): what there still is ("3 places open late", or '' for nothing), and the link to tomorrow
+   *  night when there is something to point at. Both empty: the line is not shown. */
   text?: string;
   tomorrow?: string | null;
 }
@@ -253,8 +254,9 @@ export interface Hero {
 export function heroFor(o: { events: number; late: number; tomorrow: number; word: string }): Hero {
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
   if (o.events > 0) return { kind: 'count', count: o.events, label: `${o.events === 1 ? 'thing' : 'things'} on ${o.word}` };
-  if (o.late > 0) return { kind: 'empty', text: `Nothing else scheduled ${o.word} · ${plural(o.late, 'place', 'places')} open late`, tomorrow: null };
-  return { kind: 'empty', text: `Nothing else on ${o.word}`, tomorrow: o.tomorrow > 0 ? `Tomorrow: ${plural(o.tomorrow, 'thing', 'things')}` : null };
+  // Owner 2026-11-24: no empty-state text ("Nothing else on tonight"). The line leads with what there is, or is not shown at all.
+  if (o.late > 0) return { kind: 'empty', text: `${plural(o.late, 'place', 'places')} open late`, tomorrow: null };
+  return { kind: 'empty', text: '', tomorrow: o.tomorrow > 0 ? `Tomorrow: ${plural(o.tomorrow, 'thing', 'things')}` : null };
 }
 
 /** "in 12 min" / "in 1 h 5 min" for the header. */

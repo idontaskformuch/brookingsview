@@ -108,9 +108,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
         </li>
       ))}
     </ul>
-  ) : (
-    <p class="empty">No sales recorded for {zip} yet — check back.</p>
-  )}
+  ) : null}
 
   {itemListJsonLd && (
     <script type="application/ld+json" is:inline set:html={JSON.stringify(itemListJsonLd)} />
@@ -146,5 +144,4 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
 .list a { font-weight: 600; }
 .meta { color: var(--ink-soft); font-size: 0.9375rem; }
 .outlier-flag { margin-left: 0.15rem; color: var(--ink-soft); cursor: help; }
-.empty { color: var(--ink-soft); }
 </style>
