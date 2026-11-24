@@ -95,6 +95,7 @@ describe('forced morning build (owner 2026-11-24)', () => {
   const MOVAL = 'moval-deploy.yml';
   const BROOM = 'broomfield-deploy.yml';
   const GLA = 'glasgow-deploy.yml';
+  const BROOK = 'deploy.yml';
   const builds = (day: string) =>
     ['04', '05', '06', '10', '11', '12', '13'].flatMap((h) => dueWorkflowsAll(MORNING_CRON, at(`${day}T${h}:30:00Z`)).filter((w) => !w.includes('closure-watch')).map((w) => `${h}:${w}`));
 
@@ -104,18 +105,19 @@ describe('forced morning build (owner 2026-11-24)', () => {
     }
   });
   it('summer (DST): Glasgow 04:30Z (BST), Broomfield 11:30Z (MDT), Moreno 12:30Z (PDT) on a Saturday', () => {
-    expect(builds('2026-07-18')).toEqual([`04:${GLA}`, `11:${BROOM}`, `12:${MOVAL}`]);
+    expect(builds('2026-07-18')).toEqual([`04:${GLA}`, `10:${BROOK}`, `11:${BROOM}`, `12:${MOVAL}`]);
   });
   it('winter: Glasgow 05:30Z (GMT), Broomfield 12:30Z (MST), Moreno 13:30Z (PST) on a Sunday', () => {
-    expect(builds('2026-12-20')).toEqual([`05:${GLA}`, `12:${BROOM}`, `13:${MOVAL}`]);
+    expect(builds('2026-12-20')).toEqual([`05:${GLA}`, `11:${BROOK}`, `12:${BROOM}`, `13:${MOVAL}`]);
   });
   it('on a weekday Moreno is covered by moval-closure-watch-morning.yml, never also by moval-deploy.yml (no double deploy)', () => {
     expect(builds('2026-07-15')).toEqual([`04:${GLA}`, `11:${BROOM}`]);
     expect(builds('2026-12-16')).toEqual([`05:${GLA}`, `12:${BROOM}`]);
     expect(dueWorkflowsAll(MORNING_CRON, at('2026-12-16T13:30:00Z'))).toEqual(['moval-closure-watch-morning.yml']);
   });
-  it('Brookings is not part of the forced build', () => {
-    expect(MORNING_BUILDS.some((b) => (b.workflow as string) === 'deploy.yml')).toBe(false);
+  it('on a weekday Brookings is covered by closure-watch-morning.yml, never also by deploy.yml (no double deploy)', () => {
+    expect(dueWorkflowsAll(MORNING_CRON, at('2026-07-15T10:30:00Z'))).toEqual(['closure-watch-morning.yml']);
+    expect(dueWorkflowsAll(MORNING_CRON, at('2026-12-16T11:30:00Z'))).toEqual(['closure-watch-morning.yml']);
   });
 });
 

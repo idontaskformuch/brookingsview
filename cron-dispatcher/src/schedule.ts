@@ -56,9 +56,11 @@ export const MORNING_TOWNS = [
 
 // Forced morning build (owner 2026-11-24): the town's own deploy workflow (workflow_dispatch builds and deploys without a paths/changed check)
 // at 05:30 local, so "today"-dependent pages roll over even when no data changed. Moreno Valley's weekdays are covered by
-// moval-closure-watch-morning.yml (which now deploys unconditionally); dispatching moval-deploy.yml as well would start two deploys at once.
+// moval-closure-watch-morning.yml and closure-watch-morning.yml (Brookings), which deploy unconditionally; dispatching the town's deploy
+// workflow as well would start two deploys at once, so on weekdays only the closure-watch run goes (owner 2026-11-24).
 // Broomfield and Glasgow have no closure-watch run, so they get the deploy workflow every day.
 export const MORNING_BUILDS = [
+  { workflow: 'deploy.yml', timeZone: 'America/Chicago', days: 'weekend' }, // Brookings
   { workflow: 'moval-deploy.yml', timeZone: 'America/Los_Angeles', days: 'weekend' },
   { workflow: 'broomfield-deploy.yml', timeZone: 'America/Denver', days: 'all' },
   { workflow: 'glasgow-deploy.yml', timeZone: 'Europe/London', days: 'all' },
