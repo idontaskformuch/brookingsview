@@ -53,6 +53,16 @@ describe('BaseLayout wiring', () => {
     expect(banner).toContain("optIn ? 'banner__equal' : 'banner__accept'");
     expect(banner).not.toMatch(/\.banner__equal\s*\{/);
   });
+  it('the opt-in banner is one short line with "More" to /cookies/; the longer sentences live on the cookies page (owner 2026-11-25)', () => {
+    expect(banner).toContain('<p>We use cookies to see which pages people read. <a href="/cookies/">More</a></p>');
+    const optInBranch = banner.slice(banner.indexOf('{optIn ? ('), banner.indexOf(') : (', banner.indexOf('{optIn ? (')));
+    expect(optInBranch).not.toContain('Nothing is set');
+    expect(optInBranch).not.toContain('Cookie settings');
+    expect(cookiesGb).toContain('data-cookie-settings>Cookie settings</button>');
+    // one line where it fits, the buttons straight under otherwise: a wrapping flex row, no fixed height
+    expect(banner).toMatch(/\.banner--compact \.banner__inner \{[^}]*padding: 0\.5rem/);
+    expect(banner).toContain('data-consent="declined">Decline</button>');
+  });
   it('without an id there is no GA4 script, no footer "Cookie settings" and (UK) no banner', () => {
     expect(layout).toContain('{siteConfig.ga4MeasurementId && import.meta.env.PROD && !ga4OptIn && (');
     expect(layout).toContain('{siteConfig.ga4MeasurementId && import.meta.env.PROD && ga4OptIn && (');
