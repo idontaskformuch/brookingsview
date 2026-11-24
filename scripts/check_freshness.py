@@ -138,9 +138,14 @@ _HINT = {"sport": " Check the brookings-sports workflow run and sport_sources_he
          "safety": " Check the cron-dispatcher Worker's logs and dispatcher_heartbeat.last_error."}
 
 
-def stale_finding(kind: str, town: str, what: str, last: datetime | None, now: datetime) -> dict:
+def skip_note(reason: str | None, at: datetime | None) -> str:
+    """The last recorded reason a sports source was skipped (robots.txt unreadable/refused, with its status code), for the alert text."""
+    return f" Last skipped {at:%Y-%m-%d %H:%M} UTC: {reason}." if reason and at else ""
+
+
+def stale_finding(kind: str, town: str, what: str, last: datetime | None, now: datetime, note: str = "") -> dict:
     return {"check": CHECK_ID[kind], "town": town, "pattern": what, "path": f"/{town}/{what}",
-            "message": f"{what}: last success {age_text(last, now)} (limit {LIMIT_HOURS[kind]} h)." + _HINT[kind]}
+            "message": f"{what}: last success {age_text(last, now)} (limit {LIMIT_HOURS[kind]} h)." + note + _HINT[kind]}
 
 
 def _parse_ts(value: str | None) -> datetime | None:
@@ -149,20 +154,33 @@ def _parse_ts(value: str | None) -> datetime | None:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
+def _skip_columns(conn, town: str, source_id: str) -> tuple[str | None, datetime | None]:
+    """(last_skip_reason, last_skip_at) from migration 076; (None, None) while that migration has not run (or the row has none)."""
+    try:
+        conn.execute("SAVEPOINT skip_cols")
+        row = conn.execute("SELECT last_skip_reason, last_skip_at FROM sport_sources_health WHERE town_id = %s AND source_id = %s", (town, source_id)).fetchone()
+        conn.execute("RELEASE SAVEPOINT skip_cols")
+        return (row[0], row[1]) if row else (None, None)
+    except Exception:  # noqa: BLE001 -- column missing
+        conn.execute("ROLLBACK TO SAVEPOINT skip_cols")
+        return None, None
+
+
 def collect(conn, now: datetime, only: set[str], today: date) -> tuple[list[dict], list[str]]:
     findings: list[dict] = []
     lines: list[str] = []
 
-    def judge(kind: str, town: str, what: str, last: datetime | None) -> None:
+    def judge(kind: str, town: str, what: str, last: datetime | None, note: str = "") -> None:
         stale = is_stale(last, now, LIMIT_HOURS[kind])
         lines.append(f"  [freshness] {kind} {town}/{what}: {'STALE' if stale else 'ok'} -- {age_text(last, now)}")
         if stale:
-            findings.append(stale_finding(kind, town, what, last, now))
+            findings.append(stale_finding(kind, town, what, last, now, note))
 
     if "sport" in only:
         for town, source_id in sport_sources():
             row = conn.execute("SELECT last_success FROM sport_sources_health WHERE town_id = %s AND source_id = %s", (town, source_id)).fetchone()
-            judge("sport", town, source_id, row[0] if row else None)
+            skip = _skip_columns(conn, town, source_id)
+            judge("sport", town, source_id, row[0] if row else None, skip_note(*skip))
     if "sportwarn" in only:
         for town, source_id in sport_sources():
             row = conn.execute("SELECT last_error, last_error_at FROM sport_sources_health WHERE town_id = %s AND source_id = %s", (town, source_id)).fetchone()

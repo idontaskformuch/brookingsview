@@ -42,6 +42,19 @@ def upsert_events(cur, town_id: str, events: list[NormalizedEvent]) -> int:
     return len(events)
 
 
+def record_skip(cur, town_id: str, source_id: str, reason: str) -> None:
+    """Why the source was skipped (robots.txt unreadable/refused, with its status code) and when, in last_skip_reason / last_skip_at (migration 076).
+    Never overwritten by a successful run. Inside a savepoint, so a database that has not run migration 076 yet only loses this note: the
+    health row and the run itself are unaffected."""
+    try:
+        cur.execute("SAVEPOINT record_skip")
+        cur.execute("UPDATE sport_sources_health SET last_skip_reason = %s, last_skip_at = %s WHERE town_id = %s AND source_id = %s",
+                    (reason[:500], datetime.now(timezone.utc), town_id, source_id))
+        cur.execute("RELEASE SAVEPOINT record_skip")
+    except Exception:  # noqa: BLE001 -- column missing: roll back to the savepoint and carry on
+        cur.execute("ROLLBACK TO SAVEPOINT record_skip")
+
+
 def record_health(cur, town_id: str, source_id: str, *, event_count: int | None = None, error: str | None = None, warning: str | None = None) -> None:
     """A success may carry a `warning` (a page that was skipped, a withdraw guard that held something back); a clean success clears the previous one.
     last_error_at keeps the time the SAME warning first appeared (scripts/check_freshness.py opens an issue when one has lasted more than 3 days);

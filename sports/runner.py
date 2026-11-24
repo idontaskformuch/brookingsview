@@ -45,6 +45,7 @@ def run_source(cur, town_id: str, source: dict, *, http: PoliteHttp | None = Non
         withdraw.apply(cur, decision)
     except SourceSkipped as exc:
         store.record_health(cur, town_id, sid, error=f"skipped: {exc}")
+        store.record_skip(cur, town_id, sid, str(exc))  # its own columns: a later clean run does not wipe the reason
         return "skipped"
     except Exception as exc:
         store.record_health(cur, town_id, sid, error=f"{type(exc).__name__}: {exc}")

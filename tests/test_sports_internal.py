@@ -121,7 +121,11 @@ class Cur:
 
 
 def health_rows(cur):
-    return [p for sql, p in cur.calls if "sport_sources_health" in sql]
+    return [p for sql, p in cur.calls if sql.startswith("INSERT INTO sport_sources_health")]
+
+
+def skip_rows(cur):
+    return [p for sql, p in cur.calls if sql.startswith("UPDATE sport_sources_health SET last_skip_reason")]
 
 
 def test_runner_logs_a_403_as_skipped_and_does_not_retry():
@@ -132,6 +136,10 @@ def test_runner_logs_a_403_as_skipped_and_does_not_retry():
     assert row[1] == "internal:sdsu" and row[2].startswith("skipped:") and "403" in row[2]
     assert len([u for u in net.urls if u.endswith("/schedule/text")]) == 1
     assert not any("INSERT INTO sport_events" in sql for sql, _ in cur.calls)
+    # owner 2026-11-24: the reason (with the status code) and its time go in their own columns, inside a savepoint (migration 076 may not have run)
+    (skip,) = skip_rows(cur)
+    assert "403" in skip[0] and skip[1].tzinfo is not None and skip[2:] == ("brookings_sd", "internal:sdsu")
+    assert [sql for sql, _ in cur.calls if sql.startswith(("SAVEPOINT", "RELEASE"))] == ["SAVEPOINT record_skip", "RELEASE SAVEPOINT record_skip"]
 
 
 def test_runner_logs_a_crawl_delay_above_max_as_skipped():
@@ -140,6 +148,22 @@ def test_runner_logs_a_crawl_delay_above_max_as_skipped():
     cur = Cur()
     assert runner.run_source(cur, "brookings_sd", source, http=PoliteHttp("UA", get=net.get, sleep=net.sleep, max_crawl_delay=20)) == "skipped"
     assert "max_crawl_delay" in health_rows(cur)[0][2] and net.sleeps == []
+
+
+def test_a_clean_run_never_touches_the_skip_reason():
+    cur = Cur()
+    assert runner.run_source(cur, "brookings_sd", SOURCE, http=Net().http()) == "ok"
+    assert skip_rows(cur) == []
+
+
+def test_skip_note_in_the_alert_text():
+    from datetime import datetime, timezone
+    from scripts import check_freshness as cf
+    now = datetime(2026, 11, 24, 13, 46, tzinfo=timezone.utc)
+    at = datetime(2026, 11, 22, 17, 1, tzinfo=timezone.utc)
+    f = cf.stale_finding("sport", "glasgow", "sportspress_calendar:queens-park", at, now, cf.skip_note("robots.txt answered 503: skipped", at))
+    assert "Last skipped 2026-11-22 17:01 UTC: robots.txt answered 503: skipped." in f["message"]
+    assert cf.skip_note(None, None) == ""
 
 
 def test_runner_writes_events_and_health_on_success():
