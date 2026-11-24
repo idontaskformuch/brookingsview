@@ -24,7 +24,6 @@ import { buildEventJsonLd } from '../lib/event-jsonld';
 import { linkTarget } from '../lib/ai-text';
 import { getBigShows } from '../lib/big-shows';
 import BigShowsNearby from '../components/events/BigShowsNearby.astro';
-import CalendarEmpty from '../components/events/CalendarEmpty.astro';
 import { resolvePageMeta } from '../lib/page-meta';
 import { resolveHubNavItems } from '../lib/clusters';
 import ClusterNav from '../components/ClusterNav.astro';
@@ -95,6 +94,8 @@ function hrefOf(item: FeedItem): string | null {
 }
 const FOLD = 7;
 const busyDays = view.days.filter((d) => d.count > 0);
+const eventsEmpty = busyDays.length === 0 && view.furtherOut.length === 0;
+const calendarLinks = [siteConfig.eventCalendars?.city, siteConfig.eventCalendars?.library].filter((c): c is { url: string; label: string } => !!c);
 
 // Designsystem Fas 4 (owner 2026-11-21): one DayGroup per day with EventRows under it; the date is the heading, never on a row, and no
 // "Today" on each card. The rows are the same DayRows as before (one pipeline with the front page), only printed as EventRows.
@@ -199,8 +200,12 @@ const webPageJsonLd = dateModified ? {
   </nav>
 
   <EventDays groups={busyGroups} tz={siteConfig.timezone} showCategory={showCategory} />
-  {busyDays.length === 0 && view.furtherOut.length === 0 && (
-    <CalendarEmpty lead={`No events in ${siteConfig.cityName} are listed right now`} />
+  {/* Nothing to list (a paused or quiet source): no "no events" message (owner 2026-11-24). The day sections are simply absent, Nearby, Recently and
+      the related sections below carry the page, and the town's own calendars are two plain links among the others. */}
+  {eventsEmpty && calendarLinks.length > 0 && (
+    <nav class="ev-calendars" aria-label="Event calendars">
+      {calendarLinks.map((c) => <a href={c.url}>{c.label}</a>)}
+    </nav>
   )}
 
   {view.furtherOut.length > 0 && (
@@ -257,6 +262,7 @@ const webPageJsonLd = dateModified ? {
 </BaseLayout>
 
 <style>
+.ev-calendars { display: flex; flex-wrap: wrap; gap: var(--ui-3); margin: var(--ui-3) 0; font-size: 0.875rem; }
 .ev-head { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-3); margin: var(--ui-3) 0; }
 .ev-head h1 { margin: 0; }
 .game-note { margin: var(--ui-3) 0 0; padding: var(--ui-2) var(--ui-3); background: var(--ui-surface-2); border-radius: var(--ui-radius); font-family: var(--font-ui); font-size: var(--ui-meta); }
