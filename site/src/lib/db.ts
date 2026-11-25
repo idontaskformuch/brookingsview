@@ -44,6 +44,7 @@ import type { RegisterRow } from './evening-items';
 import { isAllDay } from './local-day';
 import { canonicalJobCategory } from './jobs';
 import { ELECTION_BY_TOWN } from '../config/election';
+import { unconfirmedHoursSlugs } from '../config/hours-scope';
 import { readLastValid } from '../../../election-results/src/read';
 import { toPublic, type PublicResults } from '../../../election-results/src/api';
 import { TOWNS as ELECTION_TOWNS } from '../../../election-results/src/towns';
@@ -2610,20 +2611,24 @@ export interface PlaceHoursRow {
  *  Map build, not worth a second DB round trip); avoids an N+1 query
  *  pattern across what could be 40-60 places once seeding finishes. */
 export async function getAllPlaceHoursForTown(): Promise<(PlaceHoursRow & { place_id: number })[]> {
+  // Rows no source confirms are never read (config/hours-scope.ts UNCONFIRMED_HOURS): no weekly line, no pill.
   return (await sql`
     SELECT ph.place_id, ph.day_of_week, ph.opens, ph.closes, ph.valid_from, ph.valid_to
       FROM place_hours ph
       JOIN places p ON p.id = ph.place_id
      WHERE p.town_id = ${TOWN_ID}
+       AND NOT (p.slug = ANY(${unconfirmedHoursSlugs(TOWN_ID)}::text[]))
   `) as (PlaceHoursRow & { place_id: number })[];
 }
 
 export async function getPlaceHours(placeId: number): Promise<PlaceHoursRow[]> {
   return (await sql`
-    SELECT day_of_week, opens, closes, valid_from, valid_to
-      FROM place_hours
-     WHERE place_id = ${placeId}
-     ORDER BY day_of_week
+    SELECT ph.day_of_week, ph.opens, ph.closes, ph.valid_from, ph.valid_to
+      FROM place_hours ph
+      JOIN places p ON p.id = ph.place_id
+     WHERE ph.place_id = ${placeId}
+       AND NOT (p.slug = ANY(${unconfirmedHoursSlugs(TOWN_ID)}::text[]))
+     ORDER BY ph.day_of_week
   `) as PlaceHoursRow[];
 }
 
