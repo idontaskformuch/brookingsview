@@ -94,6 +94,21 @@ const todayPeriod = weatherPeriods.find((p) => p.is_daytime) ?? weatherPeriods[0
 // once since this shipped, not shown as an all-zero/all-dash column that
 // would read as "measured, nothing happening" instead of "not measured yet".
 const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
+// ---- Notes on the template below (moved here 2026-11-25: a JS comment inside an Astro template can drop all CSS from a
+// build; scripts/verify_astro_template_comments.mjs). Each note names the markup it is about.
+// [at: <small class="data">{e.period_label}</small>]
+//   2026-10-02: the raw theme_summary excerpt is withheld here
+//                         too, not just the structured rating/trend columns -- it
+//                         routinely states the exact same numbers in prose ("rate
+//                         the company 2.9 out of 5 stars on Glassdoor"), found by
+//                         grepping the real built output. See lib/content-redaction.ts
+//                         for the full reasoning and the longer version of this
+//                         note used on the digest's own /s/ page; this is the
+//                         short, table-cell-sized version, not imported from
+//                         there since a dense comparison table needs a shorter
+//                         line than a full page does. period_label is kept visible
+//                         (it's just a month name, not a rating) so the "This
+//                         month" column header still has real content under it.
 ---
 <BaseLayout
   title={pageMeta.title}
@@ -155,18 +170,6 @@ const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
             <span class="wp-summary" role="cell">
               {e.theme_summary ? (
                 <>
-                  {/* 2026-10-02: the raw theme_summary excerpt is withheld here
-                      too, not just the structured rating/trend columns -- it
-                      routinely states the exact same numbers in prose ("rate
-                      the company 2.9 out of 5 stars on Glassdoor"), found by
-                      grepping the real built output. See lib/content-redaction.ts
-                      for the full reasoning and the longer version of this
-                      note used on the digest's own /s/ page; this is the
-                      short, table-cell-sized version, not imported from
-                      there since a dense comparison table needs a shorter
-                      line than a full page does. period_label is kept visible
-                      (it's just a month name, not a rating) so the "This
-                      month" column header still has real content under it. */}
                   <small class="data">{e.period_label}</small>
                   <span class="excerpt muted">Review-theme summary withheld pending a sourcing review.</span>
                 </>

@@ -1,0 +1,106 @@
+---
+/** The top of /city-hall/: the next meeting as a full MeetingCard (owner 2026-11-25, Tillägg A: no display number), then "This week" (the following 7 days) and
+ *  "Coming up", with organ chips over the lists when there are enough meetings to filter. An organ group the town folds away (Glasgow's Area
+ *  Partnerships) sits in one fold under the lists. With no meeting ahead the whole block is left out (owner 2026-11-24: no empty-state text).
+ *  The build knows "today" only as of the build: "in 5 days" is written by the browser (lib/client/time-status.ts, Fas 3; the date without
+ *  JS), and the small script below hides a meeting that is over and runs the chips. Without JS everything shows. */
+import SectionRule from '../SectionRule.astro';
+import Chips from '../ui/Chips.astro';
+import MeetingCard from './MeetingCard.astro';
+import { daysBetween, chipCounts, type MeetingView } from '../../lib/meetings-view';
+
+interface Props {
+  meetings: MeetingView[];
+  todayYmd: string;
+  timezone: string;
+  commentBodyKeys: string[];
+  commentHref: string | null;
+  portal: { href: string; label: string } | null;
+}
+const { meetings, todayYmd, timezone, commentBodyKeys, commentHref, portal } = Astro.props;
+const main = meetings.filter((m) => !m.collapsedGroup);
+const folded = meetings.filter((m) => m.collapsedGroup);
+// A quorum notice or a cancelled meeting is shown in the lists but never as the meeting to plan around.
+const isReal = (m: MeetingView) => !m.quorumNotice && !m.cancelled && !m.postponed;
+const next = main.find(isReal) ?? folded.find(isReal) ?? main[0] ?? folded[0];
+const others = meetings.filter((m) => m !== next);
+const week = others.filter((m) => !m.collapsedGroup && daysBetween(todayYmd, m.ymd) <= 7);
+const later = others.filter((m) => !m.collapsedGroup && daysBetween(todayYmd, m.ymd) > 7);
+const foldedOthers = others.filter((m) => m.collapsedGroup);
+const foldGroups = [...new Set(foldedOthers.map((m) => m.collapsedGroup!))];
+// Next up (owner 2026-11-25, Tillägg A): no display number. The next meeting is the same card as every other one: organ, a heading with
+// date and time, then "in 5 days" (browser, Fas 3) and the place. Without JS the date stands once.
+const hrefFor = (m: MeetingView) => (commentHref && commentBodyKeys.includes(m.bodyKey) ? commentHref : null);
+---
+{next && (
+<section class="up" data-mtg-root data-tz={timezone}>
+  <SectionRule label="Next up" />
+  <div class="up__next">
+    <MeetingCard m={next} todayYmd={todayYmd} commentHref={hrefFor(next)} portal={portal} />
+  </div>
+
+  <Chips counts={chipCounts(others)} label="Filter upcoming meetings" dataKey="mtg-chip" navAttrs={{ 'data-mtg-chips': '' }} class="up__chips" />
+
+  {week.length > 0 && (
+    <>
+      <SectionRule label="This week" />
+      <div class="up__stack" data-mtg-list>{week.map((m) => <MeetingCard m={m} todayYmd={todayYmd} commentHref={hrefFor(m)} portal={portal} />)}</div>
+    </>
+  )}
+  {later.length > 0 && (
+    <>
+      <SectionRule label="Coming up" />
+      <div class="up__stack" data-mtg-list>{later.map((m) => <MeetingCard m={m} todayYmd={todayYmd} commentHref={hrefFor(m)} portal={portal} />)}</div>
+    </>
+  )}
+  {foldGroups.map((g) => (
+    <details class="up__fold" data-mtg-group={g}>
+      <summary>{g} · {foldedOthers.filter((m) => m.collapsedGroup === g).length} {foldedOthers.filter((m) => m.collapsedGroup === g).length === 1 ? 'meeting' : 'meetings'}</summary>
+      <div class="up__stack" data-mtg-list>{foldedOthers.filter((m) => m.collapsedGroup === g).map((m) => <MeetingCard m={m} todayYmd={todayYmd} commentHref={hrefFor(m)} portal={portal} />)}</div>
+    </details>
+  ))}
+</section>
+)}
+
+<script is:inline>
+  (function () {
+    var root = document.querySelector('[data-mtg-root]');
+    if (!root) return;
+    var tz = root.getAttribute('data-tz') || 'UTC';
+    var now = Date.now();
+    var today;
+    try { today = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(now)); } catch (e) { return; }
+    var cards = root.querySelectorAll('article[data-ymd]');
+    for (var i = 0; i < cards.length; i++) {
+      var c = cards[i], ymd = c.getAttribute('data-ymd'), end = c.getAttribute('data-end');
+      if (end ? now > +end : ymd < today) { c.hidden = true; continue; }
+    }
+    var chips = root.querySelector('[data-mtg-chips]');
+    if (!chips) return;
+    chips.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-mtg-chip]');
+      if (!b) return;
+      var key = b.getAttribute('data-mtg-chip');
+      var all = chips.querySelectorAll('[data-mtg-chip]');
+      for (var j = 0; j < all.length; j++) all[j].setAttribute('aria-pressed', all[j] === b ? 'true' : 'false');
+      var lists = root.querySelectorAll('[data-mtg-list] article');
+      for (var k = 0; k < lists.length; k++) lists[k].classList.toggle('mtg--off', !!key && lists[k].getAttribute('data-organ') !== key);
+      var folds = root.querySelectorAll('details[data-mtg-group]');
+      for (var f = 0; f < folds.length; f++) {
+        var g = folds[f].getAttribute('data-mtg-group');
+        folds[f].classList.toggle('mtg--off', !!key && g !== key);
+        if (key) folds[f].open = g === key;
+      }
+    });
+  })();
+</script>
+
+<style>
+  .up__next { max-width: 44rem; display: grid; gap: var(--ui-3); }
+  .up__stack { display: grid; gap: var(--ui-row-gap); max-width: 44rem; }
+  .up__fold { margin-top: var(--ui-group-gap); max-width: 44rem; }
+  .up__fold > summary { cursor: pointer; font-family: var(--font-ui); font-size: var(--ui-primary); font-weight: var(--ui-primary-weight); padding: var(--ui-2) 0; min-height: 2.75rem; display: flex; align-items: center; }
+  .up__fold > .up__stack { margin-top: var(--ui-2); }
+  .up :global(.up__chips) { max-width: 44rem; margin-top: var(--ui-3); }
+  .up :global(.mtg--off) { display: none; }
+</style>

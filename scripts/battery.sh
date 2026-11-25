@@ -54,6 +54,10 @@ if [ $rc -ne 0 ] && node -e '
 fi
 step vitest $rc
 
+node ../scripts/verify_astro_template_comments.mjs > "$LOG/template-comments.log" 2>&1
+step template-comments $?
+tail -3 "$LOG/template-comments.log"
+
 SITE_CITY=$CHECK_CITY npx astro check > "$LOG/check.log" 2>&1
 step "check($CHECK_CITY)" $?
 tail -4 "$LOG/check.log"

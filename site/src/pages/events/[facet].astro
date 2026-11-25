@@ -144,6 +144,11 @@ const siblingFacets = townFacets().filter((f) => f.slug !== facet.slug && live.i
 
 const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('events/facet', siteConfig, { label: facet.navLabel, href: canonicalUrl });
 const hubBacklink = resolveHubBacklink('events/facet', siteConfig);
+// ---- Notes on the template below (moved here 2026-11-25: a JS comment inside an Astro template can drop all CSS from a
+// build; scripts/verify_astro_template_comments.mjs). Each note names the markup it is about.
+// [at: {items.length > 0 && (]
+//   No events: no list and no empty-state text on any facet (owner 2026-11-24). The page is noindex and hidden from the facet navigation
+//         until it has content; 'free' still shows its always-free facilities below. When every card has ended in the browser, the list hides.
 ---
 <BaseLayout title={title} wide ogSlug={`events-${facet.slug}`} description={description} noindex={isNoindex}>
   <Breadcrumbs trail={breadcrumbTrail} />
@@ -159,8 +164,6 @@ const hubBacklink = resolveHubBacklink('events/facet', siteConfig);
 
   {facet.slug === 'free' && items.length > 0 && <SectionRule label="Free events" />}
 
-  {/* No events: no list and no empty-state text on any facet (owner 2026-11-24). The page is noindex and hidden from the facet navigation
-      until it has content; 'free' still shows its always-free facilities below. When every card has ended in the browser, the list hides. */}
   {items.length > 0 && (
       <div class="grid" data-hide-ended={facet.slug === 'today' || facet.slug === 'this-weekend' ? '' : undefined} data-hide-when-empty>
         {items.map((item) => (

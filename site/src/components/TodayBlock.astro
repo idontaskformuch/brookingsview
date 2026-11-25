@@ -192,6 +192,46 @@ const closureState = closureStatus?.state;
 const showClosureLine = closureState !== undefined && closureState !== 'clear';
 const activeClosureLabel = showClosureLine && closureState ? CLOSURE_LABEL[closureState] : null;
 const activeClosureClass = showClosureLine && closureState ? `today-block__closure--${closureState}` : null;
+// ---- Notes on the template below (moved here 2026-11-25: a JS comment inside an Astro template can drop all CSS from a
+// build; scripts/verify_astro_template_comments.mjs). Each note names the markup it is about.
+// [at: <li id="today-cityhall" class="today-block__cityhall" hidden>]
+//   Hidden until the script below fills in a live status from a
+// [at: <li id="today-cityhall" class="today-block__cityhall" hidden>]
+//   fresh now -- see this component's own module comment.
+// [at: <noscript>]
+//   The noscript row is the only thing a non-JS visitor sees here:
+// [at: <noscript>]
+//   no badge, just a link to where the real hours live.
+// [at: {[{ id: 'today-now', label: 'Today', more: 'today', b: serverToday }, { id: 'today-tonight]
+//   Tonight / Tomorrow are decided in the BROWSER (script at the bottom), from
+//         data-start/data-end instants and the town's timezone -- the page can be
+//         hours old, and an event that has already ended must never sit under
+//         Tonight. The <template> holds every candidate event for the build day
+//         and the two days after it; nothing is visible until the script runs. A
+//         bucket with no events stays hidden (no empty heading); when both are
+//         empty one quiet line links to What's On instead.
+// [at: const row = rowOf(item);]
+//   ISO instants (row.start/end), not the driver's Date: Astro prints a Date in the build machine's own zone.
+// [at: <script type="application/json" id="today-cityhall-data" is:inline set:html={JSON.stringif]
+//   Open/Closed badge client-side move (2026-10-15) -- see this
+// [at: <script type="application/json" id="today-cityhall-data" is:inline set:html={JSON.stringif]
+//   component's own module comment. Only the decision data is baked in
+// [at: <script type="application/json" id="today-cityhall-data" is:inline set:html={JSON.stringif]
+//   at build time; what time it is right now is read in the browser.
+// [at: <script>]
+//   Module script (not is:inline) -- Astro/Vite bundles this for the
+//       browser, same pattern as components/ShareButton.astro's own inline
+//       client script, reusing the exact same, already-tested
+//       computeOpenStatus() the server used to call. Deliberately NOT wrapped in
+//       {cityHallKnown && ...}: a conditionally rendered <script> made Astro drop
+//       the OTHER (Tonight/Tomorrow) script from pages where it did not render
+//       (Broomfield /today/ shipped without it, 2026-10-21). The script already
+//       does nothing when the city-hall elements are absent.
+// [at: <script>]
+//   "Right now" is only honest while the data is fresh: the page is built at asOf, so after an hour the label says "As of <time>" instead
+//       (owner 2026-10-23). The check runs in the browser against its own clock, and again every minute.
+// [at: <script>]
+//   Met Office warnings (Glasgow): the "Right now" line is filled from /api/weather-warnings, never a static "No weather alerts".
 ---
 
 <section class="today-block" aria-label={`Today in ${cityName}`}>
@@ -221,16 +261,12 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
         )}
 
         {cityHallKnown && cityHallFacility && (
-          // Hidden until the script below fills in a live status from a
-          // fresh now -- see this component's own module comment.
           <li id="today-cityhall" class="today-block__cityhall" hidden>
             <span data-open-status-text></span>
           </li>
         )}
       </ul>
       {cityHallKnown && cityHallFacility && (
-        // The noscript row is the only thing a non-JS visitor sees here:
-        // no badge, just a link to where the real hours live.
         <noscript>
           <p class="today-block__cityhall">
             <a href={`/facilities/${cityHallFacility.slug}/`}>City Hall hours</a>
@@ -248,13 +284,6 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
     </div>
   )}
 
-  {/* Tonight / Tomorrow are decided in the BROWSER (script at the bottom), from
-      data-start/data-end instants and the town's timezone -- the page can be
-      hours old, and an event that has already ended must never sit under
-      Tonight. The <template> holds every candidate event for the build day
-      and the two days after it; nothing is visible until the script runs. A
-      bucket with no events stays hidden (no empty heading); when both are
-      empty one quiet line links to What's On instead. */}
   {[{ id: 'today-now', label: 'Today', more: 'today', b: serverToday }, { id: 'today-tonight', label: 'Tonight', more: 'tonight', b: serverTonight }].map(({ id, label, more, b }) => {
     const total = b.items.length + b.shows.length;
     const items = b.items.slice(0, BUCKET_LIMIT);
@@ -275,7 +304,6 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
   </noscript>}
   <template id="today-event-items" data-tz={timezone}>
     {candidates.map((item) => {
-      // ISO instants (row.start/end), not the driver's Date: Astro prints a Date in the build machine's own zone.
       const row = rowOf(item);
       return (
         <li {...dayAttrs(row.start)} data-start={row.start ?? undefined} data-end={row.end ?? undefined} data-occ={occAttr(item)}>
@@ -288,9 +316,6 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
     ))}
   </template>
   {cityHallKnown && cityHallFacility && (
-    // Open/Closed badge client-side move (2026-10-15) -- see this
-    // component's own module comment. Only the decision data is baked in
-    // at build time; what time it is right now is read in the browser.
     <script type="application/json" id="today-cityhall-data" is:inline set:html={JSON.stringify({
       hours: cityHallFacility.hours_structured, timezone, gb: siteConfig.country === 'gb',
     })} />
@@ -300,14 +325,6 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
   import { fillTodayBuckets } from '../lib/today-buckets';
   fillTodayBuckets(document);
 </script>
-{/* Module script (not is:inline) -- Astro/Vite bundles this for the
-    browser, same pattern as components/ShareButton.astro's own inline
-    client script, reusing the exact same, already-tested
-    computeOpenStatus() the server used to call. Deliberately NOT wrapped in
-    {cityHallKnown && ...}: a conditionally rendered <script> made Astro drop
-    the OTHER (Tonight/Tomorrow) script from pages where it did not render
-    (Broomfield /today/ shipped without it, 2026-10-21). The script already
-    does nothing when the city-hall elements are absent. */}
 <script>
     import { computeOpenStatus } from '../lib/facility-hours';
     import type { StructuredHours } from '../lib/db';
@@ -327,8 +344,6 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
       }
     }
 </script>
-{/* "Right now" is only honest while the data is fresh: the page is built at asOf, so after an hour the label says "As of <time>" instead
-    (owner 2026-10-23). The check runs in the browser against its own clock, and again every minute. */}
 <script>
   const rn = document.querySelector<HTMLElement>('[data-right-now-label]');
   if (rn && rn.dataset.asof) {
@@ -341,7 +356,6 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
     setInterval(sync, 60_000);
   }
 </script>
-{/* Met Office warnings (Glasgow): the "Right now" line is filled from /api/weather-warnings, never a static "No weather alerts". */}
 <script>
   import { fetchWarnings } from '../lib/met-warnings-client';
   import { isInForce, sortWarnings, formatValidity, warningName } from '../lib/met-warnings';

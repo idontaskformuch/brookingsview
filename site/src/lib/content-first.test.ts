@@ -87,7 +87,9 @@ describe('findIntroText', () => {
 describe('page sources: the moved text is in the about slot', () => {
   const src = (rel: string) => readFileSync(join(__dirname, '..', rel), 'utf8');
   it('BaseLayout renders the about slot after the content, inside <main>', () => {
-    const layout = src('layouts/BaseLayout.astro');
+    // the template only: the frontmatter's notes on the markup quote these tags (comments moved there 2026-11-25)
+    const file = src('layouts/BaseLayout.astro');
+    const layout = file.slice(file.indexOf('\n---', 3) + 4);
     expect(layout).toContain('<slot name="about" />');
     expect(layout.indexOf('<slot />')).toBeLessThan(layout.indexOf('<slot name="about" />'));
     expect(layout.indexOf('<slot name="about" />')).toBeLessThan(layout.indexOf('<footer class="colophon">'));

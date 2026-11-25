@@ -130,12 +130,26 @@ const pageMeta = resolvePageMeta('whats-on', siteConfig);
 // One Event per card the page shows in the next 14 days, in page order (a collapsed run is its next date, as the card says).
 const eventsJsonLd = buildTicketmasterListJsonLd(
   [...marqueeWithImages.map(({ entry }) => entry.primary), ...alsoOnRows.map((r) => r.primary)], canonicalUrl, buildNow);
+// ---- Notes on the template below (moved here 2026-11-25: a JS comment inside an Astro template can drop all CSS from a
+// build; scripts/verify_astro_template_comments.mjs). Each note names the markup it is about.
+// [at: <div slot="band" class="wo-band">]
+//   Hero band (owner 2026-11-20): heading and marquee full width (74rem, three columns) above the grid; "Also on" in the main column
+//         with the rail beside it.
+// [at: <div class="marquee-grid">]
+//   LCP fix: the grid has several image cards side by side; only the first, top-left card (plain CSS grid, DOM order ===
+//               paint order) is the LCP candidate, so only it gets `priority` (fetchpriority="high" on every card dilutes the signal).
+// [at: <p>Concerts, theatre and touring shows within {radiusMiles ?? 75} miles of {siteConfig.cit]
+//   Q3 live 2026-10-28: "every listing shows how far" contradicted the rows that just say "In Glasgow".
+// [at: Shows outside the city say how far away they are, so a regional show never reads as a loca]
+//   gb-spelling
+// [at: <p>Local library, city and community events: <a href="/events/">Events</a></p>]
+//   Front-page orientation pass, Phase 4: "a first-time reader can't
+//           tell Events and What's On apart" -- only one goes in primary nav
+//           per town, this line points to whichever one doesn't.
 ---
 <BaseLayout title={pageMeta.title} ogSlug="section-whats-on"
   description={`Concerts, theater and touring shows within ${radiusMiles ?? 75} miles of ${placeLabel(siteConfig)} — with real distance shown, never a hidden away-game.`}
   accentColor={SECTION_THEME.events.accent}>
-  {/* Hero band (owner 2026-11-20): heading and marquee full width (74rem, three columns) above the grid; "Also on" in the main column
-      with the rail beside it. */}
   <div slot="band" class="wo-band">
     <Breadcrumbs trail={breadcrumbTrail} />
     <header class="lede">
@@ -145,8 +159,6 @@ const eventsJsonLd = buildTicketmasterListJsonLd(
     {marqueeCards.length > 0 && (
       <>
         <SectionRule label="Marquee" />
-        {/* LCP fix: the grid has several image cards side by side; only the first, top-left card (plain CSS grid, DOM order ===
-            paint order) is the LCP candidate, so only it gets `priority` (fetchpriority="high" on every card dilutes the signal). */}
         <div class="marquee-grid">
           {marqueeCards.map(({ row, image, when, facts }, i) => (
             <EventCard title={row.title} href={row.href} rel={row.rel} image={image} where={row.place[0]} when={when}
@@ -184,8 +196,7 @@ const eventsJsonLd = buildTicketmasterListJsonLd(
   {eventsJsonLd && <script type="application/ld+json" is:inline set:html={JSON.stringify(eventsJsonLd)} />}
   <AboutThisPage slot="about">
     {siteConfig.country === 'gb' ? (
-      // Q3 live 2026-10-28: "every listing shows how far" contradicted the rows that just say "In Glasgow".
-      <p>Concerts, theatre and touring shows within {radiusMiles ?? 75} miles of {siteConfig.cityName}. {/* gb-spelling */}
+      <p>Concerts, theatre and touring shows within {radiusMiles ?? 75} miles of {siteConfig.cityName}. 
       Shows outside the city say how far away they are, so a regional show never reads as a local one;
       the rest say "In {siteConfig.cityName}". Powered by Ticketmaster.</p>
     ) : (
@@ -193,9 +204,6 @@ const eventsJsonLd = buildTicketmasterListJsonLd(
       {siteConfig.stateName} — including nearby regional venues. Every listing shows how far it actually is,
       so a regional show never reads as a downtown event. Powered by Ticketmaster.</p>
     )}
-    {/* Front-page orientation pass, Phase 4: "a first-time reader can't
-        tell Events and What's On apart" -- only one goes in primary nav
-        per town, this line points to whichever one doesn't. */}
     <p>Local library, city and community events: <a href="/events/">Events</a></p>
   </AboutThisPage>
 </BaseLayout>

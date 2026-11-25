@@ -84,6 +84,15 @@ const newsArticleJsonLd = status.state === 'confirmed'
         siteConfig.siteName,
       ))
   : [];
+// ---- Notes on the template below (moved here 2026-11-25: a JS comment inside an Astro template can drop all CSS from a
+// build; scripts/verify_astro_template_comments.mjs). Each note names the markup it is about.
+// [at: <header class="cw-hero">]
+//   Fas 4 (owner spec 2026-11-20): the status in one line right under the H1, then when it was checked. The detail of an active
+//         notice or alert follows; how the page works is one collapsed block at the very end (the old second "About this page" is gone).
+// [at: <p class="cw-no-announcement">]
+//   Hardcoded, non-negotiable, outside any AI path -- see module docstring.
+// [at: <details class="cw-methodology" slot="about">]
+//   The one block about the page, last and collapsed (owner spec Fas 4: "How this page works" last and collapsed, no second About).
 ---
 <BaseLayout
   title={pageTitle}
@@ -92,8 +101,6 @@ const newsArticleJsonLd = status.state === 'confirmed'
   accentColor={SECTION_THEME.closure_watch.accent}
 >
   <Breadcrumbs trail={breadcrumbTrail} />
-  {/* Fas 4 (owner spec 2026-11-20): the status in one line right under the H1, then when it was checked. The detail of an active
-      notice or alert follows; how the page works is one collapsed block at the very end (the old second "About this page" is gone). */}
   <header class="cw-hero">
     <h1>{pageMeta.h1}</h1>
     <h2 class={`cw-status cw-status--${statusLine.tone}`} id="cw-state-heading" data-closure-status>{statusLine.line}</h2>
@@ -130,7 +137,6 @@ const newsArticleJsonLd = status.state === 'confirmed'
         </p>
       )}
 
-      {/* Hardcoded, non-negotiable, outside any AI path -- see module docstring. */}
       <p class="cw-no-announcement">
         <strong>No closure has been announced.</strong> Check {feat.districtName}'s{' '}
         <a href={feat.districtUrl} rel="noopener">own notification channel</a> for official notice.
@@ -158,7 +164,6 @@ const newsArticleJsonLd = status.state === 'confirmed'
 
   <RailModules slot="rail" page="closures" now={now} />
 
-  {/* The one block about the page, last and collapsed (owner spec Fas 4: "How this page works" last and collapsed, no second About). */}
   <details class="cw-methodology" slot="about">
     <summary>How this page works</summary>
     <p>

@@ -201,16 +201,19 @@ const kicker = kickerOverride ?? (isAlert ? 'Alert' : isMeeting ? 'City hall'
 // showing one without the other would just move the redundancy from text
 // to color, so it's gated on `kicker` being present too.
 const chip = kicker ? (CHIP[categoryForSourceType(story.source_type) as ImageCategory] ?? null) : null;
+// ---- Notes on the template below (moved here 2026-11-25: a JS comment inside an Astro template can drop all CSS from a
+// build; scripts/verify_astro_template_comments.mjs). Each note names the markup it is about.
+// [at: <p class="item__kicker">]
+//   2026-10-02, item C1: the 46px fixed-width time RAIL (R5) is gone --
+//         it collided with long titles (confirmed on real Moreno Valley titles,
+//         which run longer once a venue line is no longer baked into them, see
+//         C4 above) and, per its own now-removed comment, already needed a
+//         mobile-only escape hatch for the exact same reason. Every row
+//         (alert or not) now shares ONE kicker-line-above-title structure --
+//         the alert branch already looked like this; this just generalizes it,
+//         so there's one layout to reason about instead of two.
 ---
 <article class:list={['item', { 'item--alert': isAlert }]} data-start={isEvent && story.occurs_at ? new Date(story.occurs_at).toISOString() : undefined} data-end={isEvent && story.ends_at ? new Date(story.ends_at).toISOString() : undefined} data-ends={isAlert ? (story.ends_at ?? undefined) : undefined} data-alert-slug={isAlert ? story.slug : undefined}>
-  {/* 2026-10-02, item C1: the 46px fixed-width time RAIL (R5) is gone --
-      it collided with long titles (confirmed on real Moreno Valley titles,
-      which run longer once a venue line is no longer baked into them, see
-      C4 above) and, per its own now-removed comment, already needed a
-      mobile-only escape hatch for the exact same reason. Every row
-      (alert or not) now shares ONE kicker-line-above-title structure --
-      the alert branch already looked like this; this just generalizes it,
-      so there's one layout to reason about instead of two. */}
   <p class="item__kicker">
     {chip && chip.icon && <span class="item__chip" style={`--chip-color: ${chip.color}`} aria-hidden="true">{chip.icon}</span>}
     {chip && !chip.icon && story.occurs_at && <DateBadge iso={story.occurs_at} timezone={siteConfig.timezone} color={chip.color} />}

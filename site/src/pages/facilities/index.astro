@@ -57,6 +57,18 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   { label: 'Home', href: '/' },
   { label: 'Facilities', href: canonicalUrl },
 ];
+// ---- Notes on the template below (moved here 2026-11-25: a JS comment inside an Astro template can drop all CSS from a
+// build; scripts/verify_astro_template_comments.mjs). Each note names the markup it is about.
+// [at: <ul class="list" data-open-status-tz={siteConfig.timezone} data-gb={siteConfig.country ===]
+//   Open/Closed badge client-side move (2026-10-15): no more
+//             computeOpenStatus() call here -- a static hub page rebuilt only when new data arrives
+//             (not on a fixed cycle) baking "now" in at build time is exactly the
+//             staleness bug facilities/[slug].astro's own script comment
+//             describes. data-tz on the <ul> (once per category list, not
+//             per-item) + data-hours per <li> that actually has structured
+//             hours; the badge <span> is absent entirely for a facility with
+//             none, and stays hidden (no badge, just the name/address already
+//             shown) until the <script> below fills it in client-side.
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-facilities"
   description={metaDescription('facilities', siteConfig)}>
@@ -69,15 +81,6 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   {categories.length > 0 ? categories.map((cat) => (
     <>
       <SectionRule label={FACILITY_CATEGORY_LABELS[cat] ?? cat} />
-      {/* Open/Closed badge client-side move (2026-10-15): no more
-          computeOpenStatus() call here -- a static hub page rebuilt only when new data arrives
-          (not on a fixed cycle) baking "now" in at build time is exactly the
-          staleness bug facilities/[slug].astro's own script comment
-          describes. data-tz on the <ul> (once per category list, not
-          per-item) + data-hours per <li> that actually has structured
-          hours; the badge <span> is absent entirely for a facility with
-          none, and stays hidden (no badge, just the name/address already
-          shown) until the <script> below fills it in client-side. */}
       <ul class="list" data-open-status-tz={siteConfig.timezone} data-gb={siteConfig.country === 'gb' ? '1' : ''}>
         {byCategory.get(cat)!.map((f) => (
           <li>

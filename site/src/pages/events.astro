@@ -175,6 +175,13 @@ const webPageJsonLd = dateModified ? {
   url: canonicalUrl,
   dateModified,
 } : null;
+// ---- Notes on the template below (moved here 2026-11-25: a JS comment inside an Astro template can drop all CSS from a
+// build; scripts/verify_astro_template_comments.mjs). Each note names the markup it is about.
+// [at: {eventsEmpty && calendarLinks.length > 0 && (]
+//   Nothing to list (a paused or quiet source): no "no events" message (owner 2026-11-24). The day sections are simply absent, Nearby, Recently and
+//         the related sections below carry the page, and the town's own calendars are two plain links among the others.
+// [at: <BigShowsNearby shows={bigShows} maxMiles={siteConfig.bigShows?.maxMiles ?? 0} tz={siteCon]
+//   Ticketmaster shows within bigShows.maxMiles: its own block, never part of the local lists or counts above (lib/big-shows.ts)
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-events" noindex={isQuietSection('events')}
   description={metaDescription('events', siteConfig)}>
@@ -201,8 +208,6 @@ const webPageJsonLd = dateModified ? {
   </nav>
 
   <EventDays groups={busyGroups} tz={siteConfig.timezone} showCategory={showCategory} />
-  {/* Nothing to list (a paused or quiet source): no "no events" message (owner 2026-11-24). The day sections are simply absent, Nearby, Recently and
-      the related sections below carry the page, and the town's own calendars are two plain links among the others. */}
   {eventsEmpty && calendarLinks.length > 0 && (
     <nav class="ev-calendars" aria-label="Event calendars">
       {calendarLinks.map((c) => <a href={c.url}>{c.label}</a>)}
@@ -236,7 +241,6 @@ const webPageJsonLd = dateModified ? {
     </>
   )}
 
-  {/* Ticketmaster shows within bigShows.maxMiles: its own block, never part of the local lists or counts above (lib/big-shows.ts) */}
   <BigShowsNearby shows={bigShows} maxMiles={siteConfig.bigShows?.maxMiles ?? 0} tz={siteConfig.timezone} moreHref={siteConfig.hasWhatsOn ? '/whats-on/' : undefined} />
 
   <ClusterNav clusterLabel="What's happening" items={clusterNavItems} />

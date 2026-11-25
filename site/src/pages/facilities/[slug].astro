@@ -181,6 +181,91 @@ const mapLink = facilityMapLink(facility.lat, facility.lon, facility.address);
 // reads "Places" exactly as before.
 const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('facilities/detail', siteConfig, { label: facility.name, href: canonicalUrl })
   .map((entry) => (entry.label === 'Places' ? { ...entry, label: 'Facilities' } : entry));
+// ---- Notes on the template below (moved here 2026-11-25: a JS comment inside an Astro template can drop all CSS from a
+// build; scripts/verify_astro_template_comments.mjs). Each note names the markup it is about.
+// [at: {lede && <p class="description">{lede}</p>}]
+//   Sitewide title/H1/lede handoff: moved above the facts <dl> --
+//           previously this paragraph rendered AFTER the address/phone/hours
+//           block, which meant the page's real editorial content structurally
+//           never qualified as a "lede" (the spec's own rule: must appear
+//           before any list, table, card grid, or widget) no matter how good
+//           the text itself was. `lede` (not `facility.description` directly)
+//           also carries the address in prose now -- see buildFacilityLede().
+// [at: <div class="fact">]
+//   Open/Closed badge client-side move (2026-10-15): the badge text
+// [at: <div class="fact">]
+//   is filled in by the <script> near the bottom of this page, from
+// [at: <div class="fact">]
+//   a FRESH `now` computed in the visitor's own browser -- never at
+// [at: <div class="fact">]
+//   build time (see the `hours`/`exceptions` fetch above for why).
+// [at: <div class="fact">]
+//   `hidden` by default so there's no flash of wrong/empty text
+// [at: <div class="fact">]
+//   before the script runs; the <noscript> fallback is the ONLY
+// [at: <div class="fact">]
+//   thing a non-JS visitor sees here, per "no badge without JS, just
+// [at: <div class="fact">]
+//   the hours" -- the real weekly table below is the source of
+// [at: <div class="fact">]
+//   truth either way.
+// [at: <div class="fact"><dt>Hours</dt><dd><span class="hours-text">{facility.hours_text}</span><]
+//   Fallback for the rare hours_text that never parsed into structured
+// [at: <div class="fact"><dt>Hours</dt><dd><span class="hours-text">{facility.hours_text}</span><]
+//   data at all (e.g. "some counters follow separate Friday hours",
+// [at: <div class="fact"><dt>Hours</dt><dd><span class="hours-text">{facility.hours_text}</span><]
+//   "Sun 10am onward" -- too irregular for a fixed [open,close] pair) --
+// [at: <div class="fact"><dt>Hours</dt><dd><span class="hours-text">{facility.hours_text}</span><]
+//   shown as plain text, no computed open/closed badge, rather than
+// [at: <div class="fact"><dt>Hours</dt><dd><span class="hours-text">{facility.hours_text}</span><]
+//   silently dropping a real sourced fact when retiring the old
+// [at: <div class="fact"><dt>Hours</dt><dd><span class="hours-text">{facility.hours_text}</span><]
+//   computeOpenStatus()/hours_structured computation from this page.
+// [at: <div class="fact"><dt>Hours</dt><dd>Hours have not been confirmed for this location from a]
+//   No structured hours AND no hours_text at all -- say so explicitly
+// [at: <div class="fact"><dt>Hours</dt><dd>Hours have not been confirmed for this location from a]
+//   rather than silently omitting the Hours fact entirely. A reader
+// [at: <div class="fact"><dt>Hours</dt><dd>Hours have not been confirmed for this location from a]
+//   (and a search engine) seeing no "Hours" row at all can't tell "we
+// [at: <div class="fact"><dt>Hours</dt><dd>Hours have not been confirmed for this location from a]
+//   checked and found none" apart from "this page was never built to
+// [at: <div class="fact"><dt>Hours</dt><dd>Hours have not been confirmed for this location from a]
+//   answer that question" -- exactly the ambiguity this whole pass
+// [at: <div class="fact"><dt>Hours</dt><dd>Hours have not been confirmed for this location from a]
+//   exists to remove. Bug fix 2026-10-03: the original merge nested
+// [at: <div class="fact"><dt>Hours</dt><dd>Hours have not been confirmed for this location from a]
+//   this fallback one level too deep (inside the hours.length > 0
+// [at: <div class="fact"><dt>Hours</dt><dd>Hours have not been confirmed for this location from a]
+//   branch, which is never true when this branch is reached), making
+// [at: <div class="fact"><dt>Hours</dt><dd>Hours have not been confirmed for this location from a]
+//   it unreachable dead code -- found by spot-checking a real
+// [at: <div class="fact"><dt>Hours</dt><dd>Hours have not been confirmed for this location from a]
+//   zero-hours-data facility (Brookings' HillCrest Park) against the
+// [at: <div class="fact"><dt>Hours</dt><dd>Hours have not been confirmed for this location from a]
+//   actual built HTML, not just astro check/vitest passing.
+// [at: {(facility.source_url || facility.verified_date) && (]
+//   Phase 2, item 2f (2026-10-09): moved up from the page's own
+//             bottom (see the removed `<p class="source">` block this used to
+//             be) into the above-the-fold facts block, per the spec's own
+//             "address/phone/hours/map/source above the fold" instruction.
+//             Still the same "verified_date renders even without source_url"
+//             rule as before -- see the original comment this carries over.
+// [at: <script type="application/ld+json" is:inline set:html={JSON.stringify({]
+//   Never claims a schema.org address for a facility that doesn't have a
+//          verified one -- same "resolved or nothing" rule as Event JSON-LD, see
+//          site/src/lib/event-jsonld.ts.
+// [at: <script type="application/json" id="open-status-data" is:inline set:html={JSON.stringify({]
+//   Open/Closed badge client-side move (2026-10-15) -- see the `hours`/
+// [at: <script type="application/json" id="open-status-data" is:inline set:html={JSON.stringify({]
+//   `exceptions` fetch above and place-hours.ts's own module comment for
+// [at: <script type="application/json" id="open-status-data" is:inline set:html={JSON.stringify({]
+//   why. The actual DECISION data (place_hours/exceptions rows, already
+// [at: <script type="application/json" id="open-status-data" is:inline set:html={JSON.stringify({]
+//   town-scoped at build time) is fine to bake in; only "what time is it
+// [at: <script type="application/json" id="open-status-data" is:inline set:html={JSON.stringify({]
+//   right now" must come from the visitor's own browser, so that's the
+// [at: <script type="application/json" id="open-status-data" is:inline set:html={JSON.stringify({]
+//   one thing NOT embedded here.
 ---
 <BaseLayout title={pageMeta.title} description={description} ogSlug={`facility-${facility.slug}`} noindex={isThinFacility || isTextThinFacility || isVenue}>
   <Breadcrumbs trail={breadcrumbTrail} />
@@ -204,13 +289,6 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
       </>
     )}
 
-    {/* Sitewide title/H1/lede handoff: moved above the facts <dl> --
-        previously this paragraph rendered AFTER the address/phone/hours
-        block, which meant the page's real editorial content structurally
-        never qualified as a "lede" (the spec's own rule: must appear
-        before any list, table, card grid, or widget) no matter how good
-        the text itself was. `lede` (not `facility.description` directly)
-        also carries the address in prose now -- see buildFacilityLede(). */}
     {lede && <p class="description">{lede}</p>}
 
     <dl class="facts">
@@ -224,15 +302,6 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
         <div class="fact"><dt>Phone</dt><dd><a href={`tel:${facility.phone.replace(/[^\d+]/g, '')}`}>{facility.phone}</a></dd></div>
       )}
       {hours.length > 0 ? (
-        // Open/Closed badge client-side move (2026-10-15): the badge text
-        // is filled in by the <script> near the bottom of this page, from
-        // a FRESH `now` computed in the visitor's own browser -- never at
-        // build time (see the `hours`/`exceptions` fetch above for why).
-        // `hidden` by default so there's no flash of wrong/empty text
-        // before the script runs; the <noscript> fallback is the ONLY
-        // thing a non-JS visitor sees here, per "no badge without JS, just
-        // the hours" -- the real weekly table below is the source of
-        // truth either way.
         <div class="fact">
           <dt>Hours</dt>
           <dd>
@@ -241,36 +310,13 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
           </dd>
         </div>
       ) : facility.hours_text ? (
-        // Fallback for the rare hours_text that never parsed into structured
-        // data at all (e.g. "some counters follow separate Friday hours",
-        // "Sun 10am onward" -- too irregular for a fixed [open,close] pair) --
-        // shown as plain text, no computed open/closed badge, rather than
-        // silently dropping a real sourced fact when retiring the old
-        // computeOpenStatus()/hours_structured computation from this page.
         <div class="fact"><dt>Hours</dt><dd><span class="hours-text">{facility.hours_text}</span></dd></div>
       ) : (
-        // No structured hours AND no hours_text at all -- say so explicitly
-        // rather than silently omitting the Hours fact entirely. A reader
-        // (and a search engine) seeing no "Hours" row at all can't tell "we
-        // checked and found none" apart from "this page was never built to
-        // answer that question" -- exactly the ambiguity this whole pass
-        // exists to remove. Bug fix 2026-10-03: the original merge nested
-        // this fallback one level too deep (inside the hours.length > 0
-        // branch, which is never true when this branch is reached), making
-        // it unreachable dead code -- found by spot-checking a real
-        // zero-hours-data facility (Brookings' HillCrest Park) against the
-        // actual built HTML, not just astro check/vitest passing.
         <div class="fact"><dt>Hours</dt><dd>Hours have not been confirmed for this location from a current source yet.</dd></div>
       )}
       {facility.website && (
         <div class="fact"><dt>Website</dt><dd><a href={facility.website} rel="noopener">{facility.website.replace(/^https?:\/\//, '')}</a></dd></div>
       )}
-      {/* Phase 2, item 2f (2026-10-09): moved up from the page's own
-          bottom (see the removed `<p class="source">` block this used to
-          be) into the above-the-fold facts block, per the spec's own
-          "address/phone/hours/map/source above the fold" instruction.
-          Still the same "verified_date renders even without source_url"
-          rule as before -- see the original comment this carries over. */}
       {(facility.source_url || facility.verified_date) && (
         <div class="fact">
           <dt>Source</dt>
@@ -368,9 +414,6 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
   <RelatedContent pageType="facilities" />
 
   {hasFullAddress && (
-    /* Never claims a schema.org address for a facility that doesn't have a
-       verified one -- same "resolved or nothing" rule as Event JSON-LD, see
-       site/src/lib/event-jsonld.ts. */
     <script type="application/ld+json" is:inline set:html={JSON.stringify({
       '@context': 'https://schema.org',
       '@type': schemaType,
@@ -397,12 +440,6 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
   )} />
 
   {hours.length > 0 && (
-    // Open/Closed badge client-side move (2026-10-15) -- see the `hours`/
-    // `exceptions` fetch above and place-hours.ts's own module comment for
-    // why. The actual DECISION data (place_hours/exceptions rows, already
-    // town-scoped at build time) is fine to bake in; only "what time is it
-    // right now" must come from the visitor's own browser, so that's the
-    // one thing NOT embedded here.
     <script type="application/json" id="open-status-data" is:inline set:html={JSON.stringify({
       hours, exceptions, timezone: siteConfig.timezone, gb: siteConfig.country === 'gb',
     })} />

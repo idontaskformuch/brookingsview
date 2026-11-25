@@ -251,6 +251,11 @@ const statusItems: { label: string; text: string; href: string }[] = [
     : nextRegional ? [{ label: 'Next game', text: `${nextRegional.team_name} ${nextRegional.home_away === 'home' ? 'vs' : 'at'} ${nextRegional.opponent_name}, ${regionalWhen(nextRegional)}`, href: '/sports/' }] : []),
   ...(nextMeeting ? [{ label: 'Next meeting', text: `${nextMeeting.bodyLabel}, ${nextMeeting.dateLabel}${nextMeeting.time ? ` ${nextMeeting.time}` : ''}`, href: `/city-hall/#meeting-${nextMeeting.id}` }] : []),
 ];
+// ---- Notes on the template below (moved here 2026-11-25: a JS comment inside an Astro template can drop all CSS from a
+// build; scripts/verify_astro_template_comments.mjs). Each note names the markup it is about.
+// [at: <script type="application/ld+json" is:inline set:html={JSON.stringify({]
+//   SEO Fas 4 -- WebSite, homepage-only (NewsMediaOrganization already renders site-wide via BaseLayout.astro). No SearchAction: the site
+//         has no internal search.
 ---
 
 <BaseLayout title={`${siteConfig.siteName} — what's happening in ${placeAbbr(siteConfig)}`} wide description={isWordCut(frontPage.meta_description) ? metaDescription('home', siteConfig) : frontPage.meta_description}>
@@ -280,8 +285,6 @@ const statusItems: { label: string; text: string; href: string }[] = [
 
   {sections.lower.map((id) => <SectionBlock id={id} {...BLOCKS[id]} />)}
 
-  {/* SEO Fas 4 -- WebSite, homepage-only (NewsMediaOrganization already renders site-wide via BaseLayout.astro). No SearchAction: the site
-      has no internal search. */}
   <script type="application/ld+json" is:inline set:html={JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'WebSite',

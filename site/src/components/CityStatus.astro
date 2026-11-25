@@ -32,15 +32,18 @@ const updatedLabel = updated
 // generic "See more". /today is universal (no per-town gating) -- see
 // site/src/pages/today.astro.
 const ctaLabel = `Full ${siteConfig.cityName} rundown →`;
+// ---- Notes on the template below (moved here 2026-11-25: a JS comment inside an Astro template can drop all CSS from a
+// build; scripts/verify_astro_template_comments.mjs). Each note names the markup it is about.
+// [at: <h2 class="city-status__title">Right now</h2>]
+//   Front-page orientation pass, Phase 3: "Right now" alone, not
+//             "<Town> Right Now" -- OrientationHeader already names the town
+//             once, right above this (R6: never repeat the town name within
+//             one page).
 ---
 
 {modules.length > 0 && (
   <section class="city-status" aria-label={`${siteConfig.cityName} right now`} data-tz={siteConfig.timezone}>
     <div class="city-status__head">
-      {/* Front-page orientation pass, Phase 3: "Right now" alone, not
-          "<Town> Right Now" -- OrientationHeader already names the town
-          once, right above this (R6: never repeat the town name within
-          one page). */}
       <h2 class="city-status__title">Right now</h2>
       {updatedLabel && <span class="city-status__updated">Updated {updatedLabel}</span>}
     </div>

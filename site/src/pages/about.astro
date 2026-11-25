@@ -16,6 +16,12 @@ const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 const sources = aboutSourcesFor(siteConfig.townId);
 const siblingSites = ALL_SITES.filter((s) => s.townId !== siteConfig.townId);
+// ---- Notes on the template below (moved here 2026-11-25: a JS comment inside an Astro template can drop all CSS from a
+// build; scripts/verify_astro_template_comments.mjs). Each note names the markup it is about.
+// [at: <p data-qa-allow-sibling-sites>I run the same software pointed at a few other towns too: {]
+//   data-qa-allow-sibling-sites: this paragraph intentionally names the sister towns (Phase H
+//           disclosure). qa/web/run.mjs skips elements carrying this attribute in the web.leak check --
+//           a permanent, markup-level exemption for exactly this reference, not a waiver.
 ---
 <BaseLayout title={`About — ${siteConfig.siteName}`}
   description={metaDescription('about', siteConfig)}>
@@ -89,9 +95,6 @@ const siblingSites = ALL_SITES.filter((s) => s.townId !== siteConfig.townId);
     from Sweden, and this is what that looks like pointed at local news. I'd
     rather say that plainly than dress up an automated site with a fake
     masthead.</p>
-    {/* data-qa-allow-sibling-sites: this paragraph intentionally names the sister towns (Phase H
-        disclosure). qa/web/run.mjs skips elements carrying this attribute in the web.leak check --
-        a permanent, markup-level exemption for exactly this reference, not a waiver. */}
     <p data-qa-allow-sibling-sites>I run the same software pointed at a few other towns too: {siblingSites.map((s, i) => (
       <>{i > 0 && ' and '}<a href={s.siteUrl} rel="noopener">{s.siteName}</a></>
     ))}. Same pipeline, same sourcing rules, same disclosures -- just a

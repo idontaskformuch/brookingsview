@@ -94,6 +94,14 @@ const bandSrc = band ? responsiveSrc(band.path) : null;
 // Event image = the band photo above (the only picture the page shows).
 const jsonLd = buildHolidayEventsJsonLd(page, siteConfig.timezone, countryProfile(siteConfig.country).addressCountry, today,
   bandSrc ? new URL(bandSrc.src, Astro.site ?? siteConfig.siteUrl).href : undefined);
+// ---- Notes on the template below (moved here 2026-11-25: a JS comment inside an Astro template can drop all CSS from a
+// build; scripts/verify_astro_template_comments.mjs). Each note names the markup it is about.
+// [at: <RailLayout>]
+//   Fas 2: the same rail as the front page from 62rem, opening with Right Now; below 62rem it follows the page's own content. The band
+//         above stays full width. The rail never repeats this page's own holiday.
+// [at: <RailModules slot="rail" now={new Date()} page="holiday" excludeHolidaySlugs={new Set([def]
+//   Rail (Tillägg B, owner 2026-11-20): only what belongs to the holiday -- the next holiday page, this page's regular hours and the
+//         food-help contact. No Right Now, no "<Town> in numbers" (config/home-rail.ts PAGE_RAIL.holiday).
 ---
 <BaseLayout title={meta.title} description={meta.description} wide modified={page.dataUpdatedOn}>
   <script type="application/ld+json" is:inline slot="head" set:html={JSON.stringify(webPage)} />
@@ -109,8 +117,6 @@ const jsonLd = buildHolidayEventsJsonLd(page, siteConfig.timezone, countryProfil
       : <p class="hp-checked">Checked <time datetime={span.first}>{formatCheckedSpan(span, true, page.locale).split(' – ')[0]}</time> – <time datetime={span.last}>{formatIsoDate(span.last, true, page.locale)}</time></p>}
   </header>
 
-  {/* Fas 2: the same rail as the front page from 62rem, opening with Right Now; below 62rem it follows the page's own content. The band
-      above stays full width. The rail never repeats this page's own holiday. */}
   <RailLayout>
   <p class="hp-status" data-holiday-status>{status}<span data-rel-day={statusYmd} data-rel-style="away" data-rel-prefix=" · " hidden></span></p>
   {insights.map((line) => <InsightLine>{line}</InsightLine>)}
@@ -148,8 +154,6 @@ const jsonLd = buildHolidayEventsJsonLd(page, siteConfig.timezone, countryProfil
       </ul>
     </section>
   )}
-  {/* Rail (Tillägg B, owner 2026-11-20): only what belongs to the holiday -- the next holiday page, this page's regular hours and the
-      food-help contact. No Right Now, no "<Town> in numbers" (config/home-rail.ts PAGE_RAIL.holiday). */}
   <RailModules slot="rail" now={new Date()} page="holiday" excludeHolidaySlugs={new Set([def.slug])} frontImageId={frontPhoto?.id ?? null} />
   {(hours.length > 0 || (!timeless && foodHelp.length > 0)) && <HolidayRail slot="rail" hours={hours} foodHelp={timeless ? [] : foodHelp} />}
   </RailLayout>
