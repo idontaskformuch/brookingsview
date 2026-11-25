@@ -258,11 +258,11 @@ def run_broomfield_departments(fetcher: PoliteFetcher, conn) -> int:
 
 def main(argv: list[str]) -> int:
     import argparse
-    from db.db import get_conn
+    from db.db import get_conn  # reads --prod from sys.argv (the write guard); argv here is a copy that still holds it
     ap = argparse.ArgumentParser(prog="python -m scrapers.facility_hours")
     ap.add_argument("job", choices=("brookings-catalog", "briggs", "broomfield-departments"))
     ap.add_argument("--apply", action="store_true")
-    args = ap.parse_args(argv)
+    args = ap.parse_args([a for a in argv if a != "--prod"])
     today = date.today()
     town = "broomfield_co" if args.job == "broomfield-departments" else "brookings_sd"
     fetcher = PoliteFetcher("register", town)

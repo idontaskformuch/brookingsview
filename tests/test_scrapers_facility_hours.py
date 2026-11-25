@@ -64,3 +64,17 @@ def test_holiday_banner_alone_is_not_hours():
     from scrapers.facility_hours import hours_block_text
     # The banner on every broomfield.org page (2026-11-25): "Hours" is not followed by a day.
     assert hours_block_text("<h2>Holiday Adjusted Hours</h2><p>In observance of Thanksgiving, this facility may be closed</p>") is None
+
+
+def test_main_accepts_prod_flag_for_the_write_guard(monkeypatch):
+    # 2026-11-25: `python -m scrapers.facility_hours briggs --apply --prod` stopped in argparse ("unrecognized arguments:
+    # --prod"): main() gets a copy of argv, so db.db removing --prod from sys.argv never reached it.
+    import contextlib
+    import db.db
+    import scrapers.facility_hours as fh
+    seen = {}
+    monkeypatch.setattr(db.db, "get_conn", lambda: contextlib.nullcontext("conn"))
+    monkeypatch.setattr(fh, "PoliteFetcher", lambda *a: "fetcher")
+    monkeypatch.setattr(fh, "run_briggs", lambda f, c, apply, today: seen.update(apply=apply) or 0)
+    assert fh.main(["briggs", "--apply", "--prod"]) == 0
+    assert seen == {"apply": True}
