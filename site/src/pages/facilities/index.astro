@@ -6,9 +6,15 @@
  *  Bakgrund: Search Console visade att sökningar som "moreno valley library"
  *  och "lasselle sports park" stod för nästan alla exponeringar sajten fick,
  *  men gav noll klick -- ingen sida besvarade frågan direkt. Se
- *  lib/db.ts (getFacilities) för det fullständiga resonemanget. */
+ *  lib/db.ts (getFacilities) för det fullständiga resonemanget.
+ *
+ *  Designsystem Fas 4 (2026-11-25): the page grid (no `wide`); each row shows its weekly hours and an open/closed pill where the
+ *  place has structured hours; the H1 promises hours only when most places have them (lib/facilities-hub.ts); parks are a compact
+ *  2-3 column grid with the amenities the place's own services list states (config/park-amenities.ts); the town, state and ZIP
+ *  are not repeated on every row. Rules and tests: lib/facilities-hub.ts. */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import AboutThisPage from '../../components/ui/AboutThisPage.astro';
+import Pill from '../../components/ui/Pill.astro';
 import SectionRule from '../../components/SectionRule.astro';
 import ShareButton from '../../components/ShareButton.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
@@ -17,29 +23,25 @@ import { siteConfig } from '../../lib/site-config';
 import { isSectionBuilt } from '../../lib/sections';
 import { metaDescription } from '../../lib/meta-description';
 if (!isSectionBuilt('facilities', siteConfig)) return Astro.redirect('/', 302);
-import { placeAbbr } from '../../lib/country-profile';
+import { forCountry } from '../../lib/country-profile';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { resolvePageMeta } from '../../lib/page-meta';
 import { resolveHubNavItems } from '../../lib/clusters';
+import { hubPromisesHours, parkAmenities, shortAddress, weeklyHoursLine } from '../../lib/facilities-hub';
 import ClusterNav from '../../components/ClusterNav.astro';
 
 const pageMeta = resolvePageMeta('facilities', siteConfig);
 const clusterNavItems = resolveHubNavItems('facilities', siteConfig);
 // Venue categories (bars, music venues, shopping) are place rows for event matching, not public facilities (lib/db.ts).
 const facilities = (await getFacilities()).filter(isPublicPlace);
+const h1 = hubPromisesHours(facilities) ? pageMeta.h1 : (pageMeta.h1WithoutHours ?? pageMeta.h1);
 
 const byCategory = new Map<string, typeof facilities>();
 for (const f of facilities) {
   if (!byCategory.has(f.category)) byCategory.set(f.category, []);
   byCategory.get(f.category)!.push(f);
 }
-// Broomfield facilities expansion: every category FACILITY_CATEGORY_LABELS
-// (lib/db.ts) knows about, not just the 5 that happened to be in use when
-// this list was first written -- `police`/`post_office` already existed in
-// that label map with no facility ever using them yet, so this exact gap
-// (an unlisted category silently sorting to the front via .indexOf()'s -1)
-// was already live and simply hadn't been exercised. Fixed here for good,
-// not just patched for the two new categories this pass adds.
+// Every category FACILITY_CATEGORY_LABELS (lib/db.ts) knows about; an unlisted category would sort to the front via indexOf's -1.
 const categoryOrder = [
   'library', 'park', 'city_hall', 'police', 'fire_station', 'post_office',
   'recycling', 'animal_shelter', 'medical', 'school_district', 'transit',
@@ -48,6 +50,16 @@ const categoryOrder = [
 const categories = [...byCategory.keys()].sort(
   (a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b)
 );
+// Parks are many and short: a compact grid instead of a long list (Fas 4).
+const GRID_CATEGORIES = new Set(['park']);
+const rowsFor = (cat: string) => byCategory.get(cat)!.map((f) => ({
+  slug: f.slug,
+  name: f.name,
+  address: shortAddress(f.address, siteConfig.cityName),
+  hours: weeklyHoursLine(f.hours_structured),
+  hoursJson: f.hours_structured ? JSON.stringify(f.hours_structured) : null,
+  amenities: GRID_CATEGORIES.has(cat) ? parkAmenities(f.services) : [],
+}));
 // Only the kinds this town actually lists (Glasgow has no parks or city hall here; the old fixed sentence promised them).
 const kindLabels = categories.map((c) => (FACILITY_CATEGORY_LABELS[c] ?? c).toLowerCase());
 const placeKinds = kindLabels.length > 1 ? `${kindLabels.slice(0, -1).join(', ')} and ${kindLabels[kindLabels.length - 1]}` : kindLabels[0] ?? '';
@@ -57,43 +69,39 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   { label: 'Home', href: '/' },
   { label: 'Facilities', href: canonicalUrl },
 ];
-// ---- Notes on the template below (moved here 2026-11-25: a JS comment inside an Astro template can drop all CSS from a
-// build; scripts/verify_astro_template_comments.mjs). Each note names the markup it is about.
-// [at: <ul class="list" data-open-status-tz={siteConfig.timezone} data-gb={siteConfig.country ===]
-//   Open/Closed badge client-side move (2026-10-15): no more
-//             computeOpenStatus() call here -- a static hub page rebuilt only when new data arrives
-//             (not on a fixed cycle) baking "now" in at build time is exactly the
-//             staleness bug facilities/[slug].astro's own script comment
-//             describes. data-tz on the <ul> (once per category list, not
-//             per-item) + data-hours per <li> that actually has structured
-//             hours; the badge <span> is absent entirely for a facility with
-//             none, and stays hidden (no badge, just the name/address already
-//             shown) until the <script> below fills it in client-side.
+// Open/closed pill: computed in the browser only (standards.md, time-dependent words). data-open-status-tz once per list,
+// data-hours per row that has structured hours; the pill stays hidden until the script below fills it, and a row without
+// structured hours has no pill at all.
 ---
-<BaseLayout title={pageMeta.title} wide ogSlug="section-facilities"
+<BaseLayout title={pageMeta.title} ogSlug="section-facilities"
   description={metaDescription('facilities', siteConfig)}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">
-    <h1>{pageMeta.h1}</h1>
+    <h1>{h1}</h1>
     <ShareButton title={pageMeta.title} />
   </header>
 
-  {categories.length > 0 ? categories.map((cat) => (
-    <>
+  {categories.map((cat) => (
+    <section class="fac-group">
       <SectionRule label={FACILITY_CATEGORY_LABELS[cat] ?? cat} />
-      <ul class="list" data-open-status-tz={siteConfig.timezone} data-gb={siteConfig.country === 'gb' ? '1' : ''}>
-        {byCategory.get(cat)!.map((f) => (
-          <li>
-            <a href={`/facilities/${f.slug}/`}>{f.name}</a>
-            {f.address && <span class="addr"> — {f.address}</span>}
-            {f.hours_structured && (
-              <span class="badge" data-open-status-badge data-hours={JSON.stringify(f.hours_structured)} hidden></span>
+      <ul class:list={['fac-list', GRID_CATEGORIES.has(cat) && 'fac-list--grid']}
+        data-open-status-tz={siteConfig.timezone} data-gb={forCountry(siteConfig.country, '', '1')}>
+        {rowsFor(cat).map((r) => (
+          <li class="fac">
+            <a class="fac__name" href={`/facilities/${r.slug}/`}>{r.name}</a>
+            {r.hoursJson && (
+              <span class="fac__status" data-open-status-badge data-hours={r.hoursJson} hidden><Pill tone="neutral"></Pill></span>
+            )}
+            {r.address && <span class="fac__meta">{r.address}</span>}
+            {r.hours && <span class="fac__meta fac__hours">{r.hours}</span>}
+            {r.amenities.length > 0 && (
+              <span class="fac__amenities">{r.amenities.map((a) => <Pill>{a}</Pill>)}</span>
             )}
           </li>
         ))}
       </ul>
-    </>
-  )) : null}
+    </section>
+  ))}
 
   <ClusterNav clusterLabel="Places" items={clusterNavItems} />
 
@@ -101,46 +109,41 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
     buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
   )} />
   <script>
-    // Same client-side computation move as facilities/[slug].astro's own
-    // script -- see that file's comment. computeOpenStatus() here is the
-    // OLDER hours_structured-based function (lib/facility-hours.ts), not
-    // computePlaceOpenStatus() -- this hub list still reads the same data
-    // source it always has; only WHERE the decision runs changed.
+    // Same client-side computation as facilities/[slug].astro's own script: "now" is never baked in at build.
     import { computeOpenStatus } from '../../lib/facility-hours';
     import type { StructuredHours } from '../../lib/db';
 
     document.querySelectorAll<HTMLElement>('[data-open-status-badge]').forEach((badge) => {
-      const tz = badge.closest<HTMLElement>('[data-open-status-tz]')?.dataset.openStatusTz;
+      const list = badge.closest<HTMLElement>('[data-open-status-tz]');
+      const tz = list?.dataset.openStatusTz;
       const raw = badge.dataset.hours;
-      if (!tz || !raw) return;
-      const hours = JSON.parse(raw) as StructuredHours;
-      const status = computeOpenStatus(hours, new Date(), tz, badge.closest<HTMLElement>('[data-open-status-tz]')?.dataset.gb === '1');
+      const pill = badge.querySelector<HTMLElement>('.ui-pill');
+      if (!tz || !raw || !pill) return;
+      const status = computeOpenStatus(JSON.parse(raw) as StructuredHours, new Date(), tz, list?.dataset.gb === '1');
       if (!status.known) return;
+      pill.classList.remove('ui-pill--neutral', 'ui-pill--ok');
+      pill.classList.add(status.isOpen ? 'ui-pill--ok' : 'ui-pill--neutral');
+      pill.textContent = status.isOpen ? 'Open now' : status.opensAt ? `Closed · opens ${status.opensAt} ${status.opensLabel}` : 'Closed';
       badge.hidden = false;
-      badge.className = `badge ${status.isOpen ? 'badge--open' : 'badge--closed'}`;
-      badge.textContent = status.isOpen ? 'Open now' : `Closed — opens ${status.opensAt} ${status.opensLabel}`;
     });
   </script>
   <AboutThisPage slot="about">
-    <p>Public places in {siteConfig.cityName}{placeKinds ? ` (${placeKinds})` : ''}, with
-    the address and whether it is open right now. Open a place for its phone number, full hours
-    and how to get there. Every fact is checked against the facility's own official page, and
-    each place page shows the date it was last confirmed, so you know how current it is.</p>
+    <p>Public places in {siteConfig.cityName}{placeKinds ? ` (${placeKinds})` : ''}, with the address, the weekly hours where
+    the place publishes them, and whether it is open right now. Open a place for its phone number, full hours and how to get
+    there. Every fact is checked against the facility's own official page, and each place page shows the date it was last
+    confirmed, so you know how current it is.</p>
   </AboutThisPage>
 </BaseLayout>
 
 <style>
-.lede { max-width: 42rem; }
-.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
-.list { list-style: none; margin: 0 0 0.5rem; padding: 0; display: grid; gap: 0.5rem; max-width: 44rem; }
-.list li { padding: 0.5rem 0; border-bottom: 1px solid var(--rule); }
-.list a { font-weight: 600; }
-.addr { color: var(--ink-soft); font-size: 0.9375rem; }
-.badge {
-  display: inline-block; margin-left: 0.5rem; font-family: var(--font-ui);
-  font-size: 0.75rem; font-weight: 600;
-}
-.badge--open { color: var(--ink); }
-.badge--open::before { content: ''; display: inline-block; width: 0.55em; height: 0.55em; border-radius: 50%; background: var(--status-ok); margin-right: 0.4em; vertical-align: baseline; }
-.badge--closed { color: var(--ink-soft); }
+.fac-group { margin-bottom: 1.5rem; }
+.fac-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.fac { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.6rem; padding: 0.6rem 0; border-bottom: 1px solid var(--rule); }
+.fac__name { font-weight: 600; }
+.fac__meta { flex-basis: 100%; color: var(--ink-soft); font-family: var(--font-ui); font-size: max(13px, 0.875rem); font-variant-numeric: tabular-nums; }
+.fac__amenities { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.15rem; }
+.fac-list--grid { column-gap: 1.5rem; }
+@media (min-width: 36rem) { .fac-list--grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 62rem) { .fac-list--grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.fac-list--grid .fac { align-content: start; }
 </style>

@@ -15,7 +15,9 @@ const LAYOUT_FILES = ['components/SectionNav.astro', 'components/HolidayPage.ast
   // Fas 2 (2026-11-19): the rail.
   'components/RailLayout.astro', 'lib/rail.ts', 'config/home-rail.ts',
   // Fas 2 hub (2026-11-19).
-  'lib/home-blocks.ts', 'config/home-sections.ts', 'lib/front-page.ts'];
+  'lib/home-blocks.ts', 'config/home-sections.ts', 'lib/front-page.ts',
+  // Designsystem Fas 4 (2026-11-25): the facilities hub.
+  'pages/facilities/index.astro', 'lib/facilities-hub.ts', 'config/park-amenities.ts'];
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((f) => {

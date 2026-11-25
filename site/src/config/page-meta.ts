@@ -35,6 +35,9 @@
 export interface PageMetaPattern {
   titlePattern: string;
   h1Pattern: string;
+  /** The H1 when the page cannot keep h1Pattern's promise of hours (facilities hub, designsystem Fas 4: most places have none;
+   *  lib/facilities-hub.ts hubPromisesHours). The title tag never changes with it. */
+  h1PatternWithoutHours?: string;
   /** Documentation only -- see this module's own doc comment. */
   ledeRequirement?: string;
 }
@@ -186,6 +189,7 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
   facilities: {
     titlePattern: '{Town} Libraries, Parks and Buildings | {Site}',
     h1Pattern: 'Public Facilities in {Town}: Hours, Addresses and Contacts',
+    h1PatternWithoutHours: 'Libraries, Parks and Public Buildings in {Town}',
   },
   // {FacilityName} supplied via resolvePageMeta()'s extraVars -- see
   // facilities/[slug].astro's own call site. Lede requirement already
@@ -356,6 +360,7 @@ export const TOWN_OVERRIDES: Record<string, Partial<Record<string, Partial<PageM
     // Q3 2026-10-28: the list holds libraries, museums and leisure centres, not parks or council buildings.
     facilities: {
       titlePattern: '{Town} Libraries, Museums and Leisure Centres | {Site}', // gb-spelling
+      h1PatternWithoutHours: 'Libraries, Museums and Leisure Centres in {Town}', // gb-spelling
     },
   },
 };

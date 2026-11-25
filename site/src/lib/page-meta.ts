@@ -10,6 +10,8 @@ import type { SiteConfig } from './site-config';
 export interface ResolvedPageMeta {
   title: string;
   h1: string;
+  /** Set only for a pattern with h1PatternWithoutHours (config/page-meta.ts). */
+  h1WithoutHours?: string;
 }
 
 function interpolate(pattern: string, vars: Record<string, string>): string {
@@ -46,5 +48,6 @@ export function resolvePageMeta(
   return {
     title: interpolate(pattern.titlePattern, vars),
     h1: interpolate(pattern.h1Pattern, vars),
+    ...(pattern.h1PatternWithoutHours ? { h1WithoutHours: interpolate(pattern.h1PatternWithoutHours, vars) } : {}),
   };
 }
