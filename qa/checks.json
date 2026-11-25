@@ -486,6 +486,11 @@
         "born_from": "Broomfield AdSense audit 2026-11-11 (F5): /election-results/ showed an \"About this page\" heading with nothing under it (its slot held only an optional notice Broomfield does not have). Regression fixture: tests/fixtures/qa_election_pages_2026-11-11/before/election-results, tests/test_verify_election_pages.py.",
         "what": "a built page whose \"About this page\" box (components/ui/AboutThisPage.astro) has no text under its heading (scripts/verify_no_empty_messages.mjs on dist/ in every deploy workflow)"
     },
+    "build.page-css": {
+        "severity": "hard",
+        "born_from": "2026-11-25: a local Glasgow build finished green with no <style> and no /_astro/*.css on any page (bare HTML everywhere) after a JS comment was placed inside a template expression in components/CookieBanner.astro; seen in a screenshot, caught before commit was pushed. Regression fixture: tests/fixtures/qa_page_css_2026-11-25, tests/test_verify_page_css.py.",
+        "what": "a built HTML page (not a redirect stub or verification file) with neither a <style> block nor a /_astro/*.css stylesheet link (scripts/verify_page_css.mjs on dist/ in the battery)"
+    },
     "build.empty-state": {
         "severity": "hard",
         "born_from": "Owner 2026-11-24: Broomfield's /this-week/2026-w48/ (live) said \"A quiet week — no meetings, events or games recorded for Broomfield this week.\", and some 30 other empty-state lines (class=\"empty\", __empty, EmptyState) stood on pages in all four towns. Rule: an empty section is left out entirely, the page leads with what it has. Regression fixture: tests/fixtures/qa_empty_states_2026-11-24 (real Broomfield pages built at 66dcd830), tests/test_verify_empty_states.py.",

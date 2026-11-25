@@ -10,13 +10,13 @@
  * som medvetet inte kör tunga ramverk för enkla saker.
  */
 import { siteConfig } from '../lib/site-config';
+// Opt-in text (owner 2026-11-25): one short line. The consent and how-to-change sentences stand on /cookies/.
 interface Props { optIn?: boolean }
 const { optIn = false } = Astro.props;
 ---
 <div id="cookie-banner" class:list={['banner', optIn && 'banner--compact']} role="region" aria-label="Cookie notice" hidden>
   <div class="banner__inner">
     {optIn ? (
-      /* Owner 2026-11-25: one short line. The consent and how-to-change sentences stand on /cookies/. */
       <p>We use cookies to see which pages people read. <a href="/cookies/">More</a></p>
     ) : (
       <p>

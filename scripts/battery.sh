@@ -77,6 +77,7 @@ for t in $TOWNS; do
   node ../scripts/verify_sitemap_noindex_disjoint.mjs dist 2>&1 | tail -2; step "disjoint $t" "${PIPESTATUS[0]}"
   node ../scripts/verify_no_empty_messages.mjs dist 2>&1 | tail -1; step "empty-messages $t" "${PIPESTATUS[0]}"
   node ../scripts/verify_content_first.mjs dist 2>&1 | tail -1; step "content-first $t" "${PIPESTATUS[0]}"
+  node ../scripts/verify_page_css.mjs dist 2>&1 | tail -3; step "page-css $t" "${PIPESTATUS[0]}"
   node ../scripts/verify_no_internal_notes.mjs dist 2>&1 | tail -5; step "internal-notes $t" "${PIPESTATUS[0]}"
   node ../scripts/verify_town_games.mjs dist "$t"; step "town-games $t" $?
   # Same check as every deploy workflow (2026-11-20: glasgow-deploy failed 19-20 Nov on /how-do-i/, which no local step caught).
