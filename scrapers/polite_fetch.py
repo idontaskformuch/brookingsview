@@ -36,7 +36,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Protocol
-from urllib.parse import urlparse
+from urllib.parse import urlencode, urlparse
 
 from scrapers import robots as _robots
 from scrapers.user_agent import user_agent
@@ -51,6 +51,9 @@ MIN_GAP_S = 1.0
 MAX_CRAWL_DELAY_S = 60.0
 TIMEOUT_S = 25
 BLOCKED_STATUSES = ("403", "challenge")
+# POST is allowed only to these exact addresses, each with its minimum gap in seconds (owner 2026-11-25, order D 4: the Brookings
+# facility catalog pages its list with a POST). Same robots.txt, UA, log and 403 rule as a GET; any other address is Refused.
+POST_ALLOWLIST = {"https://www.cityofbrookings-sd.gov/Facilities/Facility/Search": 10.0}
 
 
 @dataclass(frozen=True)
@@ -215,14 +218,28 @@ class PoliteFetcher:
         log, the cache, Fetched.url/final_url and every Refused carry the URL without them (2026-11-19, traffic to PoliteFetcher)."""
         url = _with_params(url, params)
         send_url = _with_params(url, secret_params) if secret_params else None
-        cap = max(max_bytes or MAX_BYTES, MAX_BYTES)
+        return self._polite(url, url, send_url, None, max(max_bytes or MAX_BYTES, MAX_BYTES), tuple(secret_params or ()))
+
+    def post(self, url: str, data: dict) -> Fetched | Refused:
+        """A form POST to an address in POST_ALLOWLIST, nothing else. Logged and cached under "<url>#POST?<form>", so two
+        different forms to the same address are two entries (one per day each, as for a GET)."""
+        if url not in POST_ALLOWLIST:
+            return Refused(url, "POST only to an address in POST_ALLOWLIST (owner 2026-11-25)")
+        domain = registrable(urlparse(url).netloc)
+        self._delay[domain] = max(self._delay.get(domain, 0.0), POST_ALLOWLIST[url])
+        key = f"{url}#POST?{urlencode(sorted((k, '' if v is None else str(v)) for k, v in data.items()))}"
+        return self._polite(url, key, url, data, MAX_BYTES, ())
+
+    def _polite(self, url: str, key: str, send_url: str | None, data: dict | None, cap: int, secret_keys: tuple) -> Fetched | Refused:
+        """robots.txt, the 403 rule, the day limit and the Crawl-delay for one request. `key` is what the log and the day cache
+        record (the URL itself for a GET)."""
         parts = urlparse(url)
         if parts.scheme not in ("http", "https") or not parts.netloc:
             return Refused(url, "not an http(s) URL")
         domain = registrable(parts.netloc)
         blocked = self._blocked(parts.netloc.lower())
         if blocked:
-            return blocked if blocked.url == url else Refused(url, blocked.reason, True)
+            return blocked if blocked.url == key else Refused(key, blocked.reason, True)
         terms = api_terms(url)
         if terms is not None:
             self._delay[domain] = max(self._delay.get(domain, 0.0), terms.min_gap_s)
@@ -231,25 +248,26 @@ class PoliteFetcher:
             if not verdict.ok:
                 return Refused(url, verdict.reason)
         excluded = url in self._llm_excluded
+        if key != url and excluded:
+            self._llm_excluded[key] = self._llm_excluded[url]
         if self.purpose in DAY_LIMITED:
-            earlier = self._fetched_today(url)
+            earlier = self._fetched_today(key)
             if earlier is not None:
-                cached = self._cached(url)
+                cached = self._cached(key)
                 cut = cached is not None and cached.cut and cap > len(cached.body)
                 if cached is not None and not cut:
                     cached.llm_excluded = excluded
                     return cached
                 if not cut:
-                    return Refused(url, f"already fetched today at {earlier['utc'][11:16]} UTC ({earlier['purpose']}, {earlier['where']}), "
+                    return Refused(key, f"already fetched today at {earlier['utc'][11:16]} UTC ({earlier['purpose']}, {earlier['where']}), "
                                         "no saved copy here: use the saved copy")
         host = parts.netloc.lower()
         if host in self._over_cap:
             if host in self._used:
-                return Refused(url, f"robots.txt Crawl-delay {self._over_cap[host]:g} s is above the {MAX_CRAWL_DELAY_S:g} s cap and is "
+                return Refused(key, f"robots.txt Crawl-delay {self._over_cap[host]:g} s is above the {MAX_CRAWL_DELAY_S:g} s cap and is "
                                     "never shortened: one request per host per run, already made")
             self._used.add(host)
-        got = self._request(url, domain, self.purpose, max_bytes=cap, send_url=send_url,
-                            secret_keys=tuple(secret_params or ()))
+        got = self._request(key, domain, self.purpose, max_bytes=cap, send_url=send_url, secret_keys=secret_keys, data=data)
         if isinstance(got, Fetched):
             got.llm_excluded = excluded
         return got
@@ -336,14 +354,19 @@ class PoliteFetcher:
 
     # --- the request --------------------------------------------------------------------------------------------------------
     def _request(self, url: str, domain: str, purpose: str, same_domain: bool = True, max_bytes: int = MAX_BYTES,
-                 send_url: str | None = None, secret_keys: tuple = ()) -> Fetched | Refused:
+                 send_url: str | None = None, secret_keys: tuple = (), data: dict | None = None) -> Fetched | Refused:
         gap = max(MIN_GAP_S, self._delay.get(domain, 0.0))
         wait = self._last.get(domain, -1e9) + gap - time.monotonic()
         if wait > 0:
             self._sleep(wait)
         self._last[domain] = time.monotonic()
         try:
-            res = self.session.get(send_url or url, headers={"User-Agent": self.ua}, timeout=TIMEOUT_S, allow_redirects=True, stream=True)
+            if data is not None:  # only ever reached through post(), i.e. an address in POST_ALLOWLIST
+                res = self.session.post(send_url, data=data, headers={"User-Agent": self.ua}, timeout=TIMEOUT_S, allow_redirects=True,
+                                        stream=True)
+            else:
+                res = self.session.get(send_url or url, headers={"User-Agent": self.ua}, timeout=TIMEOUT_S, allow_redirects=True,
+                                       stream=True)
             raw = getattr(res, "raw", None)
             body = raw.read(max_bytes, decode_content=True) if raw is not None else (res.content or b"")[:max_bytes]
         except Exception as exc:  # noqa: BLE001 -- any network failure is "no answer"

@@ -31,6 +31,10 @@ class FakeSession:
         R.url = final or url
         return R()
 
+    def post(self, url, data, headers, timeout, allow_redirects, stream):
+        self.posts = getattr(self, "posts", []) + [(url, dict(data))]
+        return self.get(url, headers, timeout, allow_redirects, stream)
+
 
 def fetcher(routes, purpose="register", ledger=None, tmp=None, clock=NOON):
     sess = FakeSession(routes)
@@ -350,3 +354,42 @@ def test_max_bytes_never_lowers_the_cap_and_an_uncut_copy_is_reused():
 def test_robots_mode_argument_is_gone():
     with pytest.raises(TypeError):
         pf.PoliteFetcher("source", session=FakeSession({}), ledger=pf.MemoryLedger(), robots_mode="strict")  # type: ignore[call-arg]
+
+
+# --- POST (owner 2026-11-25, order D 4): one allowlisted address, the Brookings facility catalog's list search --------------------
+CATALOG_SEARCH = "https://www.cityofbrookings-sd.gov/Facilities/Facility/Search"
+CITY_ROBOTS = "https://www.cityofbrookings-sd.gov/robots.txt"
+FORM = {"categoryIDs": "8,9,10,2,11,4,5,12,3,7,6", "pageSize": "100", "pageNumber": "1", "sortBy": "3", "isReservableOnly": "false"}
+
+
+def test_post_to_any_other_address_is_refused_without_a_request():
+    f, sess = fetcher({ROBOTS_URL: (404, ""), URL: (200, "x")})
+    got = f.post(URL, {"a": "1"})
+    assert isinstance(got, pf.Refused) and "POST_ALLOWLIST" in got.reason
+    assert sess.calls == []
+
+
+def test_post_reads_robots_first_and_a_disallow_stops_it():
+    f, sess = fetcher({CITY_ROBOTS: (200, "User-agent: *\nDisallow: /Facilities/Facility/Search\n"), CATALOG_SEARCH: (200, "x")})
+    got = f.post(CATALOG_SEARCH, FORM)
+    assert isinstance(got, pf.Refused)
+    assert urls(sess) == [CITY_ROBOTS] and not getattr(sess, "posts", [])
+
+
+def test_post_sends_the_form_once_a_day_and_logs_it_under_its_own_key(tmp_path):
+    ledger = pf.MemoryLedger()
+    f, sess = fetcher({CITY_ROBOTS: (404, ""), CATALOG_SEARCH: (200, "<p>list</p>")}, "register", ledger, tmp_path)
+    assert f.post(CATALOG_SEARCH, FORM).text == "<p>list</p>"
+    assert f.post(CATALOG_SEARCH, FORM).text == "<p>list</p>"  # the day's saved copy
+    assert sess.posts == [(CATALOG_SEARCH, FORM)]
+    logged = [e["url"] for e in ledger.entries() if e["url"].startswith(CATALOG_SEARCH)]
+    assert len(logged) == 1 and logged[0].startswith(CATALOG_SEARCH + "#POST?") and "pageNumber=1" in logged[0]
+
+
+def test_post_waits_at_least_ten_seconds_between_requests_to_the_city():
+    slept: list[float] = []
+    sess = FakeSession({CITY_ROBOTS: (404, ""), CATALOG_SEARCH: (200, "x")})
+    f = pf.PoliteFetcher("source", "brookings_sd", session=sess, ledger=pf.MemoryLedger(), cache_dir=None, sleep=slept.append)
+    f.post(CATALOG_SEARCH, FORM)
+    f.post(CATALOG_SEARCH, {**FORM, "pageNumber": "2"})
+    assert slept and max(slept) > 9.0

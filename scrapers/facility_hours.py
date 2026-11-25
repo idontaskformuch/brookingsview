@@ -10,8 +10,9 @@ and libcal.sdstate.edu name AI crawlers in robots.txt (llm_excluded), and nothin
 Sources:
   * Brookings facility catalog (CivicPlus, https://www.cityofbrookings-sd.gov/Facilities): every detail page has
     <div class="section hours"><h3>Hours</h3><dl>Sunrise to 11:00p.m.</dl></div>. The list is paged by a POST
-    (/Facilities/Facility/Search); PoliteFetcher only makes GET requests and a new request method is the owner's decision
-    (19 nov K2), so only what GET reaches is read: list page 1 and the detail pages the places rows already link to.
+    (/Facilities/Facility/Search). Without --all-pages only what GET reaches is read: list page 1 and the detail pages the
+    places rows link to. With --all-pages the list's own search form is posted (owner 2026-11-25: POST to that one address,
+    polite_fetch.POST_ALLOWLIST, robots.txt first, 10 s between requests). The workflow does not pass --all-pages.
   * Briggs Library (https://libcal.sdstate.edu/hours): a table per week, one column per date, "7:45am – 12am" or "Closed".
     Read as dated place_hours rows (valid_from = valid_to = that date), so term breaks and holidays are exact.
   * Broomfield departments (police, court, Workforce Center, HHS, Auditorium): their place_hours rows were entered by hand on
@@ -35,6 +36,7 @@ from ai_pipeline.facility_hours import _normalize, _parse_time_range, parse_hour
 from scrapers.polite_fetch import PoliteFetcher, Refused
 
 BROOKINGS_CATALOG = "https://www.cityofbrookings-sd.gov/Facilities"
+CATALOG_SEARCH = "https://www.cityofbrookings-sd.gov/Facilities/Facility/Search"  # in polite_fetch.POST_ALLOWLIST
 BROOKINGS_DETAIL_RE = re.compile(r"^https://www\.cityofbrookings-sd\.gov/facilities/facility/details/", re.IGNORECASE)
 LIBCAL_HOURS = "https://libcal.sdstate.edu/hours"
 BRIGGS_SLUG = "briggs-library"
@@ -59,6 +61,20 @@ def catalog_detail_links(list_html: str, base: str = BROOKINGS_CATALOG) -> list[
         if url not in seen:
             seen.append(url)
     return seen
+
+
+def catalog_search_form(list_html: str, page: int) -> dict[str, str]:
+    """The form SearchSidebar.js (searchListing, not reservable-only) posts to CATALOG_SEARCH: the facility types the list page
+    has checked, no features, name A-Z (sortBy 3, the page's default), 100 per page (the largest choice in its drop-down).
+    null/empty fields are sent empty, as jQuery sends them."""
+    ids = re.findall(r'<input type="checkbox" class="chkSidebarFacilityTypes" name="FacilityType" id="[^"]+" value="(\d+)" checked', list_html)
+    return {"featureIDs": "", "categoryIDs": ",".join(ids), "occupants": "", "keywords": "", "pageSize": "100",
+            "pageNumber": str(page), "sortBy": "3", "currentLatitude": "", "currentLongitude": "", "isReservableOnly": "false"}
+
+
+def catalog_last_page(list_html: str) -> int:
+    m = re.search(r'id="hiddenLastPageNumber" value="(\d+)"', list_html)
+    return int(m.group(1)) if m else 1
 
 
 @dataclass
@@ -143,7 +159,26 @@ def _hhmm(v) -> str | None:
     return None if v is None else str(v)[:5]
 
 
-def run_brookings_catalog(fetcher: PoliteFetcher, conn, apply: bool, today: date) -> int:
+def catalog_all_links(fetcher: PoliteFetcher, list_html: str) -> list[str] | Refused:
+    """Every detail page in the catalog, through the list's own POST search (owner 2026-11-25: POST to CATALOG_SEARCH only)."""
+    form = catalog_search_form(list_html, 1)
+    if not form["categoryIDs"]:
+        return Refused(CATALOG_SEARCH, "no checked facility types on the list page: the form would not be the page's own")
+    links: list[str] = []
+    page, last = 1, 1
+    while page <= last:
+        got = fetcher.post(CATALOG_SEARCH, catalog_search_form(list_html, page))
+        if isinstance(got, Refused):
+            return got
+        if got.status != 200:
+            return Refused(CATALOG_SEARCH, f"page {page}: HTTP {got.status}")
+        links += [u for u in catalog_detail_links(got.text) if u not in links]
+        last = catalog_last_page(got.text)
+        page += 1
+    return links
+
+
+def run_brookings_catalog(fetcher: PoliteFetcher, conn, apply: bool, today: date, all_pages: bool = False) -> int:
     cur = conn.cursor()
     cur.execute("SELECT id, slug, name, hours_text, hours_structured, verification_method, source_url, "
                 "(SELECT count(*) FROM place_hours ph WHERE ph.place_id = p.id) "
@@ -154,9 +189,21 @@ def run_brookings_catalog(fetcher: PoliteFetcher, conn, apply: bool, today: date
     if isinstance(listing, Refused):
         print(f"[refused] {BROOKINGS_CATALOG}: {listing.reason}")
         return 1
-    urls = catalog_detail_links(listing.text)
-    urls += [r[6] for r in places if r[6] and BROOKINGS_DETAIL_RE.match(r[6]) and r[6] not in urls]
-    print(f"{len(urls)} detail pages reachable by GET (list page 1 + pages the rows link to); later list pages need a POST")
+    if all_pages:
+        found = catalog_all_links(fetcher, listing.text)
+        if isinstance(found, Refused):
+            print(f"[refused] {found.url}: {found.reason}")
+            return 1
+        urls = found
+        print(f"{len(urls)} detail pages in the catalog (POST search; the GET list says {catalog_last_page(listing.text)} pages of 5)")
+    else:
+        urls = catalog_detail_links(listing.text)
+    extra = [r[6] for r in places if r[6] and BROOKINGS_DETAIL_RE.match(r[6]) and r[6].lower() not in {u.lower() for u in urls}]
+    urls += extra
+    if not all_pages:
+        print(f"{len(urls)} detail pages reachable by GET (list page 1 + pages the rows link to); --all-pages reads the rest by POST")
+    elif extra:
+        print(f"    + {len(extra)} page(s) the rows link to that the search did not list: {extra}")
     changed = 0
     for url in urls:
         got = fetcher.get(url)
@@ -262,13 +309,14 @@ def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(prog="python -m scrapers.facility_hours")
     ap.add_argument("job", choices=("brookings-catalog", "briggs", "broomfield-departments"))
     ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--all-pages", action="store_true", help="brookings-catalog: every list page via the POST search (owner 2026-11-25)")
     args = ap.parse_args([a for a in argv if a != "--prod"])
     today = date.today()
     town = "broomfield_co" if args.job == "broomfield-departments" else "brookings_sd"
     fetcher = PoliteFetcher("register", town)
     with get_conn() as conn:
         if args.job == "brookings-catalog":
-            return run_brookings_catalog(fetcher, conn, args.apply, today)
+            return run_brookings_catalog(fetcher, conn, args.apply, today, args.all_pages)
         if args.job == "briggs":
             return run_briggs(fetcher, conn, args.apply, today)
         return run_broomfield_departments(fetcher, conn)

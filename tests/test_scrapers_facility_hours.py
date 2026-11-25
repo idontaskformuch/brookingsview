@@ -66,6 +66,38 @@ def test_holiday_banner_alone_is_not_hours():
     assert hours_block_text("<h2>Holiday Adjusted Hours</h2><p>In observance of Thanksgiving, this facility may be closed</p>") is None
 
 
+def test_catalog_search_form_is_the_pages_own_default_search():
+    # brookings-catalog-sidebar.html: the list page's sidebar lines verbatim (2026-11-25): 11 types checked, 13 pages of 5
+    from scrapers.facility_hours import catalog_last_page, catalog_search_form
+    html = _read("brookings-catalog-sidebar.html")
+    form = catalog_search_form(html, 2)
+    assert form["categoryIDs"] == "8,9,10,2,11,4,5,12,3,7,6"
+    assert (form["pageNumber"], form["pageSize"], form["sortBy"], form["isReservableOnly"]) == ("2", "100", "3", "false")
+    assert catalog_last_page(html) == 13
+
+
+def test_all_pages_posts_until_the_last_page_and_stops_at_a_refusal():
+    from scrapers.facility_hours import CATALOG_SEARCH, catalog_all_links
+    from scrapers.polite_fetch import Fetched, Refused
+    sidebar = _read("brookings-catalog-sidebar.html")
+    page1 = _read("brookings-catalog-page1.html")
+
+    class F:
+        def __init__(self, answers):
+            self.answers, self.forms = list(answers), []
+
+        def post(self, url, form):
+            assert url == CATALOG_SEARCH
+            self.forms.append(form["pageNumber"])
+            return self.answers.pop(0)
+
+    two_pages = page1 + '<input type="hidden" id="hiddenLastPageNumber" value="2"/>'
+    f = F([Fetched(CATALOG_SEARCH, CATALOG_SEARCH, 200, two_pages.encode()), Fetched(CATALOG_SEARCH, CATALOG_SEARCH, 200, two_pages.encode())])
+    assert len(catalog_all_links(f, sidebar)) == 5 and f.forms == ["1", "2"]
+    refused = F([Refused(CATALOG_SEARCH, "robots")])
+    assert isinstance(catalog_all_links(refused, sidebar), Refused)
+
+
 def test_main_accepts_prod_flag_for_the_write_guard(monkeypatch):
     # 2026-11-25: `python -m scrapers.facility_hours briggs --apply --prod` stopped in argparse ("unrecognized arguments:
     # --prod"): main() gets a copy of argv, so db.db removing --prod from sys.argv never reached it.
