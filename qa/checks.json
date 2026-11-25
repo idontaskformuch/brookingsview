@@ -680,6 +680,11 @@
       "severity": "hard",
       "born_from": "Found 2026-11-25 (owner order): scripts/sync_place_hours_from_text.py wrote hours_structured and seven place_hours rows for brookings_sd brookings-activity-center and brookings-municipal-liquor-store but left hours_confidence NULL, so /today's 'Hours today' (which requires 'structured') left both out; it was set by hand with the owner's yes. The script now sets 'structured' itself for a plain week (the branch that writes place_hours rows), never for the season/sunrise branches (lib/build-checks.ts refuses 'structured' without rows). Regression fixture: tests/test_sync_place_hours_from_text.py (the liquor store's verbatim hours_text; fails before the fix).",
       "what": "a place synced from hours_text with place_hours rows whose hours_confidence is not 'structured' (pytest)"
+    },
+    "web.today-single-weather": {
+      "severity": "hard",
+      "born_from": "Found 2026-11-25 (owner order, punkt 4): every town's /today/ showed 'Weather today' twice: the server-written block in the main column (SiteConfig.todayPage, on for all four towns since 13378bde) and the rail module weather_today (config/home-rail.ts PAGE_RAIL.today). The rail module is gone from /today/ (it stays on /closures/, which has no main-column weather). Regression fixture: site/src/lib/rail.test.ts \"Today's rail: sport, holiday, open now\" (fails before: the rail listed weather_today).",
+      "what": "/today/ has more than one 'Weather today' section (vitest + built HTML)"
     }
   }
 }

@@ -64,7 +64,9 @@ export const PAGE_RAIL: Record<RailPage, PageRail> = {
   // Owner 2026-11-20 (after the grid): the next game, the next holiday page, today's weather (high/low + condition) and open now. No
   // "<Town> in numbers" (counts without context, and a 0 is an empty state) and no second Right Now.
   // Owner 2026-11-20 (Glasgow cafes): Today's main column no longer lists cafes, so the rail's Open now is the only list: up to 8.
-  today: { modules: ['sport', 'holiday', 'weather_today', 'open_now'], withStatus: false, openNowMax: 8 },
+  // Owner 2026-11-25: no weather_today here -- every town's /today/ now has the server-written "Weather today" block in the main
+  // column (SiteConfig.todayPage), and the rail module repeated it under the same heading (QA web.today-single-weather).
+  today: { modules: ['sport', 'holiday', 'open_now'], withStatus: false, openNowMax: 8 },
   // Owner 2026-11-20: the marquee is a full-width band above the grid; beside "Also on" the next holiday and the weekend's shows.
   whats_on: { modules: ['holiday', 'shows_weekend'], withStatus: false },
   // Owner 2026-11-20 (Tillägg B): a holiday page's rail holds only what belongs to the holiday: the next holiday page ("Coming up · in 6

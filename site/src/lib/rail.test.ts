@@ -133,8 +133,11 @@ describe('pageRailFor', () => {
     for (const r of Object.values(HOME_RAIL_BY_TOWN)) expect([...r.modules, ...r.reserve].some((m) => PAGE_ONLY_MODULES.has(m))).toBe(false);
   });
   // Owner 2026-11-20 after the grid: Today's rail is the next game, the next holiday, today's weather and open now; never "in numbers".
-  it("Today's rail: sport, holiday, weather today, open now -- no numbers", () => {
-    expect(PAGE_RAIL.today.modules).toEqual(['sport', 'holiday', 'weather_today', 'open_now']);
+  // QA web.today-single-weather (owner 2026-11-25): with todayPage in every town the main column has "Weather today", so the rail
+  // no longer repeats it (both showed as "Weather today" on all four towns' /today/).
+  it("Today's rail: sport, holiday, open now -- no numbers, no second Weather today", () => {
+    expect(PAGE_RAIL.today.modules).toEqual(['sport', 'holiday', 'open_now']);
+    for (const townId of Object.keys(HOME_RAIL_BY_TOWN)) expect(pageRailFor(townId, 'today').modules).not.toContain('weather_today');
     for (const townId of Object.keys(HOME_RAIL_BY_TOWN)) expect(pageRailFor(townId, 'today').modules).not.toContain('numbers');
   });
   // Owner 2026-11-20 (Tillägg B): a holiday page's rail = the next holiday, the page's regular hours, the food-help contact. No Right Now, no numbers.
