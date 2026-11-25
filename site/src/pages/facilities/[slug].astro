@@ -26,6 +26,7 @@ import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import RelatedContent from '../../components/RelatedContent.astro';
 import ImageAttribution from '../../components/ImageAttribution.astro';
 import { assertImageExists } from '../../lib/images';
+import { sourceOwnerLabel } from '../../lib/source-credit';
 import {
   getFacilities, getFacilityBySlug, getPlaceHours, getUpcomingPlaceHoursExceptions, isPublicPlace,
   FACILITY_CATEGORY_LABELS, FACILITY_SCHEMA_TYPE,
@@ -337,7 +338,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
           <dt>Source</dt>
           <dd>
             {facility.source_url && (
-              <a href={facility.source_url} rel="noopener">{siteConfig.cityName} official site</a>
+              <a href={facility.source_url} rel="noopener">{sourceOwnerLabel(facility.source_url)}</a>
             )}
             {facility.verified_date && (
               <>{facility.source_url ? ' — ' : ''}checked <time datetime={calendarDateIso(facility.verified_date)}>{formatCalendarDate(facility.verified_date)}</time></>

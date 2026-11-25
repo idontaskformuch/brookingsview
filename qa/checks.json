@@ -665,6 +665,11 @@
       "severity": "hard",
       "born_from": "Found 2026-11-25 (owner order D): /facilities/ counted and showed hours only from hours_structured, so the place_hours rows the facility pages read (Broomfield police, court, Workforce Center, HHS, Auditorium, Depot and Veterans museums, skate park, recycling center) gave no weekly line, no pill and no count toward the heading. Since fe7ae446 the hub reads lib/hours-spec.ts effectiveHours (place_hours rows, else hours_structured). Regression fixture: site/src/lib/hours-spec.test.ts 'QA data.facilities-hub-own-hours' (broomfield_co/broomfield-court-services rows). It cannot fail on the old code as a unit test: the old hub read the column inline in the page, with no function to call; the check pins the shared function the hub now goes through. Found with it: lib/facility-lede.ts summarizeHours kept only the last window of a day, so split hours lost the morning ('Mon–Fri 12:30pm–4:30pm' for the court, in the facility page's lede too); the same test fails before that fix.",
       "what": "a public place with place_hours rows whose effective hours on the hub are null (vitest)"
+    },
+    "web.place-source-owner": {
+      "severity": "hard",
+      "born_from": "Found 2026-11-25 (owner order, punkt 2): facilities/[slug].astro labelled every source_url '<town> official site', so McCrory Gardens (brookings_sd place 107, source www.sdstate.edu) claimed the City of Brookings as its source; the same went for SDSU's other venues, Wikipedia, prairieplay.org and the ArcGIS hub. Since then lib/source-credit.ts sourceOwnerLabel names the owner by host (unlisted hosts show the bare host). Regression fixture: site/src/lib/source-credit.test.ts 'QA web.place-source-owner' (real source_urls of places 107, 2, 238); the page-source assertion fails before the fix.",
+      "what": "a facility page's Source link names the town for a source_url on another owner's host (vitest)"
     }
   }
 }
