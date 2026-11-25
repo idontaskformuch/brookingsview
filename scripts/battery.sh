@@ -18,6 +18,83 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # komponent-CSS på någon sida, och vitest laddar två instanser av @vitest/runner. Kontrollen gäller katalogen batteriet startas i.
 node "$ROOT/site/scripts/require-upper-drive.mjs" || { echo "battery: AVBRUTET, inget steg kört (liten enhetsbokstav)" >&2; exit 2; }
 ROOT="$(cd "$ROOT" && { pwd -W 2>/dev/null || pwd; })"
+
+# ---- Lås och processträd (QA build.battery-lock, ägaren 2026-11-25) ----
+# Ett batteri åt gången: låsfilen (BATTERY_LOCK, standard scratch_tmp/battery.lock) har övervakarens och kroppens PID på första
+# raden. Lever någon av dem vägrar ett nytt batteri (exit 3); ett lås från döda processer tas bort med ett meddelande.
+# Stegen körs i en bakgrundskropp medan den här processen (övervakaren) väntar: bash kör en trap först när förgrundskommandot
+# är klart, så bara en väntande övervakare kan avbryta mitt i ett bygge. Vid INT/TERM/HUP, eller när den som startade batteriet
+# inte längre finns (2026-11-25: ett stoppat batteri levde vidare som föräldralöst och byggde i samma dist som nästa), dödas hela
+# kroppens processträd: varje bash-process och, på Windows, varje Windows-processträd under dem (taskkill /T; node-barn syns inte
+# för bash). BATTERY_BODY ersätter stegen med ett eget kommando (bara för tests/test_battery_lock.py).
+LOCK="${BATTERY_LOCK:-$ROOT/scratch_tmp/battery.lock}"
+BODY_PID=""
+
+lock_acquire() {
+  mkdir -p "$(dirname "$LOCK")" || exit 3
+  local attempt held p alive
+  for attempt in 1 2; do
+    if ( set -o noclobber; printf '%s\n' "$$" > "$LOCK" ) 2>/dev/null; then return 0; fi
+    held=(); read -r -a held < "$LOCK" 2>/dev/null
+    alive=""
+    for p in "${held[@]}"; do [[ $p =~ ^[0-9]+$ ]] && kill -0 "$p" 2>/dev/null && alive="$alive $p"; done
+    if [ -n "$alive" ]; then
+      echo "battery: VÄGRAR, ett annat batteri kör redan (pid$alive; låsfil $LOCK). Vänta tills det är klart eller avbryt det; inget steg kört." >&2
+      exit 3
+    fi
+    echo "battery: gammalt lås från en död process (${held[*]:-tom fil}) borttaget: $LOCK" >&2
+    rm -f "$LOCK"
+  done
+  echo "battery: kunde inte ta låset $LOCK" >&2
+  exit 3
+}
+
+lock_release() {  # bara vårt eget lås
+  local first=""
+  [ -f "$LOCK" ] || return 0
+  read -r first _ < "$LOCK"
+  [ "$first" = "$$" ] && rm -f "$LOCK"
+}
+
+descendants() {  # alla bash-kända efterkommande till $1 (ps -ef: PID i kolumn 2, PPID i kolumn 3)
+  local table queue=("$1") out=() p c
+  table="$(ps -ef 2>/dev/null | awk 'NR > 1 { print $2, $3 }')"
+  while [ ${#queue[@]} -gt 0 ]; do
+    p="${queue[0]}"; queue=("${queue[@]:1}")
+    for c in $(awk -v p="$p" '$2 == p { print $1 }' <<< "$table"); do out+=("$c"); queue+=("$c"); done
+  done
+  echo "${out[@]}"
+}
+
+kill_tree() {
+  local root="$1" p w all
+  all="$root $(descendants "$root")"
+  for p in $all; do kill -STOP "$p" 2>/dev/null; done  # inget nytt barn hinner startas medan trädet rivs
+  if command -v taskkill > /dev/null 2>&1; then
+    for p in $all; do
+      w="$(cat "/proc/$p/winpid" 2>/dev/null)" && [ -n "$w" ] && taskkill //F //T //PID "$w" > /dev/null 2>&1
+    done
+  fi
+  for p in $all; do kill -KILL "$p" 2>/dev/null; done
+}
+
+battery_abort() {  # battery_abort <orsak> <exit>
+  trap - INT TERM HUP
+  echo "battery: AVBRUTET ($1) -- dödar hela processträdet" >&2
+  [ -n "$BODY_PID" ] && kill_tree "$BODY_PID"
+  lock_release
+  exit "$2"
+}
+
+lock_acquire
+trap lock_release EXIT
+trap 'battery_abort "signal INT" 130' INT
+trap 'battery_abort "signal TERM" 143' TERM
+trap 'battery_abort "signal HUP" 129' HUP
+CALLER="$PPID"
+WATCH_CALLER=0
+[ "$CALLER" -gt 1 ] 2>/dev/null && kill -0 "$CALLER" 2>/dev/null && WATCH_CALLER=1
+
 LOG="$(cd "$ROOT" && mkdir -p "${1:-scratch_tmp/battery}" && cd "${1:-scratch_tmp/battery}" && pwd)"
 CHECK_CITY="${CHECK_CITY:-brookings_sd}"
 TOWNS="brookings_sd moreno_valley_ca broomfield_co glasgow"
@@ -29,6 +106,8 @@ step() {  # step <namn> <exit>
   [ "$2" -eq 0 ] || failed+=("$1")
 }
 
+# Kroppen: alla steg. Körs i bakgrunden; övervakaren längst ner väntar på den (se "Lås och processträd" ovan).
+battery_body() {
 cd "$ROOT" || exit 2
 echo "battery start $(date '+%F %T') logs=$LOG"
 # Gamla omkörningsloggar från en tidigare körning tas bort, så build-<stad>.try1.log bara finns när DENNA körning körde om (ägaren 18 nov).
@@ -104,3 +183,22 @@ echo "battery slut $(date '+%F %T')"
 if [ ${#failed[@]} -eq 0 ]; then echo "BATTERI GRÖNT"; exit 0; fi
 echo "BATTERI RÖTT: ${failed[*]}"
 exit 1
+}
+
+# Övervakaren: startar kroppen, skriver båda PID:erna i låset och väntar i korta steg så att en signal eller en försvunnen
+# startare hanteras inom en sekund.
+if [ -n "$BATTERY_BODY" ]; then
+  bash -c "$BATTERY_BODY" &
+else
+  battery_body &
+fi
+BODY_PID=$!
+printf '%s %s\nstarted %s log %s\n' "$$" "$BODY_PID" "$(date '+%F %T')" "$LOG" > "$LOCK"
+while [ -n "$(jobs -rp)" ]; do
+  if [ "$WATCH_CALLER" -eq 1 ] && ! kill -0 "$CALLER" 2>/dev/null; then
+    battery_abort "den som startade batteriet (pid $CALLER) finns inte längre" 2
+  fi
+  sleep 1
+done
+wait "$BODY_PID"
+exit $?

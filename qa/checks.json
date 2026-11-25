@@ -501,6 +501,11 @@
         "born_from": "2026-11-25 (Fas 4 Facilities): a local Brookings `npm run build` from \"c:\\...\" (lowercase drive letter) exited 0 with no component CSS on 432 of 433 pages; the same commit built from \"C:\\...\" carried CSS on all 433. Seen in a screenshot, caught by scripts/verify_page_css.mjs, never committed. Regression: tests/test_require_upper_drive.py (fails before the fix).",
         "what": "a build, astro check, dev server, vitest run or battery started from a working directory with a lowercase Windows drive letter: site/scripts/require-upper-drive.mjs refuses it with the fix in the message, from site/astro.config.mjs (every astro command and vitest) and as the first thing in scripts/battery.sh"
     },
+    "build.battery-lock": {
+        "severity": "hard",
+        "born_from": "2026-11-25: a battery stopped from its caller lived on as an orphan and built into the same site/dist as the next battery, which went red (a prerender chunk vanished mid-build in Brookings and Moreno Valley). While writing the fix, its regression test run against the old battery.sh started real batteries recursively; the test now refuses to start a battery.sh that does not honour BATTERY_BODY. Regression: tests/test_battery_lock.py (fails before the fix without starting a process).",
+        "what": "two batteries at once, or a battery that leaves processes running when aborted: scripts/battery.sh takes a lock (scratch_tmp/battery.lock, supervisor and body PID) and refuses with exit 3 while either lives, removes a lock left by dead processes, and on INT/TERM/HUP or a vanished caller kills the body's whole process tree (bash processes and, on Windows, taskkill /T on each one's Windows process)"
+    },
     "build.empty-state": {
         "severity": "hard",
         "born_from": "Owner 2026-11-24: Broomfield's /this-week/2026-w48/ (live) said \"A quiet week — no meetings, events or games recorded for Broomfield this week.\", and some 30 other empty-state lines (class=\"empty\", __empty, EmptyState) stood on pages in all four towns. Rule: an empty section is left out entirely, the page leads with what it has. Regression fixture: tests/fixtures/qa_empty_states_2026-11-24 (real Broomfield pages built at 66dcd830), tests/test_verify_empty_states.py.",
