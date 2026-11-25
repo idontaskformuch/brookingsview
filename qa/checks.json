@@ -660,6 +660,11 @@
       "severity": "hard",
       "born_from": "Tillägg C (owner 2026-11-20): Broomfield /safety/ and the 'Right now' rows showed 'Status unknown, see the source' / 'Not checked yet' (live 14:22 UTC before the first good run; afterwards as hidden data-r-unknown rows). Rule: an unknown restriction status is not rendered at all, no replacement text; the City's two Alert Center pages are linked in /safety/'s 'About these notices'. lib/cityStatus.ts buildRestrictionStatus returns null, components/RestrictionStatus.astro renders only known kinds and drops a kind in the browser at data-stale-at. Regression fixture: site/src/components/RestrictionStatus.test.ts (renders the component; fails before: the HTML held 'Status unknown' and data-r-unknown) + site/src/lib/restrictions.test.ts.",
       "what": "the rendered restrictions HTML contains 'Status unknown', 'see the source', 'Not checked yet' or a data-r-unknown row (vitest)"
+    },
+    "data.facilities-hub-own-hours": {
+      "severity": "hard",
+      "born_from": "Found 2026-11-25 (owner order D): /facilities/ counted and showed hours only from hours_structured, so the place_hours rows the facility pages read (Broomfield police, court, Workforce Center, HHS, Auditorium, Depot and Veterans museums, skate park, recycling center) gave no weekly line, no pill and no count toward the heading. Since fe7ae446 the hub reads lib/hours-spec.ts effectiveHours (place_hours rows, else hours_structured). Regression fixture: site/src/lib/hours-spec.test.ts 'QA data.facilities-hub-own-hours' (broomfield_co/broomfield-court-services rows). It cannot fail on the old code as a unit test: the old hub read the column inline in the page, with no function to call; the check pins the shared function the hub now goes through. Found with it: lib/facility-lede.ts summarizeHours kept only the last window of a day, so split hours lost the morning ('Mon–Fri 12:30pm–4:30pm' for the court, in the facility page's lede too); the same test fails before that fix.",
+      "what": "a public place with place_hours rows whose effective hours on the hub are null (vitest)"
     }
   }
 }

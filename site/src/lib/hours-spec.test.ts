@@ -131,3 +131,16 @@ describe('dated rows (brookings_sd/briggs-library from LibCal, order D 4)', () =
     expect(effectiveHours({ hours_structured: null }, BRIGGS, '2026-12-05')).toBeNull();
   });
 });
+
+describe('QA data.facilities-hub-own-hours: a place with place_hours rows has hours on the hub', () => {
+  it('broomfield_co/broomfield-court-services (split hours, entered 2026-11-13) gives a weekly line', () => {
+    const rows: PlaceHoursRow[] = [1, 2, 3, 4, 5].flatMap((d) => [
+      { day_of_week: d, opens: '07:30:00', closes: '11:30:00', valid_from: null, valid_to: null },
+      { day_of_week: d, opens: '12:30:00', closes: '16:30:00', valid_from: null, valid_to: null },
+    ]);
+    const eff = effectiveHours({ hours_structured: null, category: 'other', slug: 'broomfield-court-services' }, rows, '2026-11-25');
+    expect(eff).not.toBeNull();
+    // Before the fix summarizeHours kept only the last window: 'Mon–Fri 12:30pm–4:30pm'.
+    expect(summarizeHours(eff!.rows)).toBe('Mon–Fri 7:30am–11:30am and 12:30pm–4:30pm');
+  });
+});

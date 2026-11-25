@@ -77,10 +77,18 @@ function clockWord(hhmm: string): string {
  *  lede used the free-text hours_text, which had drifted from the table). Consecutive days with the same window are joined:
  *  "Mon–Thu 8am–5pm, Fri 8am–noon". Closed days are left out; returns null when no day has hours. */
 export function summarizeHours(rows: { day_of_week: number; opens: string | null; closes: string | null }[]): string | null {
-  const byDay = new Map<number, string>();
+  // Every window of a day, in opening order: split hours keep both ("7:30am–11:30am and 12:30pm–4:30pm", Broomfield court;
+  // before 2026-11-25 the last window overwrote the first and the morning disappeared).
+  const windows = new Map<number, { opens: string; text: string }[]>();
   for (const r of rows) {
     if (!r.opens || !r.closes) continue;
-    byDay.set(r.day_of_week, isRoundTheClock(r.opens, r.closes) ? '24 hours' : `${clockWord(r.opens === 'sunrise' ? r.opens : r.opens.slice(0, 5))}–${clockWord(r.closes.slice(0, 5))}`);
+    const text = isRoundTheClock(r.opens, r.closes) ? '24 hours' : `${clockWord(r.opens === 'sunrise' ? r.opens : r.opens.slice(0, 5))}–${clockWord(r.closes.slice(0, 5))}`;
+    if (!windows.has(r.day_of_week)) windows.set(r.day_of_week, []);
+    windows.get(r.day_of_week)!.push({ opens: r.opens, text });
+  }
+  const byDay = new Map<number, string>();
+  for (const [day, ws] of windows) {
+    byDay.set(day, ws.sort((x, y) => (x.opens === 'sunrise' ? -1 : y.opens === 'sunrise' ? 1 : x.opens.localeCompare(y.opens))).map((w) => w.text).join(' and '));
   }
   if (byDay.size === 0) return null;
   if (byDay.size === 7 && [...byDay.values()].every((w) => w === '24 hours')) return '24 hours, 7 days a week';
