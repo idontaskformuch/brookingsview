@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { hubPromisesHours, parkAmenities, shortAddress, weeklyHoursLine } from './facilities-hub';
 import type { StructuredHours } from './db';
+import { rowsFromWeek } from './hours-spec';
 
 // Every value below is copied from a real places row (town_id / slug named per case), read 2026-11-25.
 
@@ -17,14 +18,14 @@ const BROOKINGS_CITY_HALL: StructuredHours = {
 
 describe('weeklyHoursLine: the hub row says the week, from the same structured hours as the pill', () => {
   it('joins days with the same window (brookings_sd/public-library)', () => {
-    expect(weeklyHoursLine(BROOKINGS_LIBRARY)).toBe('Mon–Thu 9:30am–8pm, Fri–Sat 9:30am–5:30pm, Sun 1pm–5pm');
+    expect(weeklyHoursLine(rowsFromWeek(BROOKINGS_LIBRARY))).toBe('Mon–Thu 9:30am–8pm, Fri–Sat 9:30am–5:30pm, Sun 1pm–5pm');
   });
   it('leaves closed days out (brookings_sd/city-hall)', () => {
-    expect(weeklyHoursLine(BROOKINGS_CITY_HALL)).toBe('Mon–Thu 8am–5pm, Fri 8am–noon');
+    expect(weeklyHoursLine(rowsFromWeek(BROOKINGS_CITY_HALL))).toBe('Mon–Thu 8am–5pm, Fri 8am–noon');
   });
   it('the same window every day is "Daily" (brookings_sd/dakota-nature-park)', () => {
     const w: [string, string] = ['06:00', '23:00'];
-    expect(weeklyHoursLine({ monday: w, tuesday: w, wednesday: w, thursday: w, friday: w, saturday: w, sunday: w })).toBe('Daily 6am–11pm');
+    expect(weeklyHoursLine(rowsFromWeek({ monday: w, tuesday: w, wednesday: w, thursday: w, friday: w, saturday: w, sunday: w }))).toBe('Daily 6am–11pm');
   });
   it('no hours, no line', () => {
     expect(weeklyHoursLine(null)).toBeNull();
@@ -32,8 +33,8 @@ describe('weeklyHoursLine: the hub row says the week, from the same structured h
 });
 
 describe('hubPromisesHours: the heading promises hours only when most places have them', () => {
-  const withHours = { hours_structured: BROOKINGS_LIBRARY };
-  const without = { hours_structured: null };
+  const withHours = { hasHours: true };
+  const without = { hasHours: false };
   it('brookings_sd: 3 of 40 public places have hours -> no promise', () => {
     expect(hubPromisesHours([...Array(3).fill(withHours), ...Array(37).fill(without)])).toBe(false);
   });

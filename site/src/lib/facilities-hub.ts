@@ -1,17 +1,19 @@
 /** Pure rules for the /facilities/ hub (designsystem Fas 4, Facilities, 2026-11-25). DB-free; the page passes the rows in.
  *  - The heading may only promise hours when most listed places have them (hubPromisesHours).
  *  - The town, state and shared ZIP are said once by the page, not on every row (shortAddress).
- *  - Weekly hours come from the same structured hours the open/closed pill reads (weeklyHoursLine).
+ *  - Weekly hours come from the same effective hours the open/closed pill reads (lib/hours-spec.ts effectiveHours: place_hours
+ *    rows, else hours_structured with its season in force; weeklyHoursLine).
  *  - Park amenities only from the place's own services list, via config/park-amenities.ts (parkAmenities). */
 import { PARK_AMENITIES, type ParkAmenity } from '../config/park-amenities';
-import type { StructuredHours } from './db';
+import type { PlaceHoursRow } from './db';
 import { summarizeHours } from './facility-lede';
 
-/** True when at least half of the places have structured hours. Below that the hub's heading names the kinds of places
- *  instead of promising hours (spec: "Rubriken får inte lova sådant som inte finns"). */
-export function hubPromisesHours(places: { hours_structured: StructuredHours | null }[]): boolean {
+/** True when at least half of the places have hours (effective hours: place_hours rows or hours_structured; before order D
+ *  only hours_structured counted, so Broomfield's court, police and Workforce Center rows were invisible here). Below that the
+ *  hub's heading names the kinds of places instead of promising hours (spec: "Rubriken får inte lova sådant som inte finns"). */
+export function hubPromisesHours(places: { hasHours: boolean }[]): boolean {
   if (places.length === 0) return false;
-  const withHours = places.filter((p) => p.hours_structured !== null).length;
+  const withHours = places.filter((p) => p.hasHours).length;
   return withHours * 2 >= places.length;
 }
 
@@ -36,12 +38,9 @@ export function shortAddress(address: string | null, cityName: string): string |
   return address;
 }
 
-const DAY_KEYS: (keyof StructuredHours)[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-
-/** "Mon–Thu 9:30am–8pm, Fri–Sat 9:30am–5:30pm" from structured hours (lib/facility-lede.ts summarizeHours); null without hours. */
-export function weeklyHoursLine(hours: StructuredHours | null): string | null {
-  if (!hours) return null;
-  const rows = DAY_KEYS.map((k, i) => ({ day_of_week: i, opens: hours[k]?.[0] ?? null, closes: hours[k]?.[1] ?? null }));
+/** "Mon–Thu 9:30am–8pm, Fri–Sat 9:30am–5:30pm" from the week's rows (lib/facility-lede.ts summarizeHours); null without hours. */
+export function weeklyHoursLine(rows: PlaceHoursRow[] | null): string | null {
+  if (!rows) return null;
   const line = summarizeHours(rows);
   // The same window all seven days is said once: "Daily 6am–11pm", not "Mon–Sun 6am–11pm".
   return line?.startsWith('Mon–Sun ') ? `Daily ${line.slice('Mon–Sun '.length)}` : line;

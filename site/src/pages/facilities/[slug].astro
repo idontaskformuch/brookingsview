@@ -40,6 +40,8 @@ import { placeAbbr, countryProfile } from '../../lib/country-profile';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
 import { formatClock, isRoundTheClock } from '../../lib/facility-hours';
 import { buildPlaceOpeningHoursSpecification, isPastStalenessThreshold } from '../../lib/place-hours';
+import { effectiveHours, seasonRangeLabel } from '../../lib/hours-spec';
+import { todayDate } from '../../lib/today-page';
 import { calendarDateIso } from '../../lib/calendar-date';
 import { buildFacilityLede, facilityTitleElements, facilityMapLink, summarizeHours } from '../../lib/facility-lede';
 import { resolvePageMeta } from '../../lib/page-meta';
@@ -98,11 +100,17 @@ const hasFullAddress = Boolean(facility.street_address && facility.postal_code);
 // page load -- see that script's own comment. `hours`/`exceptions` are
 // still fetched here because the weekly table, the JSON-LD schema, and
 // the client script's own embedded data all still need them.
-const [hours, exceptions] = await Promise.all([
+const [placeHoursRows, exceptions] = await Promise.all([
   getPlaceHours(facility.id),
   getUpcomingPlaceHoursExceptions(facility.id),
 ]);
 const now = new Date();
+// Effective hours (order D, 2026-11-25, lib/hours-spec.ts): the place_hours rows, else hours_structured -- a plain week or the
+// season in force today (art museums: Sundays closed January-March). `hours` is the week shown; `pillHours` what the pill reads.
+const effective = effectiveHours(facility, placeHoursRows, todayDate(now, siteConfig.timezone).iso);
+const hours = effective?.rows ?? [];
+const pillHours = effective?.pillRows ?? [];
+const hoursCaption = effective?.season ? `Weekly hours, ${seasonRangeLabel(effective.season)}` : 'Weekly hours';
 const staleness = siteConfig.placeStaleness ?? { hoursDays: 45, addressPhoneDays: 180 };
 const hoursStale = isPastStalenessThreshold(facility.verified_date, staleness.hoursDays, now);
 // The lede's hours come from the SAME place_hours rows as the table below (Q3 2026-10-23), so the first paragraph can never
@@ -117,7 +125,7 @@ const lede = isGb
 // schema is worse than emitting none." Staleness is a 45/180-DAY threshold
 // check, not an "is it open now" check -- still correct to compute at
 // build time, see isPastStalenessThreshold()'s own comment.
-const emitHoursSchema = facility.hours_confidence === 'structured' && !hoursStale && hours.length > 0;
+const emitHoursSchema = facility.hours_confidence === 'structured' && !hoursStale && placeHoursRows.length > 0;
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const schemaType = FACILITY_SCHEMA_TYPE[facility.category] ?? 'CivicStructure';
@@ -356,7 +364,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
 
     {hours.length > 0 && (
       <table class="hours-table">
-        <caption>Weekly hours</caption>
+        <caption>{hoursCaption}</caption>
         <tbody>
           {DAY_NAMES.map((name, dow) => {
             const rows = hours.filter((h) => h.day_of_week === dow);
@@ -441,7 +449,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
 
   {hours.length > 0 && (
     <script type="application/json" id="open-status-data" is:inline set:html={JSON.stringify({
-      hours, exceptions, timezone: siteConfig.timezone, gb: siteConfig.country === 'gb',
+      hours: pillHours, exceptions, timezone: siteConfig.timezone, gb: siteConfig.country === 'gb',
     })} />
   )}
   <script>

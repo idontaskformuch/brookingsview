@@ -60,7 +60,8 @@ import DayGroup from './ui/DayGroup.astro';
 import { rowFromFeedItem, rowFromTodayShow, rowEnvFor, mixedCategories, dayKey, dayLabel, type EventRowData } from '../lib/event-row';
 import { makeRowFacts } from '../lib/event-row-facts';
 import { areasFor } from '../lib/areas';
-import type { Story, TrafficIncident, StructuredHours, Facility } from '../lib/db';
+import type { Story, TrafficIncident, Facility } from '../lib/db';
+import type { StoredHours } from '../lib/hours-spec';
 import type { TodayShow } from '../lib/today-shows';
 import type { ClosureWatchStatus } from '../lib/closure-watch';
 import { ownPageHref } from '../lib/ai-text';
@@ -83,7 +84,7 @@ export interface Props {
   /** null = no real traffic source for this town -- omit the row. Present
    *  (even with an empty `incidents` array) means the source exists. */
   traffic: { incidents: TrafficIncident[] } | null;
-  cityHallFacility: { hours_structured: StructuredHours | null; name: string; slug: string } | null;
+  cityHallFacility: { hours_structured: StoredHours | null; name: string; slug: string } | null;
   /** Item C4 (corrected) -- only needed to resolve an event's venue line via
    *  ground-truth facility alias matching, same reasoning as StoryCard.astro's
    *  own facilities prop. */
@@ -327,13 +328,13 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
 </script>
 <script>
     import { computeOpenStatus } from '../lib/facility-hours';
-    import type { StructuredHours } from '../lib/db';
+    import type { StoredHours } from '../lib/hours-spec';
 
     const dataEl = document.getElementById('today-cityhall-data');
     const row = document.getElementById('today-cityhall');
     const text = row?.querySelector<HTMLElement>('[data-open-status-text]');
     if (dataEl && row && text) {
-      const payload = JSON.parse(dataEl.textContent || '{}') as { hours: StructuredHours | null; timezone: string; gb?: boolean };
+      const payload = JSON.parse(dataEl.textContent || '{}') as { hours: StoredHours | null; timezone: string; gb?: boolean };
       const status = computeOpenStatus(payload.hours, new Date(), payload.timezone, !!payload.gb);
       if (status.known) {
         row.hidden = false;

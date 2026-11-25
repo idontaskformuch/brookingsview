@@ -17,6 +17,7 @@
  * Alla frågor filtreras på town_id från configen, så samma kod betjänar nästa
  * ort utan ändring.
  */
+import type { StoredHours } from './hours-spec';
 import { isCountedOccurrence, listedEventRows } from './event-occurrence.mjs';
 import type { MeetingRow } from './meetings-view';
 import type { RestrictionCheck } from './restrictions';
@@ -2412,7 +2413,8 @@ export interface Facility {
   // to rendering hours_text as plain text in both those cases, see
   // lib/facility-hours.ts's computeOpenStatus() for the "is it open right
   // now" computation this field actually powers.
-  hours_structured: StructuredHours | null;
+  // A plain week, or the season form (lib/hours-spec.ts StoredHours, order D 2026-11-25).
+  hours_structured: StoredHours | null;
   // True only when hours_text is set but the parser flagged it (an
   // open-ended time, an unparsed caveat, ...) -- see facility_hours.py's
   // own docstring. False (the column's default) covers BOTH "no hours_text

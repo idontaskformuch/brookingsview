@@ -40,6 +40,19 @@ def main() -> int:
                 print(f"[skip] {ref}: hours_text {text!r} does not parse ({parsed.reason})")
                 continue
             print(f"[{'apply' if args.apply else 'dry-run'}] {ref}: {text!r}")
+            if "seasons" in parsed.structured:
+                # Seasons recur every year (MM-DD), which place_hours' dated valid_from/valid_to cannot hold: the season form
+                # lives in hours_structured only, and the site turns it into rows per date (site/src/lib/hours-spec.ts).
+                for season in parsed.structured["seasons"]:
+                    print(f"    {season['from']}..{season['to']} {season['label']}")
+                    for day in DAYS:
+                        w = season["week"].get(day)
+                        print(f"        {day:<9} {'closed' if not w else f'{w[0]}-{w[1]}'}")
+                if args.apply:
+                    cur.execute("UPDATE places SET hours_structured = %s, hours_needs_review = false WHERE id = %s",
+                                (json.dumps(parsed.structured), pid))
+                    cur.execute("DELETE FROM place_hours WHERE place_id = %s", (pid,))
+                continue
             for i, day in enumerate(DAYS):
                 w = parsed.structured.get(day)
                 print(f"    {day:<9} {'closed' if not w else f'{w[0]}-{w[1]}'}")

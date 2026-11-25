@@ -60,7 +60,14 @@ def main(argv: list[str]) -> int:
             cur2.execute("SELECT day_of_week, opens, closes FROM place_hours WHERE place_id = %s", (pid,))
             rows = cur2.fetchall()
             problems = []
-            if parsed.structured is not None:
+            if parsed.structured is not None and "seasons" in parsed.structured:
+                # Seasonal hours live in hours_structured only (scripts/sync_place_hours_from_text.py); rows would contradict them.
+                import json as _json
+                if _json.loads(_json.dumps(parsed.structured)) != structured:
+                    problems.append("hours_structured != hours_text (seasons)")
+                if rows:
+                    problems.append("place_hours rows beside seasonal hours_structured")
+            elif parsed.structured is not None:
                 d1 = compare(parsed.structured, structured)
                 if d1:
                     problems.append("hours_structured != hours_text: " + "; ".join(d1))

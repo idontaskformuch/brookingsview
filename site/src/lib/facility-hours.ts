@@ -13,6 +13,7 @@
  *  codebase.
  */
 import type { StructuredHours } from './db';
+import { isSeasonal, weekOn, type StoredHours } from './hours-spec';
 
 export type OpenStatus =
   | { known: false }
@@ -60,7 +61,10 @@ function toMinutes(hhmm: string): number {
   return h * 60 + m;
 }
 
-export function computeOpenStatus(hours: StructuredHours | null, now: Date, timezone: string, gb = false): OpenStatus {
+export function computeOpenStatus(stored: StoredHours | null, now: Date, timezone: string, gb = false): OpenStatus {
+  // A seasonal row reads the week in force on the town's date (lib/hours-spec.ts); a date no season covers is unknown.
+  const isoDate = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+  const hours = isSeasonal(stored) ? weekOn(stored, isoDate) : stored;
   if (!hours) return { known: false };
 
   const { weekday, minutesOfDay } = localParts(now, timezone);
