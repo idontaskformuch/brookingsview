@@ -675,6 +675,11 @@
       "severity": "hard",
       "born_from": "Found 2026-11-25 (owner order): the Brookings facility catalog writes groups with no ',' or ';' between them, so ai_pipeline/facility_hours.py flagged the Activity Center ('M - F 9:00 AM — 3:00 PM Sat Closed Sun Closed') and the Municipal Liquor Store ('Monday-Thursday: 9AM-8PM Friday & Saturday: 9AM-9PM Sunday: 12PM-6PM') and both showed text with no open/closed pill. _parse_run_on_week reads them when _parse_week cannot (M/W/F only as single letters; a day named twice is refused). Regression fixture: tests/test_facility_hours.py test_activity_center_single_letter_days_dash_and_closed_after_day + test_liquor_store_colons_ampersand_and_hours_without_minutes (verbatim live rows; both fail before the fix).",
       "what": "a catalog hours_text of day groups without separators is flagged instead of read (pytest)"
+    },
+    "data.sync-sets-confidence": {
+      "severity": "hard",
+      "born_from": "Found 2026-11-25 (owner order): scripts/sync_place_hours_from_text.py wrote hours_structured and seven place_hours rows for brookings_sd brookings-activity-center and brookings-municipal-liquor-store but left hours_confidence NULL, so /today's 'Hours today' (which requires 'structured') left both out; it was set by hand with the owner's yes. The script now sets 'structured' itself for a plain week (the branch that writes place_hours rows), never for the season/sunrise branches (lib/build-checks.ts refuses 'structured' without rows). Regression fixture: tests/test_sync_place_hours_from_text.py (the liquor store's verbatim hours_text; fails before the fix).",
+      "what": "a place synced from hours_text with place_hours rows whose hours_confidence is not 'structured' (pytest)"
     }
   }
 }

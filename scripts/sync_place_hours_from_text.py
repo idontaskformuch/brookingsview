@@ -64,7 +64,12 @@ def main() -> int:
                     cur.execute("DELETE FROM place_hours WHERE place_id = %s", (pid,))
                 continue
             if args.apply:
-                cur.execute("UPDATE places SET hours_structured = %s, hours_needs_review = false WHERE id = %s",
+                # A plain week gets place_hours rows, so the row is 'structured' (what /today's "Hours today" requires); set here,
+                # not by hand afterwards (2026-11-25: Activity Center and the liquor store were synced without it). The season
+                # and sunrise branches above write no rows and leave hours_confidence alone: lib/build-checks.ts refuses
+                # 'structured' with zero place_hours rows.
+                cur.execute("UPDATE places SET hours_structured = %s, hours_needs_review = false, hours_confidence = 'structured' "
+                            "WHERE id = %s",
                             (json.dumps({d: (list(parsed.structured[d]) if parsed.structured.get(d) else None) for d in DAYS}), pid))
                 cur.execute("DELETE FROM place_hours WHERE place_id = %s", (pid,))
                 for i, day in enumerate(DAYS):
