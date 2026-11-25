@@ -41,6 +41,7 @@ import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clust
 import { formatClock, isRoundTheClock } from '../../lib/facility-hours';
 import { buildPlaceOpeningHoursSpecification, isPastStalenessThreshold } from '../../lib/place-hours';
 import { effectiveHours, seasonRangeLabel } from '../../lib/hours-spec';
+import { PARK_HOURS, PARK_HOURS_LABEL } from '../../config/park-hours';
 import { todayDate } from '../../lib/today-page';
 import { calendarDateIso } from '../../lib/calendar-date';
 import { buildFacilityLede, facilityTitleElements, facilityMapLink, summarizeHours } from '../../lib/facility-lede';
@@ -107,7 +108,9 @@ const [placeHoursRows, exceptions] = await Promise.all([
 const now = new Date();
 // Effective hours (order D, 2026-11-25, lib/hours-spec.ts): the place_hours rows, else hours_structured -- a plain week or the
 // season in force today (art museums: Sundays closed January-March). `hours` is the week shown; `pillHours` what the pill reads.
-const effective = effectiveHours(facility, placeHoursRows, todayDate(now, siteConfig.timezone).iso);
+const parkRule = PARK_HOURS[siteConfig.townId] ?? null;
+const effective = effectiveHours(facility, placeHoursRows, todayDate(now, siteConfig.timezone).iso, parkRule);
+const fromParkRule = effective?.source === 'city-park-rule' ? parkRule : null;
 const hours = effective?.rows ?? [];
 const pillHours = effective?.pillRows ?? [];
 const hoursCaption = effective?.season ? `Weekly hours, ${seasonRangeLabel(effective.season)}` : 'Weekly hours';
@@ -157,8 +160,9 @@ const canonicalUrl = new URL(`/facilities/${facility.slug}/`, Astro.site ?? site
 // 2026-10-23 (Brookings AdSense review): ALSO thin when the only "address" is a bare locality (no street_address)
 // and the record has no phone, hours or services -- e.g. a city-park stub that is just a name. Mirrored in
 // astro.config.mjs's thin-facility query; pages with real facts (services, a street address, a phone) are unaffected.
-const isThinFacility = (!facility.address && !facility.phone && !facility.hours_text && hours.length === 0)
-  || (!facility.street_address && !facility.phone && !facility.hours_text && hours.length === 0 && !(facility.services && facility.services.length > 0));
+// Own hours only (place_hours rows, as astro.config.mjs counts them): the town's city park rule is not this page's own fact.
+const isThinFacility = (!facility.address && !facility.phone && !facility.hours_text && placeHoursRows.length === 0)
+  || (!facility.street_address && !facility.phone && !facility.hours_text && placeHoursRows.length === 0 && !(facility.services && facility.services.length > 0));
 // Own text = the description plus the services list. A page of only fact rows (address, phone, hours) is noindex in every town
 // (THIN_FACILITY_MIN_OWN_WORDS, owner B9 2026-11-16); mirrored in astro.config.mjs.
 const wordsIn = (text: string) => text.split(/\s+/).filter(Boolean).length;
@@ -178,7 +182,7 @@ const isVenue = !isPublicPlace(facility);
 // named list, not changed here).
 const pageMeta = resolvePageMeta('facilities/detail', siteConfig, {
   FacilityName: facility.name,
-  Elements: facilityTitleElements(Boolean(facility.hours_text) || hours.length > 0, Boolean(facility.address), Boolean(facility.phone), facility.name.length),
+  Elements: facilityTitleElements(Boolean(facility.hours_text) || placeHoursRows.length > 0, Boolean(facility.address), Boolean(facility.phone), facility.name.length),
 });
 const mapLink = facilityMapLink(facility.lat, facility.lon, facility.address);
 // The 'places' cluster's own label is 'Places' (a broader content-category
@@ -337,6 +341,9 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
             )}
           </dd>
         </div>
+      )}
+      {fromParkRule && (
+        <div class="fact"><dt>Hours source</dt><dd><a href={fromParkRule.sourceUrl} rel="noopener">{PARK_HOURS_LABEL}</a>: “{fromParkRule.quote}”</dd></div>
       )}
       {facility.is_free !== null && (
         <div class="fact"><dt>Cost</dt><dd>{facility.is_free ? 'Free' : (facility.fee_note ?? 'Fee required')}</dd></div>

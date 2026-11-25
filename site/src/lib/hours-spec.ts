@@ -5,10 +5,12 @@
  *    1. place_hours rows (split hours, exceptions; what the facility page has always read)
  *    2. hours_structured: a plain week, or the season form {"seasons": [{from: "MM-DD", to: "MM-DD", label, week}]} written by
  *       ai_pipeline/facility_hours.py. A season recurs every year; an interval may run over New Year ("08-16".."05-31").
+ *    3. the town's city park rule (config/park-hours.ts) for a park with nothing of its own (source 'city-park-rule').
  *  The season in force on a date picks the week. Display (table, weekly line) uses the week in force on the build date;
  *  the open/closed pill gets rows dated per day (valid_from = valid_to = that day) for the days around the build, so a
  *  season boundary during the week is honoured by computePlaceOpenStatus without a rebuild. */
 import type { PlaceHoursRow, StructuredHours } from './db';
+import type { ParkHoursRule } from '../config/park-hours';
 
 export interface Season { from: string; to: string; label?: string; week: StructuredHours }
 export interface SeasonalHours { seasons: Season[] }
@@ -83,15 +85,32 @@ export interface EffectiveHours {
   pillRows: PlaceHoursRow[];
   /** The season in force, when the hours change through the year. */
   season: Season | null;
+  /** 'own': the place's own hours. 'city-park-rule': the town's rule for city parks (config/park-hours.ts). */
+  source: 'own' | 'city-park-rule';
+}
+
+/** The town's park rule applies to this place: a park, not in the rule's exceptions. */
+export function parkRuleApplies(place: { category: string; slug: string }, rule: ParkHoursRule | null | undefined): rule is ParkHoursRule {
+  return !!rule && place.category === 'park' && !rule.exceptSlugs.includes(place.slug);
 }
 
 /** A place's effective hours on `isoDate` (the town's calendar date at build), or null when nothing is known. */
 export function effectiveHours(
-  place: { hours_structured: StoredHours | null }, placeHoursRows: PlaceHoursRow[], isoDate: string,
+  place: { hours_structured: StoredHours | null; category?: string; slug?: string; hours_text?: string | null },
+  placeHoursRows: PlaceHoursRow[], isoDate: string,
+  parkRule: ParkHoursRule | null = null,
 ): EffectiveHours | null {
-  if (placeHoursRows.length > 0) return { rows: placeHoursRows, pillRows: placeHoursRows, season: null };
+  if (placeHoursRows.length > 0) return { rows: placeHoursRows, pillRows: placeHoursRows, season: null, source: 'own' };
   const h = place.hours_structured;
   const week = weekOn(h, isoDate);
-  if (!h || !week) return null;
-  return { rows: rowsFromWeek(week), pillRows: clientRows(h, isoDate), season: seasonOn(h, isoDate) };
+  if (h && week) return { rows: rowsFromWeek(week), pillRows: clientRows(h, isoDate), season: seasonOn(h, isoDate), source: 'own' };
+  // A park with a time of its own goes before the rule, even one the parser could not read (its hours_text is shown instead),
+  // and so does a seasonal row whose seasons do not cover today.
+  if (h || place.hours_text?.trim()) return null;
+  if (place.category !== undefined && place.slug !== undefined && parkRuleApplies({ category: place.category, slug: place.slug }, parkRule)) {
+    const w: [string, string] = [parkRule.opens, parkRule.closes];
+    const rows = rowsFromWeek({ monday: w, tuesday: w, wednesday: w, thursday: w, friday: w, saturday: w, sunday: w });
+    return { rows, pillRows: rows, season: null, source: 'city-park-rule' };
+  }
+  return null;
 }

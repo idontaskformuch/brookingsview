@@ -29,6 +29,7 @@ import { resolvePageMeta } from '../../lib/page-meta';
 import { resolveHubNavItems } from '../../lib/clusters';
 import { hubPromisesHours, parkAmenities, shortAddress, weeklyHoursLine } from '../../lib/facilities-hub';
 import { effectiveHours, seasonRangeLabel } from '../../lib/hours-spec';
+import { PARK_HOURS, PARK_HOURS_LABEL } from '../../config/park-hours';
 import { todayDate } from '../../lib/today-page';
 import ClusterNav from '../../components/ClusterNav.astro';
 
@@ -43,7 +44,8 @@ for (const r of await getAllPlaceHoursForTown()) {
   rowsByPlace.get(r.place_id)!.push(r);
 }
 const buildDay = todayDate(new Date(), siteConfig.timezone).iso;
-const hoursById = new Map(facilities.map((f) => [f.id, effectiveHours(f, rowsByPlace.get(f.id) ?? [], buildDay)]));
+const parkRule = PARK_HOURS[siteConfig.townId] ?? null;
+const hoursById = new Map(facilities.map((f) => [f.id, effectiveHours(f, rowsByPlace.get(f.id) ?? [], buildDay, parkRule)]));
 const h1 = hubPromisesHours(facilities.map((f) => ({ hasHours: hoursById.get(f.id) != null })))
   ? pageMeta.h1 : (pageMeta.h1WithoutHours ?? pageMeta.h1);
 
@@ -73,6 +75,8 @@ const rowsFor = (cat: string) => byCategory.get(cat)!.map((f) => {
     // A seasonal week says which part of the year it is for: "Mon–Sat 10am–5pm, Sun 1pm–5pm (Apr 1–Dec 31)".
     hours: line && eff?.season ? `${line} (${seasonRangeLabel(eff.season)})` : line,
     hoursJson: eff ? JSON.stringify(eff.pillRows) : null,
+    // The town's rule, not the park's own posted hours: said discreetly after the line (order D 2).
+    hoursSource: eff?.source === 'city-park-rule' ? PARK_HOURS_LABEL : null,
     amenities: GRID_CATEGORIES.has(cat) ? parkAmenities(f.services) : [],
   };
 });
@@ -109,7 +113,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
               <span class="fac__status" data-open-status-badge data-hours={r.hoursJson} hidden><Pill tone="neutral"></Pill></span>
             )}
             {r.address && <span class="fac__meta">{r.address}</span>}
-            {r.hours && <span class="fac__meta fac__hours">{r.hours}</span>}
+            {r.hours && <span class="fac__meta fac__hours">{r.hours}{r.hoursSource && <span class="fac__source"> · {r.hoursSource}</span>}</span>}
             {r.amenities.length > 0 && (
               <span class="fac__amenities">{r.amenities.map((a) => <Pill>{a}</Pill>)}</span>
             )}
@@ -156,6 +160,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
 .fac-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
 .fac { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.6rem; padding: 0.6rem 0; border-bottom: 1px solid var(--rule); }
 .fac__name { font-weight: 600; }
+.fac__source { color: var(--ink-faint); }
 .fac__meta { flex-basis: 100%; color: var(--ink-soft); font-family: var(--font-ui); font-size: max(13px, 0.875rem); font-variant-numeric: tabular-nums; }
 .fac__amenities { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.15rem; }
 .fac-list--grid { column-gap: 1.5rem; }

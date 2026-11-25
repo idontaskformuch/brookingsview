@@ -3,6 +3,7 @@ import { clientRows, effectiveHours, inSeason, seasonRangeLabel, weekOn, type Se
 import { computePlaceOpenStatus } from './place-hours';
 import { summarizeHours } from './facility-lede';
 import type { PlaceHoursRow } from './db';
+import { PARK_HOURS } from '../config/park-hours';
 
 // What ai_pipeline/facility_hours.py makes of brookings_sd/south-dakota-art-museum's hours_text (2026-11-25):
 // "Mon-Fri 10 a.m.-5 p.m.; Sat 10 a.m.-4 p.m.; Sun noon-4 p.m. Closed Sundays January-March and on all state holidays."
@@ -76,5 +77,29 @@ describe('pill rows cross a season boundary without a rebuild', () => {
   it('the same Sunday time in November is open', () => {
     const rows = clientRows(ART_MUSEUM, '2026-11-27');
     expect(computePlaceOpenStatus(rows, [], new Date('2026-11-29T19:00:00Z'), TZ)).toEqual({ known: true, isOpen: true, closesAt: '4:00 PM' });
+  });
+});
+
+describe('city park rule (config/park-hours.ts, order D 2)', () => {
+  const rule = PARK_HOURS.brookings_sd;
+  it('a city park with nothing of its own gets the rule (brookings_sd/pioneer-park)', () => {
+    const eff = effectiveHours({ hours_structured: null, hours_text: null, category: 'park', slug: 'pioneer-park' }, [], '2026-11-25', rule)!;
+    expect(eff.source).toBe('city-park-rule');
+    expect(summarizeHours(eff.rows)).toBe('Mon–Sun 6am–11pm');
+  });
+  it('an excepted park gets nothing (brookings_sd/mccrory-gardens is SDSU\'s)', () => {
+    expect(effectiveHours({ hours_structured: null, hours_text: null, category: 'park', slug: 'mccrory-gardens' }, [], '2026-11-25', rule)).toBeNull();
+  });
+  it('own rows win (broomfield_co/broomfield-skate-park, 6am-10pm)', () => {
+    const rows: PlaceHoursRow[] = [0, 1, 2, 3, 4, 5, 6].map((d) => ({ day_of_week: d, opens: '06:00:00', closes: '22:00:00', valid_from: null, valid_to: null }));
+    const eff = effectiveHours({ hours_structured: null, category: 'park', slug: 'broomfield-skate-park' }, rows, '2026-11-25', PARK_HOURS.broomfield_co)!;
+    expect(eff.source).toBe('own');
+  });
+  it('own text the parser could not read also wins (moreno_valley_ca/celebration-park before order D 5)', () => {
+    expect(effectiveHours({ hours_structured: null, hours_text: 'Mon–Fri 10am–6pm, Sat 9am–9pm, Sun 10am onward', category: 'park',
+      slug: 'celebration-park' }, [], '2026-11-25', PARK_HOURS.moreno_valley_ca)).toBeNull();
+  });
+  it('not a park: no rule (brookings_sd/downtown-main-avenue)', () => {
+    expect(effectiveHours({ hours_structured: null, category: 'other', slug: 'downtown-main-avenue' }, [], '2026-11-25', rule)).toBeNull();
   });
 });
