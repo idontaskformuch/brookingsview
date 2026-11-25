@@ -113,7 +113,8 @@ const effective = effectiveHours(facility, placeHoursRows, todayDate(now, siteCo
 const fromParkRule = effective?.source === 'city-park-rule' ? parkRule : null;
 const hours = effective?.rows ?? [];
 const pillHours = effective?.pillRows ?? [];
-const hoursCaption = effective?.season ? `Weekly hours, ${seasonRangeLabel(effective.season)}` : 'Weekly hours';
+const hoursCaption = effective?.season ? `Weekly hours, ${seasonRangeLabel(effective.season)}`
+  : effective?.dated ? 'Hours for the next seven days' : 'Weekly hours';
 const staleness = siteConfig.placeStaleness ?? { hoursDays: 45, addressPhoneDays: 180 };
 const hoursStale = isPastStalenessThreshold(facility.verified_date, staleness.hoursDays, now);
 // The lede's hours come from the SAME place_hours rows as the table below (Q3 2026-10-23), so the first paragraph can never

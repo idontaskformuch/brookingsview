@@ -73,7 +73,7 @@ const rowsFor = (cat: string) => byCategory.get(cat)!.map((f) => {
     name: f.name,
     address: shortAddress(f.address, siteConfig.cityName),
     // A seasonal week says which part of the year it is for: "Mon–Sat 10am–5pm, Sun 1pm–5pm (Apr 1–Dec 31)".
-    hours: line && eff?.season ? `${line} (${seasonRangeLabel(eff.season)})` : line,
+    hours: line && eff?.season ? `${line} (${seasonRangeLabel(eff.season)})` : line && eff?.dated ? `${line} (next 7 days)` : line,
     hoursJson: eff ? JSON.stringify(eff.pillRows) : null,
     // The town's rule, not the park's own posted hours: said discreetly after the line (order D 2).
     hoursSource: eff?.source === 'city-park-rule' ? PARK_HOURS_LABEL : null,

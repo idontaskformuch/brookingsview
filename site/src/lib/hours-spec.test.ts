@@ -103,3 +103,31 @@ describe('city park rule (config/park-hours.ts, order D 2)', () => {
     expect(effectiveHours({ hours_structured: null, category: 'other', slug: 'downtown-main-avenue' }, [], '2026-11-25', rule)).toBeNull();
   });
 });
+
+describe('dated rows (brookings_sd/briggs-library from LibCal, order D 4)', () => {
+  // The page's Thanksgiving week as scrapers/facility_hours.py writes it: one row per date, valid_from = valid_to.
+  const row = (iso: string, dow: number, opens: string | null, closes: string | null): PlaceHoursRow =>
+    ({ day_of_week: dow, opens, closes, valid_from: iso, valid_to: iso });
+  const BRIGGS = [
+    row('2026-11-25', 3, '08:00:00', '17:00:00'), row('2026-11-26', 4, null, null), row('2026-11-27', 5, null, null),
+    row('2026-11-28', 6, null, null), row('2026-11-29', 0, '12:00:00', '00:00:00'), row('2026-11-30', 1, '07:45:00', '00:00:00'),
+    row('2026-12-01', 2, '07:45:00', '00:00:00'),
+  ];
+  it('the table is the seven days from the build date', () => {
+    const eff = effectiveHours({ hours_structured: null }, BRIGGS, '2026-11-25')!;
+    expect(eff.dated).toBe(true);
+    expect(summarizeHours(eff.rows)).toBe('Mon–Tue 7:45am–midnight, Wed 8am–5pm, Sun noon–midnight');
+  });
+  it('a Date from the driver is read as its calendar date', () => {
+    const asDates = BRIGGS.map((r) => ({ ...r, valid_from: new Date(2026, 10, 25) as unknown as string, valid_to: new Date(2026, 10, 25) as unknown as string }));
+    expect(effectiveHours({ hours_structured: null }, asDates.slice(0, 1), '2026-11-25')!.pillRows[0].valid_from).toBe('2026-11-25');
+  });
+  it('Thanksgiving Day the pill says closed, opens Sunday', () => {
+    const eff = effectiveHours({ hours_structured: null }, BRIGGS, '2026-11-25')!;
+    expect(computePlaceOpenStatus(eff.pillRows, [], new Date('2026-11-26T18:00:00Z'), TZ))
+      .toEqual({ known: true, isOpen: false, opensAt: '12:00 PM', opensLabel: 'Sunday' });
+  });
+  it('past the last dated day nothing is shown', () => {
+    expect(effectiveHours({ hours_structured: null }, BRIGGS, '2026-12-05')).toBeNull();
+  });
+});

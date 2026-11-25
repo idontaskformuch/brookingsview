@@ -11,6 +11,7 @@
  *  season boundary during the week is honoured by computePlaceOpenStatus without a rebuild. */
 import type { PlaceHoursRow, StructuredHours } from './db';
 import type { ParkHoursRule } from '../config/park-hours';
+import { calendarDateIso } from './calendar-date';
 
 export interface Season { from: string; to: string; label?: string; week: StructuredHours }
 export interface SeasonalHours { seasons: Season[] }
@@ -87,6 +88,23 @@ export interface EffectiveHours {
   season: Season | null;
   /** 'own': the place's own hours. 'city-park-rule': the town's rule for city parks (config/park-hours.ts). */
   source: 'own' | 'city-park-rule';
+  /** True when the rows are dated per day (Briggs Library from LibCal): `rows` is then the seven days from the build date. */
+  dated: boolean;
+}
+
+/** Dated place_hours rows (valid_from = valid_to = one day, scrapers/facility_hours.py run_briggs) for the seven days from
+ *  `isoDate`, as an undated week the table and the weekly line read; null when not one of those days is known. */
+export function weekFromDatedRows(rows: PlaceHoursRow[], isoDate: string): PlaceHoursRow[] | null {
+  const out: PlaceHoursRow[] = [];
+  for (let n = 0; n < 7; n++) {
+    const { iso } = addDays(isoDate, n);
+    for (const r of rows) {
+      if (r.valid_from && r.valid_from <= iso && (!r.valid_to || r.valid_to >= iso)) {
+        out.push({ ...r, valid_from: null, valid_to: null });
+      }
+    }
+  }
+  return out.length > 0 ? out : null;
 }
 
 /** The town's park rule applies to this place: a park, not in the rule's exceptions. */
@@ -100,17 +118,23 @@ export function effectiveHours(
   placeHoursRows: PlaceHoursRow[], isoDate: string,
   parkRule: ParkHoursRule | null = null,
 ): EffectiveHours | null {
-  if (placeHoursRows.length > 0) return { rows: placeHoursRows, pillRows: placeHoursRows, season: null, source: 'own' };
+  if (placeHoursRows.some((r) => r.valid_from)) {
+    // The Neon driver hands a DATE over as a Date: "YYYY-MM-DD" strings here, for comparing and for the pill's JSON.
+    const dated = placeHoursRows.map((r) => ({ ...r, valid_from: calendarDateIso(r.valid_from), valid_to: calendarDateIso(r.valid_to) }));
+    const week = weekFromDatedRows(dated, isoDate);
+    return week ? { rows: week, pillRows: dated, season: null, source: 'own', dated: true } : null;
+  }
+  if (placeHoursRows.length > 0) return { rows: placeHoursRows, pillRows: placeHoursRows, season: null, source: 'own', dated: false };
   const h = place.hours_structured;
   const week = weekOn(h, isoDate);
-  if (h && week) return { rows: rowsFromWeek(week), pillRows: clientRows(h, isoDate), season: seasonOn(h, isoDate), source: 'own' };
+  if (h && week) return { rows: rowsFromWeek(week), pillRows: clientRows(h, isoDate), season: seasonOn(h, isoDate), source: 'own', dated: false };
   // A park with a time of its own goes before the rule, even one the parser could not read (its hours_text is shown instead),
   // and so does a seasonal row whose seasons do not cover today.
   if (h || place.hours_text?.trim()) return null;
   if (place.category !== undefined && place.slug !== undefined && parkRuleApplies({ category: place.category, slug: place.slug }, parkRule)) {
     const w: [string, string] = [parkRule.opens, parkRule.closes];
     const rows = rowsFromWeek({ monday: w, tuesday: w, wednesday: w, thursday: w, friday: w, saturday: w, sunday: w });
-    return { rows, pillRows: rows, season: null, source: 'city-park-rule' };
+    return { rows, pillRows: rows, season: null, source: 'city-park-rule', dated: false };
   }
   return null;
 }

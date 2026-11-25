@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ALERTS_CRON } from '../src/alerts/towns';
-import { GLASGOW_SPORTS_WORKFLOW, MORNING_BUILDS, MORNING_CRON, OSM_WORKFLOW, REGISTER_WORKFLOW, SCRAPE_CRON, SCRAPE_WORKFLOWS, SPORTS_UTC_HOUR, SPORTS_WORKFLOW, TRAFFIC_UTC_HOURS, TRAFFIC_WORKFLOW, dueWorkflows } from '../src/schedule';
+import { FACILITY_HOURS_WORKFLOW, GLASGOW_SPORTS_WORKFLOW, MORNING_BUILDS, MORNING_CRON, OSM_WORKFLOW, REGISTER_WORKFLOW, SCRAPE_CRON, SCRAPE_WORKFLOWS, SPORTS_UTC_HOUR, SPORTS_WORKFLOW, TRAFFIC_UTC_HOURS, TRAFFIC_WORKFLOW, dueWorkflows } from '../src/schedule';
 
 const dueWorkflowsAll = dueWorkflows;
 
@@ -19,7 +19,7 @@ describe('scrape cron', () => {
     expect(dueWorkflowsAll(SCRAPE_CRON, at('2026-10-21T06:00:00Z'))).toEqual(SCRAPE_WORKFLOWS);
   });
   it('adds the OpenStreetMap snapshot on Monday and Thursday 11:00 UTC, the venue register on Monday only', () => {
-    expect(dueWorkflowsAll(SCRAPE_CRON, at('2026-11-02T11:00:00Z'))).toEqual([...SCRAPE_WORKFLOWS, OSM_WORKFLOW, REGISTER_WORKFLOW]);
+    expect(dueWorkflowsAll(SCRAPE_CRON, at('2026-11-02T11:00:00Z'))).toEqual([...SCRAPE_WORKFLOWS, OSM_WORKFLOW, REGISTER_WORKFLOW, FACILITY_HOURS_WORKFLOW]);
     expect(dueWorkflowsAll(SCRAPE_CRON, at('2026-11-02T23:00:00Z'))).toEqual(SCRAPE_WORKFLOWS);
     expect(dueWorkflowsAll(SCRAPE_CRON, at('2026-11-03T11:00:00Z'))).toEqual(SCRAPE_WORKFLOWS);
     expect(dueWorkflowsAll(SCRAPE_CRON, at('2026-11-05T11:00:00Z'))).toEqual([...SCRAPE_WORKFLOWS, OSM_WORKFLOW]);
@@ -33,6 +33,11 @@ describe('scrape cron', () => {
     const yml = readFileSync(new URL(`../../.github/workflows/${REGISTER_WORKFLOW}`, import.meta.url), 'utf8');
     expect(yml).toContain('workflow_dispatch');
     expect(yml).toContain('ANTHROPIC_API_KEY');
+  });
+  it('the facility-hours workflow exists, can be dispatched and never gets a model key (llm_excluded sources)', () => {
+    const yml = readFileSync(new URL(`../../.github/workflows/${FACILITY_HOURS_WORKFLOW}`, import.meta.url), 'utf8');
+    expect(yml).toContain('workflow_dispatch');
+    expect(yml).not.toContain('ANTHROPIC_API_KEY');
   });
   it('unknown cron dispatches nothing', () => {
     expect(dueWorkflowsAll('* * * * *', at('2026-10-21T06:00:00Z'))).toEqual([]);

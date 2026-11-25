@@ -33,6 +33,10 @@ export const OSM_WORKFLOW = 'osm-open-late.yml';
 // Curated venue register for /tonight (steg 6): same Monday 11:00 UTC tick, one fetch per venue per week.
 export const REGISTER_WORKFLOW = 'evening-register.yml';
 
+// Opening hours from the towns' own pages (order D 4, 2026-11-25): same Monday tick. The workflow reads Briggs Library every Monday
+// and the Brookings facility catalog only when the date is 1-7 (once a month).
+export const FACILITY_HOURS_WORKFLOW = 'facility-hours.yml';
+
 // Brookings sports (local sports Phase 1): SDSU schedules -> sport_events, once a day at 17:00 UTC. Rides the 15-minute alerts tick (the one
 // whose minute is 0-14), so no extra cron trigger is needed. Kept off the 11:00/23:00 UTC scrape ticks so a sports run never overlaps a scrape.
 export const SPORTS_WORKFLOW = 'brookings-sports.yml';
@@ -88,7 +92,7 @@ export function dueWorkflows(cron: string, scheduledTime: number): string[] {
   if (cron === SCRAPE_CRON) {
     const at = new Date(scheduledTime);
     const morning = at.getUTCHours() === 11;
-    if (morning && at.getUTCDay() === 1) return [...SCRAPE_WORKFLOWS, OSM_WORKFLOW, REGISTER_WORKFLOW];
+    if (morning && at.getUTCDay() === 1) return [...SCRAPE_WORKFLOWS, OSM_WORKFLOW, REGISTER_WORKFLOW, FACILITY_HOURS_WORKFLOW];
     if (morning && at.getUTCDay() === 4) return [...SCRAPE_WORKFLOWS, OSM_WORKFLOW];
     return [...SCRAPE_WORKFLOWS];
   }

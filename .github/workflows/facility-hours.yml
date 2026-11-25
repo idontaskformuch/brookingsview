@@ -1,0 +1,34 @@
+name: facility-hours
+# Opening hours read from the towns' own pages (owner order D 4, 2026-11-25), scrapers/facility_hours.py. Started by the cron
+# dispatcher on the Monday 11:00 UTC scrape tick, or by hand. Every Monday: Briggs Library from LibCal (dated days; terms and
+# breaks change often). First Monday of a month (day 1-7): the Brookings facility catalog (Crawl-delay 10, robots.txt first).
+# Deterministic parsing only; neither source ever goes through a model (both name AI crawlers in robots.txt: llm_excluded).
+
+on:
+  workflow_dispatch:
+    inputs:
+      catalog:
+        description: "Also read the Brookings facility catalog (normally only the first Monday of a month)"
+        type: boolean
+        default: false
+
+jobs:
+  hours:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+      - run: pip install -r requirements.txt
+      - name: Briggs Library (LibCal)
+        run: python -m scrapers.facility_hours briggs --apply
+      - name: Brookings facility catalog (first Monday of the month)
+        if: ${{ inputs.catalog }}
+        run: python -m scrapers.facility_hours brookings-catalog --apply
+      - name: Brookings facility catalog (monthly, by date)
+        if: ${{ !inputs.catalog }}
+        run: |
+          if [ "$(date -u +%d)" -le 7 ]; then python -m scrapers.facility_hours brookings-catalog --apply; else echo "not the first week: catalog skipped"; fi
