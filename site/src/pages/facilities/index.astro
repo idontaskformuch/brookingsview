@@ -79,6 +79,8 @@ const rowsFor = (cat: string) => byCategory.get(cat)!.map((f) => {
     // The town's rule, not the park's own posted hours: said discreetly after the line (order D 2).
     hoursSource: eff?.source === 'city-park-rule' ? PARK_HOURS_LABEL : null,
     amenities: GRID_CATEGORIES.has(cat) ? parkAmenities(f.services) : [],
+    // A place whose hours we do not phrase ourselves links to its own page instead (lib/hours-link-only.ts).
+    hoursLink: f.hours_link,
   };
 });
 // Only the kinds this town actually lists (Glasgow has no parks or city hall here; the old fixed sentence promised them).
@@ -115,6 +117,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
             )}
             {r.address && <span class="fac__meta">{r.address}</span>}
             {r.hours && <span class="fac__meta fac__hours">{r.hours}{r.hoursSource && <span class="fac__source"> · {r.hoursSource}</span>}</span>}
+            {r.hoursLink && <span class="fac__meta fac__hours"><a href={r.hoursLink.url} rel="noopener">{r.hoursLink.label}</a></span>}
             {r.amenities.length > 0 && (
               <span class="fac__amenities">{r.amenities.map((a) => <Pill>{a}</Pill>)}</span>
             )}

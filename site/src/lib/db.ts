@@ -45,6 +45,7 @@ import { isAllDay } from './local-day';
 import { canonicalJobCategory } from './jobs';
 import { ELECTION_BY_TOWN } from '../config/election';
 import { unconfirmedHoursSlugs } from '../config/hours-scope';
+import { applyHoursLinkOnly, hoursLinkOnlySlugs, type HoursLink } from './hours-link-only';
 import { readLastValid } from '../../../election-results/src/read';
 import { toPublic, type PublicResults } from '../../../election-results/src/api';
 import { TOWNS as ELECTION_TOWNS } from '../../../election-results/src/towns';
@@ -2366,6 +2367,8 @@ export interface Facility {
   phone: string | null;
   website: string | null;
   hours_text: string | null;
+  /** Set for a place in lib/hours-link-only.ts: its own hours are dropped and the page links to this instead. */
+  hours_link?: HoursLink | null;
   description: string | null;
   source_url: string | null;
   verified_date: string | null;
@@ -2468,7 +2471,7 @@ export interface StructuredHours {
  *  the rest of this pass just retired, see redirects in place/[slug].astro
  *  and places/index.astro). */
 export async function getFacilities(): Promise<Facility[]> {
-  return (await sql`
+  return ((await sql`
     SELECT id, slug, name, category, address, phone, website,
            hours_text, description, source_url, verified_date,
            aliases, street_address, postal_code, lat, lon,
@@ -2480,7 +2483,7 @@ export async function getFacilities(): Promise<Facility[]> {
       FROM places
      WHERE town_id = ${TOWN_ID}
      ORDER BY category, name
-  `) as Facility[];
+  `) as Facility[]).map((f) => applyHoursLinkOnly(TOWN_ID, f));
 }
 
 /** The weekly OpenStreetMap snapshot for this town (scripts/refresh_osm_places.py), or null when there is none or the table is not there
@@ -2583,7 +2586,7 @@ export async function getFacilityBySlug(slug: string): Promise<Facility | null> 
      WHERE town_id = ${TOWN_ID} AND slug = ${slug}
      LIMIT 1
   `) as Facility[];
-  return rows[0] ?? null;
+  return rows[0] ? applyHoursLinkOnly(TOWN_ID, rows[0]) : null;
 }
 
 export interface PlaceHoursRow {
@@ -2617,7 +2620,7 @@ export async function getAllPlaceHoursForTown(): Promise<(PlaceHoursRow & { plac
       FROM place_hours ph
       JOIN places p ON p.id = ph.place_id
      WHERE p.town_id = ${TOWN_ID}
-       AND NOT (p.slug = ANY(${unconfirmedHoursSlugs(TOWN_ID)}::text[]))
+       AND NOT (p.slug = ANY(${[...unconfirmedHoursSlugs(TOWN_ID), ...hoursLinkOnlySlugs(TOWN_ID)]}::text[]))
   `) as (PlaceHoursRow & { place_id: number })[];
 }
 
@@ -2627,7 +2630,7 @@ export async function getPlaceHours(placeId: number): Promise<PlaceHoursRow[]> {
       FROM place_hours ph
       JOIN places p ON p.id = ph.place_id
      WHERE ph.place_id = ${placeId}
-       AND NOT (p.slug = ANY(${unconfirmedHoursSlugs(TOWN_ID)}::text[]))
+       AND NOT (p.slug = ANY(${[...unconfirmedHoursSlugs(TOWN_ID), ...hoursLinkOnlySlugs(TOWN_ID)]}::text[]))
      ORDER BY ph.day_of_week
   `) as PlaceHoursRow[];
 }

@@ -20,7 +20,7 @@ export const PARK_HOURS: Record<string, ParkHoursRule> = {
     closes: '23:00',
     sourceUrl: 'https://www.cityofbrookings-sd.gov/DocumentCenter/View/3870/Rules-and-Regulations-for-City-Parks-System',
     quote: 'City of Brookings Park Hours is 6:00 am to 11:00 pm, unless otherwise posted.',
-    // SDSU's garden, not a city park; its own (seasonal) hours are in hours_text.
+    // SDSU's garden, not a city park; its page links to the garden's own hours (lib/hours-link-only.ts).
     exceptSlugs: ['mccrory-gardens'],
   },
   moreno_valley_ca: {

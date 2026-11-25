@@ -314,7 +314,9 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
       {facility.phone && (
         <div class="fact"><dt>Phone</dt><dd><a href={`tel:${facility.phone.replace(/[^\d+]/g, '')}`}>{facility.phone}</a></dd></div>
       )}
-      {hours.length > 0 ? (
+      {facility.hours_link ? (
+        <div class="fact"><dt>Hours</dt><dd><a href={facility.hours_link.url} rel="noopener">{facility.hours_link.label}</a></dd></div>
+      ) : hours.length > 0 ? (
         <div class="fact">
           <dt>Hours</dt>
           <dd>
