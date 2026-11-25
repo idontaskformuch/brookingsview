@@ -308,3 +308,15 @@ def test_hours_never_verified_is_a_finding():
     # City hall's row with the one changed field marked: verified_date NULL.
     found = cf.hours_findings([(*CITY_HALL[:2], None, None)], date(2026, 11, 25))
     assert len(found) == 1 and "never verified" in found[0]["message"]
+
+
+def test_unconfirmed_hours_are_read_from_the_site_config():
+    # site/src/config/hours-scope.ts UNCONFIRMED_HOURS, the one list the site hides (owner 2026-11-25).
+    assert cf.unconfirmed_hours() == {("broomfield_co", "broomfield-auditorium")}
+
+
+def test_hours_hidden_as_unconfirmed_are_not_a_finding():
+    # broomfield_co/broomfield-auditorium as on file 2026-11-25: verified 2026-09-13, rows entered by hand, hidden on the site.
+    auditorium = ("broomfield_co", "broomfield-auditorium", date(2026, 9, 13), "manual")
+    assert len(cf.hours_findings([auditorium], date(2026, 11, 25))) == 1
+    assert cf.hours_findings([auditorium], date(2026, 11, 25), cf.unconfirmed_hours()) == []

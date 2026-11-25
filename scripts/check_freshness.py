@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -142,11 +143,35 @@ def token_findings(today: date) -> list[dict]:
                         "scripts/check_freshness.py."}]
 
 
-def hours_findings(rows: list[tuple], today: date) -> list[dict]:
+HOURS_SCOPE_TS = ROOT / "site" / "src" / "config" / "hours-scope.ts"
+
+
+def unconfirmed_hours(path: Path = HOURS_SCOPE_TS) -> set[tuple[str, str]]:
+    """(town_id, slug) of every place in UNCONFIRMED_HOURS (site/src/config/hours-scope.ts, read here so there is one list): the site
+    already hides their hours as unconfirmed, so their age is not a re-verification problem (owner 2026-11-25, Broomfield Auditorium)."""
+    text = path.read_text(encoding="utf-8")
+    block = text[text.index("export const UNCONFIRMED_HOURS"):]
+    block = block[:block.index("\n};")]
+    out: set[tuple[str, str]] = set()
+    town = None
+    for line in block.splitlines()[1:]:
+        m_town = re.match(r"^  ([a-z_]+): \{", line)
+        m_slug = re.match(r"^    '([a-z0-9-]+)': \{", line)
+        if m_town:
+            town = m_town.group(1)
+        elif m_slug and town:
+            out.add((town, m_slug.group(1)))
+    return out
+
+
+def hours_findings(rows: list[tuple], today: date, skip: set[tuple[str, str]] | None = None) -> list[dict]:
     """rows: (town_id, slug, verified_date, verification_method) of every place with opening hours (hours_structured or place_hours rows).
-    A finding per place whose verified_date is missing or more than HOURS_WARN_DAYS before today. Pure, so it is tested without a DB."""
+    A finding per place whose verified_date is missing or more than HOURS_WARN_DAYS before today, except the (town, slug) in `skip`
+    (unconfirmed hours the site already hides). Pure, so it is tested without a DB."""
     out: list[dict] = []
     for town, slug, verified, method in rows:
+        if skip and (town, slug) in skip:
+            continue
         age = None if verified is None else (today - verified).days
         if age is not None and age <= HOURS_WARN_DAYS:
             continue
@@ -238,7 +263,7 @@ def collect(conn, now: datetime, only: set[str], today: date) -> tuple[list[dict
     if "hours" in only:
         rows = conn.execute("SELECT town_id, slug, verified_date, verification_method FROM places p WHERE hours_structured IS NOT NULL "
                             "OR EXISTS (SELECT 1 FROM place_hours ph WHERE ph.place_id = p.id) ORDER BY town_id, slug").fetchall()
-        h = hours_findings(rows, today)
+        h = hours_findings(rows, today, unconfirmed_hours())
         lines.append(f"  [freshness] hours: {len(h)} of {len(rows)} place(s) with hours verified more than {HOURS_WARN_DAYS} days ago or never"
                      + "".join(f"\n    {f['town']}: {f['message'].split(';')[0]}" for f in h))
         findings += h
