@@ -471,6 +471,8 @@ const CITIES: Record<string, SiteConfig> = {
     quietSections: ['traffic'],
     stateName: 'South Dakota',
     stateAbbr: 'SD',
+    // /today/ written into the HTML like Broomfield's (owner 2026-11-25), same rule; no indexFrom: the blocks were watched on Broomfield.
+    todayPage: { minBlocks: 3, requireOpenTonightData: true },
     hasClosureWatch: true,
     hasEventsSource: true,
     // Coordinates mirror configs/brookings_sd.json's own `coordinates`
@@ -609,6 +611,8 @@ const CITIES: Record<string, SiteConfig> = {
     hasHeatAdvisory: true,
     stateName: 'California',
     stateAbbr: 'CA',
+    // /today/ written into the HTML like Broomfield's (owner 2026-11-25), same rule; no indexFrom: the blocks were watched on Broomfield.
+    todayPage: { minBlocks: 3, requireOpenTonightData: true },
     hasWorkplaceWatch: true,
     hasClosureWatch: true,
     hasEventsSource: true,
@@ -844,6 +848,8 @@ const CITIES: Record<string, SiteConfig> = {
   // yet listed in the US towns' network disclosure. Phase 3 enables sources one by one.
   glasgow: {
     ...TOWN_REGISTRY.glasgow,
+    // /today/ written into the HTML like Broomfield's (owner 2026-11-25), same rule; no indexFrom: the blocks were watched on Broomfield.
+    todayPage: { minBlocks: 3, requireOpenTonightData: true },
     eveningLayer: { mode: 'threshold', maxMiles: 15, includeTicketmasterSports: true, openLate: true, register: true, indexApproved: true, cards: { regions: {
       'City Centre': ['City Centre', 'Blythswood Hill', 'Blythswood Holm', 'Garnethill', 'Cowcaddens'], // gb-spelling: OSM place names
       'Finnieston': ['Stobcross', 'Yorkhill', 'Kelvingrove', 'Sandyford'],

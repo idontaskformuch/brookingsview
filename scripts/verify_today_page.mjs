@@ -9,7 +9,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const TODAY_PAGE_TOWNS = ['broomfield_co'];
+export const TODAY_PAGE_TOWNS = ['brookings_sd', 'moreno_valley_ca', 'broomfield_co', 'glasgow'];
 
 const [distDir, townId] = process.argv.slice(2);
 if (!distDir || !townId) {
