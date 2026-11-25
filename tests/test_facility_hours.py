@@ -214,3 +214,37 @@ def test_pioneer_park_sunrise_to_eleven_every_day():
 def test_plain_time_without_days_is_still_flagged():
     # Only a sunrise park hour is read as daily without days; the Children's Museum's "Open 10 a.m.-5 p.m." is not.
     assert parse_hours_text("10am-5pm").needs_review is True
+
+
+# --- Brookings facility catalog, groups without separators (owner order 2026-11-25) ------------------------------------------
+# hours_text verbatim from the live rows (written by facility_hours brookings-catalog --all-pages --apply, 2026-11-25).
+
+def test_activity_center_single_letter_days_dash_and_closed_after_day():
+    # brookings_sd/brookings-activity-center (Details/Brookings-Activity-Center-69)
+    result = parse_hours_text("M - F 9:00 AM — 3:00 PM Sat Closed Sun Closed")
+    assert result.needs_review is False
+    assert result.structured == {"monday": ("09:00", "15:00"), "tuesday": ("09:00", "15:00"), "wednesday": ("09:00", "15:00"),
+                                 "thursday": ("09:00", "15:00"), "friday": ("09:00", "15:00"), "saturday": None, "sunday": None}
+
+
+def test_liquor_store_colons_ampersand_and_hours_without_minutes():
+    # brookings_sd/brookings-municipal-liquor-store (Details/Brookings-Municipal-Liquor-Store-9)
+    result = parse_hours_text("Monday-Thursday: 9AM-8PM Friday & Saturday: 9AM-9PM Sunday: 12PM-6PM")
+    assert result.needs_review is False
+    assert result.structured == {"monday": ("09:00", "20:00"), "tuesday": ("09:00", "20:00"), "wednesday": ("09:00", "20:00"),
+                                 "thursday": ("09:00", "20:00"), "friday": ("09:00", "21:00"), "saturday": ("09:00", "21:00"),
+                                 "sunday": ("12:00", "18:00")}
+
+
+def test_landfill_and_sexauer_stay_text_only():
+    # brookings_sd/landfill-office-collection-shop and brookings_sd/sexauer-park: the owner keeps them as text.
+    assert parse_hours_text("7:30 am to 4:30 pm Gates will close at 4:15 pm Monday through Friday Saturday hours 8:00 am to "
+                            "11:45 am Closed Saturdays in January and February Citizens Campus Open 24/7").needs_review is True
+    assert parse_hours_text("Sunrise to 11:00p.m., unless using the campground.").needs_review is True
+
+
+def test_run_on_groups_refuse_ambiguous_letters_and_repeated_days():
+    # The Activity Center's row with the one changed field marked: "T" (Tuesday or Thursday) instead of "M".
+    assert parse_hours_text("T - F 9:00 AM — 3:00 PM Sat Closed Sun Closed").needs_review is True
+    # The liquor store's row with Thursday named twice ("Thursday & Friday" for "Friday & Saturday").
+    assert parse_hours_text("Monday-Thursday: 9AM-8PM Thursday & Friday: 9AM-9PM Sunday: 12PM-6PM").needs_review is True

@@ -225,6 +225,64 @@ def _parse_week(text: str, raw: str) -> dict:
     return days
 
 
+# Groups written one after another with no "," or ";" between them (Brookings facility catalog, 2026-11-25, owner order):
+#   "M - F 9:00 AM — 3:00 PM Sat Closed Sun Closed"                              (Brookings Activity Center)
+#   "Monday-Thursday: 9AM-8PM Friday & Saturday: 9AM-9PM Sunday: 12PM-6PM"       (Brookings Municipal Liquor Store)
+# Each group is "<days>[:] <time>-<time>" or "<days> Closed"; days are one day, "A-B" or "A & B". Single letters are read
+# only where they are unambiguous (M, W, F); "T"/"S" could be two days each and stay unreadable. Used only when _parse_week
+# cannot read the text, so a text it already reads is never read differently.
+_RUN_ON_DAY = r"(?:[A-Za-z]{3,9}\.?|[MWFmwf])"
+_RUN_ON_DAYS = rf"{_RUN_ON_DAY}(?:\s*(?:-|&|and)\s*{_RUN_ON_DAY})?"
+_RUN_ON_TIME = r"(?:\d{1,2}(?::\d{2})?(?:am|pm)?|noon|midnight)"
+_RUN_ON_GROUP_RE = re.compile(
+    rf"\s*({_RUN_ON_DAYS})\s*:?\s+({_RUN_ON_TIME}\s*-\s*{_RUN_ON_TIME}|closed)\b\s*", re.IGNORECASE)
+_SINGLE_LETTER_DAY = {"m": "monday", "w": "wednesday", "f": "friday"}
+
+
+def _run_on_day(token: str) -> str | None:
+    t = token.strip()
+    return _SINGLE_LETTER_DAY.get(t.lower()) if len(t) == 1 else _day_name(t)
+
+
+def _run_on_days(spec: str) -> list[str] | None:
+    parts = re.split(r"\s*(-|&|\band\b)\s*", spec.strip(), maxsplit=1)
+    if len(parts) == 1:
+        day = _run_on_day(parts[0])
+        return [day] if day else None
+    start, sep, end = _run_on_day(parts[0]), parts[1], _run_on_day(parts[2])
+    if start is None or end is None:
+        return None
+    if sep != "-":
+        return [start, end]
+    i, j = DAY_ORDER.index(start), DAY_ORDER.index(end)
+    return DAY_ORDER[i:j + 1] if j >= i else None
+
+
+def _parse_run_on_week(text: str) -> dict | None:
+    """The week from groups with no separators between them (see _RUN_ON_GROUP_RE), or None unless the WHOLE text is such
+    groups and no day is given twice. Days not named are closed, as in _parse_week."""
+    if re.search(r"[,;]", text):
+        return None
+    days: dict = {d: None for d in DAY_ORDER}
+    covered: set[str] = set()
+    pos = 0
+    while pos < len(text):
+        m = _RUN_ON_GROUP_RE.match(text, pos)
+        if not m or m.end() == pos:
+            return None
+        day_list = _run_on_days(m.group(1))
+        if day_list is None or covered.intersection(day_list):
+            return None
+        window = None if m.group(2).lower() == "closed" else _parse_time_range(m.group(2))
+        if m.group(2).lower() != "closed" and window is None:
+            return None
+        for day in day_list:
+            days[day] = window
+        covered.update(day_list)
+        pos = m.end()
+    return days if covered else None
+
+
 def _month_start(mid: str | None, month: str) -> tuple[int, int]:
     return (_MONTHS.index(month.lower()) + 1, 16 if mid else 1)
 
@@ -329,6 +387,12 @@ def parse_hours_text(raw: str | None) -> ParsedHours:
         lone = _parse_time_range(sentences[0])
         if lone is not None and lone[0] == "sunrise":
             return ParsedHours(structured={d: lone for d in DAY_ORDER}, needs_review=False)
-        return ParsedHours(structured=_parse_week(sentences[0], raw), needs_review=False)
+        try:
+            return ParsedHours(structured=_parse_week(sentences[0], raw), needs_review=False)
+        except _Unparseable:
+            run_on = _parse_run_on_week(sentences[0])
+            if run_on is None:
+                raise
+            return ParsedHours(structured=run_on, needs_review=False)
     except _Unparseable as exc:
         return ParsedHours(structured=None, needs_review=True, reason=str(exc))

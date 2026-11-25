@@ -670,6 +670,11 @@
       "severity": "hard",
       "born_from": "Found 2026-11-25 (owner order, punkt 2): facilities/[slug].astro labelled every source_url '<town> official site', so McCrory Gardens (brookings_sd place 107, source www.sdstate.edu) claimed the City of Brookings as its source; the same went for SDSU's other venues, Wikipedia, prairieplay.org and the ArcGIS hub. Since then lib/source-credit.ts sourceOwnerLabel names the owner by host (unlisted hosts show the bare host). Regression fixture: site/src/lib/source-credit.test.ts 'QA web.place-source-owner' (real source_urls of places 107, 2, 238); the page-source assertion fails before the fix.",
       "what": "a facility page's Source link names the town for a source_url on another owner's host (vitest)"
+    },
+    "data.catalog-run-on-hours": {
+      "severity": "hard",
+      "born_from": "Found 2026-11-25 (owner order): the Brookings facility catalog writes groups with no ',' or ';' between them, so ai_pipeline/facility_hours.py flagged the Activity Center ('M - F 9:00 AM — 3:00 PM Sat Closed Sun Closed') and the Municipal Liquor Store ('Monday-Thursday: 9AM-8PM Friday & Saturday: 9AM-9PM Sunday: 12PM-6PM') and both showed text with no open/closed pill. _parse_run_on_week reads them when _parse_week cannot (M/W/F only as single letters; a day named twice is refused). Regression fixture: tests/test_facility_hours.py test_activity_center_single_letter_days_dash_and_closed_after_day + test_liquor_store_colons_ampersand_and_hours_without_minutes (verbatim live rows; both fail before the fix).",
+      "what": "a catalog hours_text of day groups without separators is flagged instead of read (pytest)"
     }
   }
 }
