@@ -6,12 +6,12 @@ interface Props {
   label: string;
   /** "YYYY-MM-DD" when the label is a date (machine-readable on the heading). */
   datetime?: string;
-  level?: 2 | 3;
+  level?: 2 | 3 | 4;
   id?: string;
   hidden?: boolean;
 }
 const { label, datetime, level = 3, id, hidden = false } = Astro.props;
-const H = `h${level}` as 'h2' | 'h3';
+const H = `h${level}` as 'h2' | 'h3' | 'h4';
 ---
 <section class="day-group" id={id} hidden={hidden}>
   <H class="day-group__label">{datetime ? <time datetime={datetime}>{label}</time> : label}</H>

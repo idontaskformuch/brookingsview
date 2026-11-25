@@ -3,7 +3,7 @@
  *  the category as a dot. Each row keeps the hooks the browser script filters and counts by (data-card, data-id, data-area, data-scope, data-big;
  *  lib/tonight-cards-client.ts), inside a [data-tc-rows] list. Then the Open tonight row (open after 18:00, "Open until 23:00" as the big line where the
  *  hours are recent enough, otherwise no time): places, not events, so they stay as swipe cards. */
-import TonightCard from './TonightCard.astro';
+import OpenTonightList from '../OpenTonightList.astro';
 import PopEventList from '../pop/PopEventList.astro';
 import type { EveningEntry } from '../../lib/evening-items';
 import { groupLabel } from '../../lib/evening-items';
@@ -44,11 +44,10 @@ const days = eveningPopDays(main, tz, town.country, attrsOf, labelOf);
   <section class="tc-cat" data-tc-cat data-bucket="late" style="--c: var(--tc-late)" aria-labelledby={`${id}-late`}>
     <header class="tc-cat-head">
       <h3 id={`${id}-late`}>{tonight ? 'Open tonight' : 'Open tomorrow night'} <span class="tc-cat-count" data-tc-cat-count>{lateRows.length}</span></h3>
-      <button type="button" class="tc-all" data-tc-toggle aria-expanded="false" hidden>See all</button>
     </header>
-    <ul class="tc-row tc-row--late" data-tc-rows data-hide-ended>
-      {lateRows.map((p) => <TonightCard town={town} place={p} tz={tz} region={regionOf(p.area, regions)} />)}
-    </ul>
+    <OpenTonightList rows={lateRows} idPrefix={`${id}-late`} level={4} listAttrs={{ 'data-tc-rows': '' }} rowAttrs={(p) => ({
+      'data-card': '', 'data-bucket': 'late', 'data-id': p.osmId, 'data-area': regionOf(p.area, regions) ?? undefined, 'data-late': '',
+    })} />
     <p class="tc-attr">Hours © <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a>, read {osmChecked}.</p>
   </section>
 )}

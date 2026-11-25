@@ -1,0 +1,71 @@
+---
+/** THE Open tonight list (owner 2026-11-25), one component for /today and /tonight in every town: kind chips, then one DayGroup per closing
+ *  time ("Until 03:00" ... "Until midnight"), each row two fixed lines (name; kind · area) and the whole row a link to the place's website,
+ *  else its OpenStreetMap page. The browser (lib/client/open-tonight-list.ts) drops closed places, marks "closes soon", applies the chip and
+ *  shows at most 8 per group with "Show all (N)". Resident question: where can I still go tonight, and until when?
+ *  `rowAttrs` lets /tonight add its card hooks (data-card, data-late, data-area ...) so its counts and area chips keep working. */
+import Chips from './ui/Chips.astro';
+import DayGroup from './ui/DayGroup.astro';
+import type { OpenLateRow } from '../lib/osm-open-late';
+import { KIND_CHIP, groupByClosing, kindChips, rowHref, rowMeta } from '../lib/open-tonight-list';
+import { OPEN_TONIGHT_MIN_PLACES } from '../lib/open-tonight';
+
+interface Props {
+  rows: OpenLateRow[];
+  /** Prefix for the group ids ("ot" on /today, the evening's id on /tonight). */
+  idPrefix: string;
+  /** Heading level of the group labels. */
+  level?: 2 | 3 | 4;
+  rowAttrs?: (r: OpenLateRow) => Record<string, unknown>;
+  listAttrs?: Record<string, unknown>;
+}
+const { rows, idPrefix, level = 3, rowAttrs = () => ({}), listAttrs = {} } = Astro.props;
+const groups = groupByClosing(rows);
+const chips = kindChips(rows);
+---
+{rows.length > 0 && (
+  <div class="otl" data-otl data-otl-min={OPEN_TONIGHT_MIN_PLACES} {...listAttrs}>
+    {chips.length > 0 && (
+      <Chips plan={{ order: chips, visible: chips, showRow: true }} label="Filter by kind of place" dataKey="otl-chip" class="otl__chips" />
+    )}
+    {groups.map((g) => (
+      <div data-otl-group>
+        <DayGroup label={g.label} id={`${idPrefix}-${g.key}`} level={level}>
+          {g.rows.map((r) => (
+            <li class="otl-row" data-otl-row data-kind={r.kind === 'Cafe' ? undefined : KIND_CHIP[r.kind]} data-start={r.start} data-end={r.end} {...rowAttrs(r)}>
+              <a class="otl-row__link" href={rowHref(r)} rel="noopener">
+                <span class="otl-row__name">{r.name}</span>
+                <span class="otl-row__meta">{rowMeta(r)}<span class="otl-row__soon" data-otl-soon hidden> · closes soon</span></span>
+              </a>
+            </li>
+          ))}
+          <button slot="after" type="button" class="otl__all" data-otl-all hidden>Show all ({g.rows.length})</button>
+        </DayGroup>
+      </div>
+    ))}
+  </div>
+)}
+
+<script>
+  import { applyOpenTonightLists, wireOpenTonightLists } from '../lib/client/open-tonight-list';
+  applyOpenTonightLists(document, Date.now());
+  wireOpenTonightLists(document);
+  setInterval(() => applyOpenTonightLists(document, Date.now()), 60_000);
+</script>
+
+<style is:global>
+  /* Global: the browser toggles these classes. Type and spacing from the design system tokens (design/ui-tokens.css). */
+  .otl[hidden], [data-otl-group][hidden], .otl-row--closed, .otl-row--off, .otl-row--more { display: none !important; }
+  .otl__chips { margin: 0 0 var(--ui-2); }
+  .otl-row { border-top: var(--ui-hairline); }
+  .otl-row:first-child { border-top: 0; }
+  .otl-row__link { display: grid; gap: 0.0625rem; padding: var(--ui-2) 0; min-height: 2.75rem; color: inherit; text-decoration: none; }
+  .otl-row__link:hover .otl-row__name, .otl-row__link:focus-visible .otl-row__name { text-decoration: underline; }
+  .otl-row__name, .otl-row__meta { display: block; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .otl-row__name { font-family: var(--font-ui); font-size: 0.9375rem; line-height: 1.3; font-weight: var(--ui-primary-weight); color: var(--ink); }
+  .otl-row__meta { font-family: var(--font-ui); font-size: var(--ui-meta); line-height: 1.3; color: var(--ink-soft); }
+  .otl-row__soon[hidden] { display: none; }
+  .otl__all { margin: var(--ui-2) 0 0; padding: var(--ui-1) 0; border: 0; background: none; font-family: var(--font-ui); font-size: var(--ui-meta);
+    font-weight: var(--ui-primary-weight); color: var(--accent, var(--navy)); cursor: pointer; }
+  .otl__all[hidden] { display: none; }
+</style>

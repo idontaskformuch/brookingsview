@@ -1,29 +1,18 @@
 ---
 /** Open tonight on /today (owner 2026-11-07): the same list as the Open tonight row on /tonight (lib/open-tonight.ts). Rendered only with
  *  rows: the caller has already applied the "at least 3 places" rule, so this component never prints an empty state. Cafes open now are
- *  the rail's module (components/rail/RailOpenNow.astro, owner 2026-11-20), not a list here. */
+ *  the rail's module (components/rail/RailOpenNow.astro, owner 2026-11-20), not a list here. The list itself is components/OpenTonightList.astro
+ *  (owner 2026-11-25), the same on /tonight. */
 import type { OpenLateRow } from '../lib/osm-open-late';
+import OpenTonightList from './OpenTonightList.astro';
 
 interface Props { rows: OpenLateRow[]; osmChecked: string; /** Link to the evergreen Open late page, only when that page is indexable. */ lateHref?: string | null; tonightHref?: string | null; cityName: string }
 const { rows, osmChecked, lateHref = null, tonightHref = null, cityName } = Astro.props;
-const meta = (r: OpenLateRow) => [r.kind, r.area].filter(Boolean).join(' · ');
 ---
 {rows.length > 0 && (
-  <section class="ot">
-    {rows.length > 0 && (
-      <div class="ot-block" data-open-tonight>
-        <h2 id="ot-head">Open tonight in {cityName}</h2>
-        <ul class="ot-list" data-hide-ended>
-          {rows.map((r) => (
-            <li data-start={r.start} data-end={r.end}>
-              <span class="ot-name">{r.website ? <a href={r.website} rel="noopener">{r.name}</a> : r.name}</span>
-              <span class="ot-meta">{meta(r)}</span>
-              {r.closing && <span class="ot-time">{r.closing}</span>}
-            </li>
-          ))}
-        </ul>
-      </div>
-    )}
+  <section class="ot" data-otl-scope>
+    <h2 id="ot-head">Open tonight in {cityName}</h2>
+    <OpenTonightList rows={rows} idPrefix="ot" level={3} />
     <p class="ot-note">
       Hours © <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a>, read {osmChecked}. Check with the place before you go.
       {tonightHref && <> <a href={tonightHref}>More for tonight</a>.</>}
@@ -32,26 +21,9 @@ const meta = (r: OpenLateRow) => [r.kind, r.area].filter(Boolean).join(' · ');
   </section>
 )}
 
-<script>
-  // Open tonight: drop places that have closed since the page was built; with fewer than 3 left, remove the whole block.
-  const tonight = document.querySelector<HTMLElement>('[data-open-tonight]');
-  if (tonight) {
-    const now = Date.now();
-    const items = [...tonight.querySelectorAll<HTMLElement>('li')];
-    const live = items.filter((li) => !li.dataset.end || Date.parse(li.dataset.end) > now);
-    if (live.length < 3) tonight.remove(); else items.filter((li) => !live.includes(li)).forEach((li) => li.remove());
-  }
-</script>
-
 <style>
   .ot { margin: 1.5rem 0 0; }
-  .ot-block + .ot-block { margin-top: 1.25rem; }
-  .ot h2 { margin: 0 0 0.5rem; font-size: 1.25rem; }
-  .ot-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.35rem; }
-  .ot-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.75rem; padding: 0.4rem 0; border-top: 1px solid var(--rule, rgba(0, 0, 0, 0.12)); }
-  .ot-list li[hidden], .ot-block[hidden] { display: none; }
-  .ot-name { font-weight: 600; }
-  .ot-meta { color: var(--ink-soft); font-size: 0.9375rem; }
-  .ot-time { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .ot[hidden] { display: none; }
+  .ot h2 { margin: 0 0 var(--ui-2); font-size: 1.25rem; }
   .ot-note { margin: 0.5rem 0 0; color: var(--ink-soft); font-size: 0.8125rem; }
 </style>

@@ -215,7 +215,7 @@ function pageProbe({ allowSel, wantLinks }) {
           venue: (el.querySelector('.pl__meta')?.innerText ?? '').split(' · ')[0].trim(),
           localHour: el.dataset.start ? hourIn(el.dataset.start, z) : -1 };
       });
-      const late = [...d.querySelectorAll('.ev-row[data-late], .tc-card[data-late]')].map((el) => ({ name: el.querySelector('.ev-title, .tc-title')?.innerText.trim() ?? '', meta: el.querySelector('.ev-meta, .tc-meta')?.innerText.trim() ?? '' }));
+      const late = [...d.querySelectorAll('.ev-row[data-late], .tc-card[data-late], .otl-row[data-late]')].map((el) => ({ name: el.querySelector('.ev-title, .tc-title, .otl-row__name')?.innerText.trim() ?? '', meta: (el.querySelector('.ev-meta, .tc-meta, .otl-row__meta')?.innerText ?? '').replace(/ · closes soon$/, '').trim() }));
       return { id: i, visible: visible(d), entries, late };
     });
     const tcCount = document.querySelector('[data-tc-count]');
