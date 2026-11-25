@@ -2,13 +2,13 @@
 /** The top of /city-hall/: the next meeting as a hero ("in 5 days") with its agenda under it, then "This week" (the following 7 days) and
  *  "Coming up", with organ chips over the lists when there are enough meetings to filter. An organ group the town folds away (Glasgow's Area
  *  Partnerships) sits in one fold under the lists. With no meeting ahead the whole block is left out (owner 2026-11-24: no empty-state text).
- *  The build knows "today" only as of the build, so a small script re-reads it from the clock: "in 5 days" stays right, a meeting that is over
- *  hides itself, and the chips filter the lists. Without JS everything shows. */
+ *  The build knows "today" only as of the build: "in 5 days" is written by the browser (lib/client/time-status.ts, Fas 3; the date without
+ *  JS), and the small script below hides a meeting that is over and runs the chips. Without JS everything shows. */
 import SectionRule from '../SectionRule.astro';
 import HeroStat from '../ui/HeroStat.astro';
 import Chips from '../ui/Chips.astro';
 import MeetingCard from './MeetingCard.astro';
-import { daysBetween, relativeDays, chipCounts, meetingTitle, type MeetingView } from '../../lib/meetings-view';
+import { daysBetween, chipCounts, meetingTitle, type MeetingView } from '../../lib/meetings-view';
 
 interface Props {
   meetings: MeetingView[];
@@ -38,10 +38,10 @@ const nextEnd = next?.startMs != null ? next.startMs + 3 * 3_600_000 : null;
   <article class="up__next" data-ymd={next.ymd} data-end={nextEnd ?? undefined}>
     <HeroStat
       label={meetingTitle(next)}
-      value={relativeDays(daysBetween(todayYmd, next.ymd))}
+      value={next.dateLabel}
       sub={`${next.dateLabel}${next.time ? ` · ${next.time}` : ''}`}
       meta={next.location ?? undefined}
-      valueAttrs={{ 'data-mtg-rel': next.ymd }}
+      valueAttrs={{ 'data-rel-day': next.ymd }}
     />
     <MeetingCard m={next} bare todayYmd={todayYmd} commentHref={hrefFor(next)} portal={portal} />
   </article>
@@ -77,13 +77,10 @@ const nextEnd = next?.startMs != null ? next.startMs + 3 * 3_600_000 : null;
     var now = Date.now();
     var today;
     try { today = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(now)); } catch (e) { return; }
-    function days(a, b) { var x = a.split('-'), y = b.split('-'); return Math.round((Date.UTC(+y[0], +y[1] - 1, +y[2]) - Date.UTC(+x[0], +x[1] - 1, +x[2])) / 86400000); }
     var cards = root.querySelectorAll('article[data-ymd]');
     for (var i = 0; i < cards.length; i++) {
       var c = cards[i], ymd = c.getAttribute('data-ymd'), end = c.getAttribute('data-end');
       if (end ? now > +end : ymd < today) { c.hidden = true; continue; }
-      var n = days(today, ymd), rel = c.querySelector('[data-mtg-rel]');
-      if (rel) rel.textContent = n === 0 ? 'today' : n === 1 ? 'tomorrow' : 'in ' + n + ' days';
     }
     var chips = root.querySelector('[data-mtg-chips]');
     if (!chips) return;

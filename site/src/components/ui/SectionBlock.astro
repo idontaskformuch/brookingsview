@@ -44,7 +44,7 @@ const ext = (href: string) => /^https?:/i.test(href);
                 )}
                 {it.kicker && <span class="sb__ck">{it.kicker}</span>}
                 <span class="sb__ct">{it.title}</span>
-                {it.meta && <span class="sb__cm">{it.meta}</span>}
+                {(it.meta || it.relDay) && <span class="sb__cm">{it.meta}{it.relDay && <span data-rel-day={it.relDay} data-rel-prefix={it.meta ? ' · ' : ''} hidden></span>}</span>}
               </a>
             </li>
           );
@@ -59,7 +59,7 @@ const ext = (href: string) => /^https?:/i.test(href);
               <span class="sb__rowtext">
                 {it.kicker && <span class="sb__ck">{it.kicker}</span>}
                 <span class="sb__rt">{it.title}</span>
-                {it.meta && <span class="sb__cm">{it.meta}</span>}
+                {(it.meta || it.relDay) && <span class="sb__cm">{it.meta}{it.relDay && <span data-rel-day={it.relDay} data-rel-prefix={it.meta ? ' · ' : ''} hidden></span>}</span>}
               </span>
             </a>
           </li>

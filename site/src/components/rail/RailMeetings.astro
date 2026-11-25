@@ -1,10 +1,10 @@
 ---
 /** Rail module (Fas 2): the next meeting, or the meetings after it (reserve). Organ, date, "in 5 days", and the agenda link when the source
  *  has one. Data fields only (lib/meetings-view.ts). */
-import { daysBetween, relativeDays, type MeetingView } from '../../lib/meetings-view';
+import type { MeetingView } from '../../lib/meetings-view';
 
 interface Props { title: string; meetings: MeetingView[]; todayYmd: string }
-const { title, meetings, todayYmd } = Astro.props;
+const { title, meetings } = Astro.props;
 ---
 {meetings.length > 0 && (
   <section class="rail-mtg" aria-label={title}>
@@ -13,7 +13,7 @@ const { title, meetings, todayYmd } = Astro.props;
       {meetings.map((m) => (
         <li class="rail-mtg__item">
           <a class="rail-mtg__organ" href={`/city-hall/#meeting-${m.id}`}>{m.bodyLabel}{m.typeLabel && ` · ${m.typeLabel}`}</a>
-          <span class="rail-mtg__when">{m.dateLabel}{m.time && ` · ${m.time}`} · {relativeDays(daysBetween(todayYmd, m.ymd))}</span>
+          <span class="rail-mtg__when">{m.dateLabel}{m.time && ` · ${m.time}`}<span data-rel-day={m.ymd} data-rel-prefix=" · " hidden></span></span>
           {m.agendaUrl && <a class="rail-mtg__agenda" href={m.agendaUrl} rel="noopener">Agenda{m.items.length > 0 && ` (${m.items.length} ${m.items.length === 1 ? 'item' : 'items'})`}</a>}
         </li>
       ))}

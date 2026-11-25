@@ -1,7 +1,7 @@
 /** Pure helpers for the front page's section blocks (Fas 2, front page as a hub). Every rule is tested in home-blocks.test.ts. */
 import { pickFromPool, type ImageRef } from './images';
 import type { Game, RegionalGame, TrafficIncident, SchoolAlert } from './db';
-import { daysBetween, relativeDays, type MeetingView } from './meetings-view';
+import { daysBetween, type MeetingView } from './meetings-view';
 import { teamLabel } from './jackrabbits-view';
 import { trafficKind } from './traffic';
 import { latestFinal, scoreLine } from './rail';
@@ -13,8 +13,10 @@ export interface BlockItem {
   title: string;
   /** Small line above the title ("Fri, Nov 20", "Home · Football"). */
   kicker?: string;
-  /** Line under the title (venue, time, "in 5 days"). */
+  /** Line under the title (venue, time). */
   meta?: string;
+  /** Town-local day ("YYYY-MM-DD") the browser turns into " · in 5 days" after `meta` (lib/client/time-status.ts, Fas 3: never at build). */
+  relDay?: string;
   image?: BlockImage | null;
   /** List variant: a date box (three-letter weekday or month + day of month). */
   date?: { top: string; day: string };
@@ -102,8 +104,8 @@ export function sportsItems(o: { games: Game[]; regional: RegionalGame[]; todayY
 export function cityHallItems(o: { meetings: MeetingView[]; todayYmd: string; locale: 'en-US' | 'en-GB'; decision: { href: string; title: string; meta: string; ymd: string } | null }): BlockItem[] {
   const out: BlockItem[] = o.meetings.slice(0, 3).map((m) => ({
     href: `/city-hall/#meeting-${m.id}`, title: m.bodyLabel + (m.typeLabel ? ` · ${m.typeLabel}` : ''),
-    meta: [m.time, relativeDays(daysBetween(o.todayYmd, m.ymd)), m.items.length > 0 ? `${m.items.length} agenda ${m.items.length === 1 ? 'item' : 'items'}` : null].filter(Boolean).join(' · '),
-    date: dateBox(`${m.ymd}T12:00:00Z`, 'UTC', o.locale),
+    meta: [m.time, m.items.length > 0 ? `${m.items.length} agenda ${m.items.length === 1 ? 'item' : 'items'}` : null].filter(Boolean).join(' · '),
+    date: dateBox(`${m.ymd}T12:00:00Z`, 'UTC', o.locale), relDay: m.ymd,
   }));
   if (o.decision) out.push({ href: o.decision.href, title: o.decision.title, kicker: 'Decided', meta: o.decision.meta, date: dateBox(`${o.decision.ymd}T12:00:00Z`, 'UTC', o.locale) });
   return out;

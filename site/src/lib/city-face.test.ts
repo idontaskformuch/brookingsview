@@ -176,7 +176,8 @@ describe('alert lead + Thanksgiving window: no photo in the lead, the photo on t
     expect(fp.lead.type).toBe('alert');
     expect(fp.lead.headline).toBe('Red Flag Warning');
     expect(fp.secondaries[0].type).toBe('holiday');
-    expect(fp.secondaries[0].kicker).toBe('Thanksgiving · in 2 days');
+    expect(fp.secondaries[0].kicker).toBe('Thanksgiving');
+    expect(fp.secondaries[0].kickerDay).toEqual({ ymd: '2026-11-26', style: 'in' }); // "· in 2 days" is written by the browser (Fas 3)
     expect(cityImageSlot(fp)).toBe('secondary');
 
     const week = weekInfoForInstant(now, tzOf(town));
@@ -202,7 +203,7 @@ describe('alert lead + Thanksgiving window: no photo in the lead, the photo on t
     const html = await (await AstroContainer.create()).renderToString(FrontPageLead, { props: { page: fp, cityImage: city, thumbs: fp.secondaries.map(() => null) } });
     const lead = html.slice(html.indexOf('<article class="lead'), html.indexOf('</article>') + 10);
     expect(lead).toMatch(/<img[^>]+fetchpriority="high"/);
-    expect(lead).toMatch(/city-photo__scrim[\s\S]*Thanksgiving · in 2 days[\s\S]*<h2/);
+    expect(lead).toMatch(/city-photo__scrim[\s\S]*Thanksgiving<span data-rel-day="2026-11-26" data-rel-prefix=" · " hidden><\/span>[\s\S]*<h2/);
     expect(lead).toContain(city.attributionText!);
   });
 });

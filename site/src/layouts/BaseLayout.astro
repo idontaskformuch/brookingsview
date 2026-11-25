@@ -830,6 +830,11 @@ main { padding-block: 1.75rem 3.5rem; }
       import { relativeTime } from '../lib/time';
       import { countEventsToday, relativeDayLabel, type CountableEntry } from '../lib/local-day';
       import { sweepEnded } from '../lib/hide-ended';
+      import { applyRelDays } from '../lib/client/time-status';
+      // Fas 3: "today" / "in 5 days" / "6 days away" from [data-rel-day] in the town's zone; every minute, so an open tab rolls over at midnight.
+      const townTz = document.documentElement.dataset.timezone || 'America/Chicago';
+      applyRelDays(document, new Date(), townTz);
+      setInterval(() => applyRelDays(document, new Date(), townTz), 60_000);
       document.querySelectorAll<HTMLElement>('[data-day-label]').forEach((el) => {
         const when = el.dataset.when;
         if (when) el.textContent = relativeDayLabel(new Date(when), new Date(), el.dataset.tz || 'America/Chicago');

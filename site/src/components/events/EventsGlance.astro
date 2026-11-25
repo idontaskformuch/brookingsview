@@ -1,47 +1,55 @@
 ---
 /** The answer to "what's on": N things on today (the big hero number from `hero_min_count` things, a plain heading below it), what is tonight / free, and the days as tappable counts. The strip links to
- *  the day's heading on `base` (this page, or /events/ from the front page). No events today: one designed line pointing at the next day that has some. */
-import HeroStat from '../ui/HeroStat.astro';
-import EmptyState from '../ui/EmptyState.astro';
+ *  the day's heading on `base` (this page, or /events/ from the front page). No events today: one designed line pointing at the next day that has some.
+ *  Fas 3 (owner spec 2026-11-20): the counts and the pointer change during the day, so the browser writes them (lib/client/events-glance.ts) from
+ *  the entries carried in data-evg-entries; without JavaScript that part is not shown, only the day strip (counts per date). */
 import DayStrip from '../ui/DayStrip.astro';
 import type { EventsView } from '../../lib/event-day-view';
-import { eventsStrings, thingsOnToday } from '../../lib/events-strings';
+import type { GlanceEntry } from '../../lib/client/events-glance';
+import { eventsStrings } from '../../lib/events-strings';
+import { hasEnded } from '../../lib/local-day';
 import { siteConfig } from '../../lib/site-config';
 
 interface Props { view: EventsView; base?: string; idPrefix?: string }
 const { view, base = '', idPrefix = 'day' } = Astro.props;
 const strings = eventsStrings(siteConfig.country);
-const sub = [
-  view.tonightCount > 0 && view.tonightCount < view.todayCount ? `${view.tonightCount} tonight` : null,
-  view.freeToday > 0 ? `${view.freeToday} free` : null,
-].filter(Boolean).join(' · ');
 // Nothing today and nothing later: the whole section is left out (owner 2026-11-07, no empty messages).
 const link = (d: { dayKey: string }) => `${base}#${idPrefix}-${d.dayKey}`;
+// Each listed entry once, with the occurrences still to come at build (at most 8: enough for the window the page lists).
+const now = new Date();
+const entries: GlanceEntry[] = view.days.flatMap((d) => d.rows).map((r) => ({
+  occ: r.occ.filter((o) => !hasEnded(o, now, siteConfig.timezone)).slice(0, 8).map((o) => ({ start: o.start, end: o.end ?? null })),
+  ...(r.free ? { free: true } : {}),
+})).filter((e) => e.occ.length > 0);
 ---
-{(view.todayCount > 0 || view.nextDay) && (
-<section class="evg" aria-label="Events at a glance">
-  {view.todayCount > 0 ? (
-    view.todayCount >= strings.hero_min_count ? (
-      <HeroStat value={view.todayCount} unit={thingsOnToday(view.todayCount, siteConfig.country)} sub={sub || undefined} />
-    ) : (
-      <div class="evg__plain">
-        <h2 class="evg__title">{view.todayCount} {thingsOnToday(view.todayCount, siteConfig.country)}</h2>
-        {sub && <p class="evg__sub">{sub}</p>}
-      </div>
-    )
-  ) : view.nextDay ? (
-    <EmptyState href={link(view.nextDay)} linkLabel={`${view.nextDay.label}: ${view.nextDay.count} ${view.nextDay.count === 1 ? 'thing' : 'things'}`}>Next on the calendar:</EmptyState>
-  ) : null}
+{(view.todayCount > 0 || view.nextDay || view.showDayStrip) && (
+<section class="evg" aria-label="Events at a glance" data-evg data-evg-entries={JSON.stringify(entries)} data-tz={siteConfig.timezone}
+  data-country={siteConfig.country} data-hero-min={strings.hero_min_count} data-base={base} data-id-prefix={idPrefix}
+  hidden={view.showDayStrip ? undefined : true}>
+  <div class="evg__top" data-evg-top hidden></div>
   {view.showDayStrip && (
-    <DayStrip label="Events per day" days={view.days.map((d) => ({
-      label: d.weekday,
-      value: d.count > 0 ? String(d.count) : '–', sub: d.dateLabel, today: d.offset === 0, href: d.count > 0 ? link(d) : undefined,
-    }))} />
+    <div data-evg-strip>
+      <DayStrip label="Events per day" days={view.days.map((d) => ({
+        label: d.weekday,
+        value: d.count > 0 ? String(d.count) : '–', sub: d.dateLabel, today: d.offset === 0, href: d.count > 0 ? link(d) : undefined,
+      }))} />
+    </div>
   )}
 </section>
 )}
-<style>
+<script>
+  import { applyEventsGlance } from '../../lib/client/events-glance';
+  applyEventsGlance(document, new Date());
+  setInterval(() => applyEventsGlance(document, new Date()), 60_000);
+</script>
+<style is:global>
+  /* Global: the browser writes this markup (lib/client/events-glance.ts). */
   .evg { display: grid; gap: var(--ui-3); }
+  .evg[hidden], .evg__top[hidden] { display: none; }
   .evg__title { margin: 0; font-family: var(--font-head); font-size: 1.5rem; }
+  /* The next-day pointer: the same look as components/ui/EmptyState.astro, written here by the browser. */
+  .evg .ui-empty { padding: var(--ui-4) var(--ui-3); border-radius: var(--ui-radius); background: var(--ui-surface-2); font-family: var(--font-ui); }
+  .evg .ui-empty__line { margin: 0; font-size: var(--ui-primary); font-weight: var(--ui-primary-weight); }
+  .evg .ui-empty__link { display: inline-block; margin-top: var(--ui-2); font-size: var(--ui-meta); font-weight: var(--ui-primary-weight); }
   .evg__sub { margin: var(--ui-1) 0 0; font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); }
 </style>

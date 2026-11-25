@@ -282,8 +282,11 @@ describe('"N things on today": big number only from hero_min_count (owner 2026-1
     expect(eventsStrings('gb').hero_min_count).toBe(5);
     expect(thingsOnToday(1, 'gb')).toBe('thing on today');
     expect(thingsOnToday(4, 'us')).toBe('things on today');
+    // Fas 3: the browser draws the glance (lib/client/events-glance.ts) with the threshold the page hands it
     const src = readFileSync(new URL('../components/events/EventsGlance.astro', import.meta.url), 'utf8');
-    expect(src).toMatch(/view\.todayCount >= strings\.hero_min_count \?/);
-    expect(src).toContain('<h2 class="evg__title">');
+    expect(src).toContain('data-hero-min={strings.hero_min_count}');
+    const client = readFileSync(new URL('./client/events-glance.ts', import.meta.url), 'utf8');
+    expect(client).toMatch(/c\.today >= o\.heroMin \?|if \(c\.today >= o\.heroMin\)/);
+    expect(client).toContain('<h2 class="evg__title">');
   });
 });

@@ -44,10 +44,11 @@ describe("sportsItems with the driver's DATE objects (QA front.date-column-objec
 });
 
 describe('cityHallItems', () => {
-  it('three meetings with date box and "in N days", then the latest decision', () => {
+  it('three meetings with date box (the browser adds "in N days" from relDay, Fas 3), then the latest decision', () => {
     const items = cityHallItems({ meetings: BMF, todayYmd: '2026-11-19', locale: 'en-US', decision: { href: '/city-hall/projects/palisade-park-chipotle-mexican-grill/', title: 'Palisade Park Chipotle Mexican Grill', meta: 'City Council Regular Meeting: pending', ymd: '2026-09-09' } });
     expect(items).toHaveLength(4);
-    expect(items[0]).toMatchObject({ title: 'City Council · Transition', meta: '6:00 PM · in 12 days', date: { top: 'Tue', day: '1' } });
+    expect(items[0]).toMatchObject({ title: 'City Council · Transition', meta: '6:00 PM', relDay: '2026-12-01', date: { top: 'Tue', day: '1' } });
+    expect(items[0].meta).not.toMatch(/days?|today|tomorrow/);
     expect(items[3]).toMatchObject({ kicker: 'Decided', title: 'Palisade Park Chipotle Mexican Grill' });
   });
   it('no meetings and no decision: no rows (the block is not shown)', () => {

@@ -424,7 +424,11 @@ describe('standing (timeless) page', () => {
     expect(statusDay(occurrenceDay(def, 2025), 2025, ev.nextYear, ev.nextDay)).toBe(ev.nextDay);
     // inside the window (no next occurrence): the season's day
     expect(statusDay(occurrenceDay(def, 2026), 2026, null, null)).toBe(occurrenceDay(def, 2026));
-    expect(read('../components/HolidayPage.astro')).toMatch(/holidayStatus\(\s*statusDay\(/);
+    // the page prints the date of statusDay and the browser adds the words from the same day (Fas 3)
+    const page = read('../components/HolidayPage.astro');
+    expect(page).toMatch(/const statusMs = statusDay\(/);
+    expect(page).toContain('holidayStatusDate(statusMs, today, page.locale)');
+    expect(page).toContain('data-rel-day={statusYmd} data-rel-style="away" data-rel-prefix=" · " hidden');
   });
   it('Veterans Day after Nov 11: normally closed/different rows without dates, no events', () => {
     const hero = holidayStatus(next, '2026-11-20');

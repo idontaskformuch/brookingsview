@@ -4,6 +4,7 @@
  *  would be shorter than the first screen). Renders nothing at all when no module has data, so RailLayout gives no aside. Data and
  *  template strings only, no prose. */
 import CityStatus from '../CityStatus.astro';
+import { ymdOfDayNumber } from '../../lib/client/time-status';
 import GameCard from '../GameCard.astro';
 import RegionalGameCard from '../RegionalGameCard.astro';
 import SdsuEventCard from '../SdsuEventCard.astro';
@@ -177,7 +178,7 @@ const plan = planRail(cfg, {
       <div class={fromWide.has(m) ? 'rail-slot rail-slot--wide' : 'rail-slot'}>
         {m === 'meeting' && nextMeeting && <RailMeetings title="Next meeting" meetings={[nextMeeting]} todayYmd={meetingsData!.todayYmd} />}
         {m === 'meetings_more' && <RailMeetings title="Later meetings" meetings={moreMeetings} todayYmd={meetingsData!.todayYmd} />}
-        {m === 'holiday' && holiday && <RailHoliday label={holiday.label} url={holiday.url} daysAway={holiday.daysAway} insights={holiday.insights ?? []} thumb={holidayThumb} />}
+        {m === 'holiday' && holiday && <RailHoliday label={holiday.label} url={holiday.url} ymd={ymdOfDayNumber(holiday.day)} insights={holiday.insights ?? []} thumb={holidayThumb} />}
         {m === 'sport' && (
           <section class="rail-mod" aria-label="Sports">
             <p class="rail-mod__label">Sports</p>

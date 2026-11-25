@@ -8,11 +8,13 @@
  *  already uses, not a new component or a new color (the accent is the
  *  town's own existing --brand-accent). Every other section is
  *  unchanged. */
-interface Props { label: string; href?: string; strong?: boolean; }
-const { label, href, strong = false } = Astro.props;
+/** `relDay` (Fas 3): the label is that day's date ("Wed, Nov 25") and the browser turns it into "Today"/"Tomorrow"
+ *  (lib/client/time-status.ts, style 'day'); never "Today" from the build. */
+interface Props { label: string; href?: string; strong?: boolean; relDay?: string; }
+const { label, href, strong = false, relDay } = Astro.props;
 ---
 <div class:list={['sec', strong && 'sec--strong']}>
-  <h2 class="sec__label">{label}</h2>
+  <h2 class="sec__label">{relDay ? <span data-rel-day={relDay} data-rel-style="day">{label}</span> : label}</h2>
   {href && <a class="sec__more" href={href}>All &rarr;</a>}
 </div>
 

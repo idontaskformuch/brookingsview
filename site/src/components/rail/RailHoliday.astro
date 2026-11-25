@@ -1,19 +1,20 @@
 ---
-/** Rail module (Fas 2): the next holiday page, with its own band photo as a thumbnail ("Thanksgiving · in 8 days") and up to two of the
- *  page's insight lines (lib/holiday-view.ts holidayInsights, the same rule as the front page's holiday card, Fas 1c). */
+/** Rail module (Fas 2): the next holiday page, with its own band photo as a thumbnail ("Coming up · in 8 days", the words written by the
+ *  browser, Fas 3) and up to two of the page's insight lines (lib/holiday-view.ts holidayInsights, the same rule as the front page's
+ *  holiday card, Fas 1c). */
 import CityPhoto from '../CityPhoto.astro';
 import type { CityImage } from '../../lib/city-face';
-import { holidayKicker, MAX_CARD_INSIGHTS } from '../../lib/front-page';
+import { MAX_CARD_INSIGHTS } from '../../lib/front-page';
 
-interface Props { label: string; url: string; daysAway: number; insights: string[]; thumb: CityImage | null }
-const { label, url, daysAway, insights, thumb } = Astro.props;
-const [name, when] = holidayKicker(label, daysAway).split(' · ');
+/** `ymd`: the holiday's town-local day ("YYYY-MM-DD"). */
+interface Props { label: string; url: string; ymd: string; insights: string[]; thumb: CityImage | null }
+const { label, url, ymd, insights, thumb } = Astro.props;
 ---
 <section class="rail-hol" aria-label={label}>
   {thumb && <a class="rail-hol__thumb" href={url} tabindex="-1" aria-hidden="true"><CityPhoto image={thumb} variant="thumb" /></a>}
   <div class="rail-hol__text">
-    <p class="rail-hol__kicker">Coming up · {when}</p>
-    <a class="rail-hol__title" href={url}>{name}</a>
+    <p class="rail-hol__kicker">Coming up<span data-rel-day={ymd} data-rel-prefix=" · " hidden></span></p>
+    <a class="rail-hol__title" href={url}>{label}</a>
     {insights.length > 0 && <ul class="rail-hol__insights">{insights.slice(0, MAX_CARD_INSIGHTS).map((line) => <li>{line}</li>)}</ul>}
   </div>
 </section>

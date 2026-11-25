@@ -9,6 +9,7 @@ import {
   type CheckAt, type ConfirmedFact, type GridArea, type HolidayChange, type HolidayEvent, type HolidayFact, type HolidayLocale, type HolidayPageData, type LastYear, type Source,
 } from './holiday-page';
 import { formatDayLong, formatDayShort, occurrenceDay, weekdayLong } from './holiday-calendar';
+import { relWords } from './client/time-status';
 import { driveLabel, driveMinutes } from './evening-items';
 import type { HolidayPageDef } from '../config/holiday-pages/calendar';
 
@@ -368,12 +369,17 @@ export function seasonClosureGrid(page: HolidayPageData): ClosureGridView | null
  *  9 days ago", owner 2026-11-20). The year is added only when the day is not in `today`'s year.
  *  `dayMs` = the day at UTC midnight, `today` = local ISO date. */
 export function holidayStatus(dayMs: number, today: string, locale: HolidayLocale = 'en-US'): string {
-  const dayIso = new Date(dayMs).toISOString().slice(0, 10);
   const n = Math.round((dayMs - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
+  return `${holidayStatusDate(dayMs, today, locale)} · ${relWords(n, 'away')}`;
+}
+
+/** The status line's date part, all the page prints at build (Fas 3): "Thursday, Nov 26". The "· 6 days away" after it is written by
+ *  the browser from the same day (lib/client/time-status.ts, style 'away'), so the page never counts from the build's clock.
+ *  holidayStatus above is the whole line for one `today` (the browser's result, used by the tests). */
+export function holidayStatusDate(dayMs: number, today: string, locale: HolidayLocale = 'en-US'): string {
+  const dayIso = new Date(dayMs).toISOString().slice(0, 10);
   const withYear = dayIso.slice(0, 4) !== today.slice(0, 4);
-  const date = withYear ? formatDayLong(dayMs, locale) : `${weekdayLong(dayMs)}${locale === 'en-GB' ? ' ' : ', '}${formatDayShort(dayMs, locale)}`;
-  const when = n === 0 ? 'today' : n === 1 ? 'tomorrow' : n === -1 ? 'yesterday' : n > 0 ? `${n} days away` : `${-n} days ago`;
-  return `${date} · ${when}`;
+  return withYear ? formatDayLong(dayMs, locale) : `${weekdayLong(dayMs)}${locale === 'en-GB' ? ' ' : ', '}${formatDayShort(dayMs, locale)}`;
 }
 
 /** Which day the status line names (owner 2026-11-20): after the holiday the passed day ("9 days ago") stays until the page

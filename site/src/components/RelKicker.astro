@@ -1,0 +1,9 @@
+---
+/** A front-page kicker whose relative words are written by the browser (Fas 3, lib/client/time-status.ts): "Thanksgiving" + " · in 8 days",
+ *  or a big event's weekday that becomes "Today"/"Tomorrow". Without JS the name or the weekday stands alone, never a word from the build. */
+interface Props { label: string; day?: { ymd: string; style: 'in' | 'day' } }
+const { label, day } = Astro.props;
+---
+{!day ? label
+  : day.style === 'day' ? <span data-rel-day={day.ymd} data-rel-style="day">{label}</span>
+  : <>{label}<span data-rel-day={day.ymd} data-rel-prefix=" · " hidden></span></>}

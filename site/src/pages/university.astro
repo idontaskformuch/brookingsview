@@ -125,6 +125,9 @@ const today = utcMidnight(localDateParts(new Date()));
 const weekdayOfToday = today.getUTCDay();
 const daysToFriday = (5 - weekdayOfToday + 7) % 7;
 
+// Fas 3: the build names the day ('Wed, Nov 25'); the browser turns it into "Today" (SectionRule relDay, lib/client/time-status.ts).
+const todayYmd = today.toISOString().slice(0, 10);
+const todayLabel = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(today);
 const buckets = { today: [] as SdsuEvent[], weekend: [] as SdsuEvent[], nextWeek: [] as SdsuEvent[], later: [] as SdsuEvent[] };
 for (const event of rest) {
   if (!event.starts_at) { buckets.later.push(event); continue; }
@@ -136,7 +139,7 @@ for (const event of rest) {
 }
 const sections = (
   [
-    ['Today', buckets.today],
+    [todayLabel, buckets.today],
     ['This weekend', buckets.weekend],
     ['Coming up', buckets.nextWeek],
     ['Further out', buckets.later],
@@ -217,7 +220,7 @@ const sections = (
 
   {sections.length > 0 ? sections.map(([label, list]) => (
     <>
-      <SectionRule label={label} />
+      <SectionRule label={label} relDay={label === todayLabel ? todayYmd : undefined} />
       <div class="grid" data-signature-content>
         {list.map((event) => (
           <a class="event-card" href={event.event_url} rel="noopener">

@@ -5,10 +5,10 @@
 import CompactRow from '../ui/CompactRow.astro';
 import Pill from '../ui/Pill.astro';
 import Icon from '../ui/Icon.astro';
-import { daysBetween, relativeDays, type MeetingView } from '../../lib/meetings-view';
+import type { MeetingView } from '../../lib/meetings-view';
 
 interface Props { m: MeetingView; todayYmd: string }
-const { m, todayYmd } = Astro.props;
+const { m } = Astro.props;
 const n = m.items.length;
 const [weekday, ...rest] = m.dateLabel.replace(',', '').split(' ');
 ---
@@ -20,7 +20,7 @@ const [weekday, ...rest] = m.dateLabel.replace(',', '').split(' ');
     </span>
     <span class="mtl__main">
       <span class="mtl__organ">{m.bodyLabel}{m.typeLabel && <Pill>{m.typeLabel}</Pill>}</span>
-      <span class="mtl__meta">{relativeDays(daysBetween(todayYmd, m.ymd))}{n > 0 && ` · ${n} agenda ${n === 1 ? 'item' : 'items'}`}</span>
+      <span class="mtl__meta"><span data-rel-day={m.ymd} hidden></span>{n > 0 && <span class="mtl__items">{`${n} agenda ${n === 1 ? 'item' : 'items'}`}</span>}</span>
       {m.agendaUrl && <span class="mtl__agenda"><Icon name="external" size={14} /> Agenda</span>}
     </span>
   </CompactRow>
@@ -35,5 +35,6 @@ const [weekday, ...rest] = m.dateLabel.replace(',', '').split(' ');
   .mtl__main { display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; }
   .mtl__organ { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ui-1) var(--ui-2); font-family: var(--font-head); font-size: 1.1875rem; line-height: 1.25; color: var(--ink); }
   .mtl__meta { font-size: var(--ui-meta); color: var(--ink-soft); }
+  .mtl__meta [data-rel-day]:not([hidden]) + .mtl__items::before { content: ' · '; }
   .mtl__agenda { font-size: var(--ui-meta); font-weight: 600; color: var(--accent); }
 </style>

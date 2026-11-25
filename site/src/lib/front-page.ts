@@ -16,6 +16,7 @@ import type { EveningEntry } from './evening-items';
 import { buildEveningSections } from './evening-page';
 import { buildWeekendSections } from './evening-weekend';
 import { hasEnded, localDayNumber, localHourOf } from './local-day';
+import { ymdOfDayNumber } from './client/time-status';
 import { dateLong, eventsDeck, meetingDeck, plural, weekdayName, type ShowRef } from './front-page-decks';
 import type { FrontPageConfig } from '../config/front-page';
 import { IN_TOWN_THRESHOLD_MILES } from './ticketmaster';
@@ -34,8 +35,11 @@ export interface FrontPageItem {
   deck: string[];
   url: string;
   image?: { src: string; alt: string; width: number; height: number };
-  /** Replaces the type's kicker: a holiday's "Thanksgiving · in 8 days". */
+  /** Replaces the type's kicker: a holiday's name ("Thanksgiving"), a big event's weekday ("Thursday"). */
   kicker?: string;
+  /** The day the kicker is about (Fas 3): the browser writes the relative words (lib/client/time-status.ts), never the build.
+   *  'in' appends " · in 8 days" to the kicker; 'day' replaces it with "Today"/"Tomorrow" and keeps the weekday further out. */
+  kickerDay?: { ymd: string; style: 'in' | 'day' };
   /** Holiday only: the holiday page this item links to (config/holiday-pages slug), for its photo. */
   pageSlug?: string;
   /** Holiday only: at most MAX_CARD_INSIGHTS lines from the page's data, for the compact card when the holiday is a secondary (Fas 1c).
@@ -92,11 +96,6 @@ export const MAX_GUIDES = 2;
 /** Insight lines on the compact holiday card (Fas 1c). */
 export const MAX_CARD_INSIGHTS = 2;
 
-/** "Thanksgiving · in 8 days" / "· tomorrow" / "· today" / "· 2 days ago". */
-export function holidayKicker(label: string, daysAway: number): string {
-  const when = daysAway === 0 ? 'today' : daysAway === 1 ? 'tomorrow' : daysAway > 1 ? `in ${daysAway} days` : daysAway === -1 ? 'yesterday' : `${-daysAway} days ago`;
-  return `${label} · ${when}`;
-}
 const DAY_MS = 86_400_000;
 
 const isoWeekday = (day: number) => ((((day + 3) % 7) + 7) % 7) + 1; // 1 = Monday
@@ -190,7 +189,7 @@ function holidayItem(i: FrontPageInput, today: number): FrontPageItem | null {
   // Card lines (Fas 1c): the closed count, then the page's own insight rows; none once the day is past.
   const insights = about.day < today ? [] : [...(closedLine ? [closedLine] : []), ...(h.insights ?? [])].slice(0, MAX_CARD_INSIGHTS);
   return {
-    type: 'holiday', headline: h.label, deck, url: h.url, kicker: holidayKicker(about.label, about.day - today),
+    type: 'holiday', headline: h.label, deck, url: h.url, kicker: about.label, kickerDay: { ymd: ymdOfDayNumber(about.day), style: 'in' },
     pageSlug: h.url.replace(/^\/|\/.*$/g, ''), insights,
   };
 }
@@ -250,10 +249,9 @@ function bigEventItem(i: FrontPageInput, now: Date, today: number): (FrontPageIt
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0];
   if (!e) return null;
   const day = localDayNumber(new Date(e.startsAt), i.timezone);
-  const when = day === today ? 'today' : weekdayName(day, i.locale);
   return {
-    type: 'big_event', headline: e.title, url: e.url, at: e.startsAt, kicker: day === today ? 'Today' : weekdayName(day, i.locale),
-    deck: [`${e.title}${e.venue ? ` at ${e.venue}` : ''}, ${when} at ${timeLabel(e.startsAt, i.timezone, i.locale)}.`],
+    type: 'big_event', headline: e.title, url: e.url, at: e.startsAt, kicker: weekdayName(day, i.locale), kickerDay: { ymd: ymdOfDayNumber(day), style: 'day' },
+    deck: [`${e.title}${e.venue ? ` at ${e.venue}` : ''}, ${weekdayName(day, i.locale)} at ${timeLabel(e.startsAt, i.timezone, i.locale)}.`],
   };
 }
 

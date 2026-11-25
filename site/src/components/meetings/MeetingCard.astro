@@ -5,7 +5,7 @@
 import Card from '../ui/Card.astro';
 import Pill from '../ui/Pill.astro';
 import { storyHref } from '../../lib/content-slugs';
-import { relativeDays, daysBetween, canCalendar, agendaNote, type MeetingView } from '../../lib/meetings-view';
+import { canCalendar, agendaNote, type MeetingView } from '../../lib/meetings-view';
 
 interface Props {
   m: MeetingView;
@@ -16,11 +16,10 @@ interface Props {
   /** the town's own public agenda page, offered when this meeting has no agenda link */
   portal?: { href: string; label: string } | null;
 }
-const { m, bare = false, todayYmd, commentHref = null, portal = null } = Astro.props;
+const { m, bare = false, commentHref = null, portal = null } = Astro.props;
 const SHOWN = 3;
 const first = m.items.slice(0, SHOWN);
 const rest = m.items.slice(SHOWN);
-const days = daysBetween(todayYmd, m.ymd);
 const isPdf = !!m.agendaUrl && /\.pdf(\?|$)/i.test(m.agendaUrl);
 const endMs = m.startMs != null ? m.startMs + 3 * 3_600_000 : null;
 const note = agendaNote(m);
@@ -42,7 +41,8 @@ const portalLink = !m.agendaUrl && !m.closed && m.items.length > 0 ? portal : nu
           <span class="mtg__date">{m.dateLabel}</span>{m.time && <span class:list={['mtg__time', { 'mtg__time--off': m.cancelled || m.postponed }]}> · {m.time}</span>}
         </h3>
         <p class="mtg__sub">
-          <span class="mtg__rel" data-mtg-rel={m.ymd}>{relativeDays(days)}</span>{m.location && <> · <span class="mtg__where">{m.location}</span></>}
+          {/* Fas 3: "in 5 days" is written by the browser (lib/client/time-status.ts); without JS only the date above stands. */}
+          <span class="mtg__rel" data-rel-day={m.ymd} hidden></span>{m.location && <><span class="mtg__sep"> · </span><span class="mtg__where">{m.location}</span></>}
         </p>
       </>
     )}
@@ -82,6 +82,7 @@ const portalLink = !m.agendaUrl && !m.closed && m.items.length > 0 ? portal : nu
   .mtg__time--off { text-decoration: line-through; color: var(--ink-soft); }
   .mtg__sub { margin: var(--ui-1) 0 0; font-size: 0.9375rem; color: var(--ink-soft); }
   .mtg__rel { font-weight: 600; color: var(--ink); }
+  .mtg__rel[hidden] + .mtg__sep { display: none; }
   .mtg__items { margin: var(--ui-3) 0 0; padding-left: 1.1rem; font-family: var(--font-ui); font-size: 0.9375rem; line-height: 1.45; color: var(--ink); }
   .mtg__items li { margin: 0.2rem 0; overflow-wrap: anywhere; }
   .mtg__more { margin: var(--ui-1) 0 0; }
