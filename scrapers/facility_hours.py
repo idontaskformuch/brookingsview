@@ -184,7 +184,11 @@ def run_brookings_catalog(fetcher: PoliteFetcher, conn, apply: bool, today: date
                 "(SELECT count(*) FROM place_hours ph WHERE ph.place_id = p.id) "
                 "FROM places p WHERE town_id = 'brookings_sd'")
     places = cur.fetchall()
+    # Close the read transaction before the fetches: --all-pages takes ~10 minutes at 10 s a page and the database ends a
+    # transaction left idle that long (2026-11-25, IdleInTransactionSessionTimeout); the writes are made together at the end.
+    conn.commit()
     by_key = {name_key(r[2]): r for r in places}
+    pending: list[tuple] = []
     listing = fetcher.get(BROOKINGS_CATALOG)
     if isinstance(listing, Refused):
         print(f"[refused] {BROOKINGS_CATALOG}: {listing.reason}")
@@ -219,6 +223,8 @@ def run_brookings_catalog(fetcher: PoliteFetcher, conn, apply: bool, today: date
             print(f"[no place row] {entry.name!r}: {entry.hours_text!r} ({url})")
             continue
         pid, slug, _, own_text, own_struct, method, _, n_rows = row
+        if any(p[0] == pid for p in pending):
+            continue  # the same place reached again under another URL (a row's own source_url)
         has_own = bool(own_text or own_struct or n_rows)
         if has_own and method != CATALOG_METHOD:
             same = (own_text or "").strip() == entry.hours_text
@@ -228,8 +234,10 @@ def run_brookings_catalog(fetcher: PoliteFetcher, conn, apply: bool, today: date
         print(f"[{'apply' if apply else 'dry-run'}] {slug}: {entry.hours_text!r} -> "
               f"{'flagged: ' + parsed.reason if parsed.structured is None else json.dumps(parsed.structured)}")
         changed += 1
-        if apply:
-            _write_text_and_structure(cur, pid, entry.hours_text, parsed, url, today, CATALOG_METHOD)
+        pending.append((pid, entry.hours_text, parsed, url))
+    if apply:
+        for pid, text, parsed, url in pending:
+            _write_text_and_structure(cur, pid, text, parsed, url, today, CATALOG_METHOD)
     print(f"\n{changed} place(s) {'written' if apply else 'would change'}")
     return 0
 

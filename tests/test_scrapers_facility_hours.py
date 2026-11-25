@@ -98,6 +98,42 @@ def test_all_pages_posts_until_the_last_page_and_stops_at_a_refusal():
     assert isinstance(catalog_all_links(refused, sidebar), Refused)
 
 
+def test_catalog_run_closes_the_read_transaction_before_fetching_and_writes_after(monkeypatch):
+    # 2026-11-25: --all-pages fetched for ~10 min inside the open read transaction; the database ended it at the final
+    # COMMIT (IdleInTransactionSessionTimeout), which would have rolled back every write of an --apply run.
+    import scrapers.facility_hours as fh
+    from scrapers.polite_fetch import Fetched
+    log: list[str] = []
+    # arrowhead-park as the catalog's detail page gives it (dry run 2026-11-25); the page itself is not parsed here.
+    arrowhead = "https://www.cityofbrookings-sd.gov/Facilities/Facility/Details/Arrowhead-Park-27"
+
+    class Cur:
+        def execute(self, sql, params=None):
+            log.append("write" if sql.lstrip().upper().startswith(("UPDATE", "DELETE", "INSERT")) else "select")
+
+        def fetchall(self):
+            return [(27, "arrowhead-park", "Arrowhead Park", None, None, None, arrowhead, 0)]
+
+    class Conn:
+        def cursor(self):
+            return Cur()
+
+        def commit(self):
+            log.append("commit")
+
+    class F:
+        def get(self, url):
+            log.append("fetch")
+            return Fetched(url, url, 200, b"")
+
+    monkeypatch.setattr(fh, "parse_catalog_detail",
+                        lambda html, url: fh.CatalogEntry(url=url, name="Arrowhead Park", hours_text="Sunrise to 11:00 p.m."))
+    assert fh.run_brookings_catalog(F(), Conn(), True, date(2026, 11, 25)) == 0
+    assert log[:2] == ["select", "commit"]
+    first_write = log.index("write")
+    assert "fetch" in log[:first_write] and "fetch" not in log[first_write:]
+
+
 def test_main_accepts_prod_flag_for_the_write_guard(monkeypatch):
     # 2026-11-25: `python -m scrapers.facility_hours briggs --apply --prod` stopped in argparse ("unrecognized arguments:
     # --prod"): main() gets a copy of argv, so db.db removing --prod from sys.argv never reached it.
