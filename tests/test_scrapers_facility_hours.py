@@ -263,3 +263,54 @@ def test_reverify_refused_page_writes_nothing_and_alerts():
     log = _reverify("", refused=True)
     assert log["updates"] == []
     assert "page could not be read (403)" in log["reconciled"][1]["hours-reverify|glasgow|the-mitchell-library"]
+
+
+# --- a hand-verified row the catalog confirms (owner 2026-11-25) -------------------------------------------------------------
+# brookings_sd place 2 (city-hall) and public-library as on file 2026-11-25; the catalog texts verbatim from that day's run.
+CITY_HALL_STRUCT = {"monday": ["08:00", "17:00"], "tuesday": ["08:00", "17:00"], "wednesday": ["08:00", "17:00"],
+                    "thursday": ["08:00", "17:00"], "friday": ["08:00", "12:00"], "saturday": None, "sunday": None}
+CITY_HALL_CATALOG = "Monday-Thursday 8 a.m.-5 p.m. Friday 8 a.m. - Noon"
+LIBRARY_CATALOG = "Monday-Saturday 9:00 a.m. - 9:00 p.m.Sunday 1:00 p.m. - 5:00 p.m. (Closed Sundays in August)"
+
+
+def _catalog_only(monkeypatch, catalog_text, own_text, own_struct, slug="city-hall", name="City and County Government Center"):
+    import scrapers.facility_hours as fh
+    from scrapers.polite_fetch import Fetched
+    url = "https://www.cityofbrookings-sd.gov/facilities/facility/details/City-and-County-Government-Center-16"
+    writes: list[tuple] = []
+
+    class Cur:
+        def execute(self, sql, params=None):
+            if sql.lstrip().upper().startswith(("UPDATE", "DELETE", "INSERT")):
+                writes.append((sql, params))
+
+        def fetchall(self):
+            return [(2, slug, "Brookings City Hall (City & County Government Center)", own_text, own_struct, None, url, 7, [name])]
+
+    class Conn:
+        def cursor(self):
+            return Cur()
+
+        def commit(self):
+            pass
+
+    class F:
+        def get(self, u):
+            assert u == url  # --only: the row's own Details page, not the list
+            return Fetched(u, u, 200, b"")
+
+    monkeypatch.setattr(fh, "parse_catalog_detail", lambda html, u: fh.CatalogEntry(url=u, name=name, hours_text=catalog_text))
+    assert fh.run_brookings_catalog(F(), Conn(), True, date(2026, 11, 25), only=[slug]) == 0
+    return writes
+
+
+def test_catalog_same_week_confirms_a_hand_verified_row(monkeypatch):
+    writes = _catalog_only(monkeypatch, CITY_HALL_CATALOG, "Mon–Thu 8am–5pm, Fri 8am–noon", CITY_HALL_STRUCT)
+    assert writes == [("UPDATE places SET verified_date = %s WHERE id = ANY(%s)", (date(2026, 11, 25), [2]))]
+
+
+def test_catalog_other_week_leaves_a_hand_verified_row_untouched(monkeypatch):
+    # public-library's own hours differ from the catalog's (DIFFERS, kept in the 2026-11-25 run): nothing written at all.
+    lib_struct = {"monday": ["09:30", "20:00"], "tuesday": ["09:30", "20:00"], "wednesday": ["09:30", "20:00"],
+                  "thursday": ["09:30", "20:00"], "friday": ["09:30", "17:30"], "saturday": ["09:30", "17:30"], "sunday": ["13:00", "17:00"]}
+    assert _catalog_only(monkeypatch, LIBRARY_CATALOG, "Mon–Thu 9:30am–8pm, Fri–Sat 9:30am–5:30pm, Sun 1pm–5pm", lib_struct) == []

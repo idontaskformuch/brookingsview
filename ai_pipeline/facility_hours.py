@@ -381,6 +381,11 @@ def parse_hours_text(raw: str | None) -> ParsedHours:
         if seasonal is not None:
             return ParsedHours(structured=seasonal, needs_review=False)
         if len(sentences) != 1:
+            # "Monday-Thursday 8 a.m.-5 p.m. Friday 8 a.m. - Noon" (Brookings catalog, city hall): the period of "p.m." before the
+            # next day name splits it into sentences. Read together only when the whole text is day groups (_parse_run_on_week).
+            run_on = _parse_run_on_week(" ".join(sentences))
+            if run_on is not None:
+                return ParsedHours(structured=run_on, needs_review=False)
             raise _Unparseable(f"more than one sentence, one week expected: {raw!r}")
         # "Sunrise to 11:00p.m." (Brookings facility catalog, e.g. Pioneer Park): a posted park hour from sunrise, with no days,
         # holds every day. Any other time without days stays flagged ("Open 10 a.m.-5 p.m.; see ... for which days").

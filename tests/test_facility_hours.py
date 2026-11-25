@@ -248,3 +248,11 @@ def test_run_on_groups_refuse_ambiguous_letters_and_repeated_days():
     assert parse_hours_text("T - F 9:00 AM — 3:00 PM Sat Closed Sun Closed").needs_review is True
     # The liquor store's row with Thursday named twice ("Thursday & Friday" for "Friday & Saturday").
     assert parse_hours_text("Monday-Thursday: 9AM-8PM Thursday & Friday: 9AM-9PM Sunday: 12PM-6PM").needs_review is True
+
+
+def test_city_hall_catalog_text_split_by_the_pm_period_reads_as_one_week():
+    # Brookings catalog, City and County Government Center (Details/...-16), verbatim 2026-11-25: "5 p.m. Friday" ends a "sentence".
+    result = parse_hours_text("Monday-Thursday 8 a.m.-5 p.m. Friday 8 a.m. - Noon")
+    assert result.needs_review is False
+    assert result.structured == {"monday": ("08:00", "17:00"), "tuesday": ("08:00", "17:00"), "wednesday": ("08:00", "17:00"),
+                                 "thursday": ("08:00", "17:00"), "friday": ("08:00", "12:00"), "saturday": None, "sunday": None}

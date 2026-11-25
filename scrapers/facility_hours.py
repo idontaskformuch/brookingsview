@@ -179,7 +179,16 @@ def catalog_all_links(fetcher: PoliteFetcher, list_html: str) -> list[str] | Ref
     return links
 
 
-def run_brookings_catalog(fetcher: PoliteFetcher, conn, apply: bool, today: date, all_pages: bool = False) -> int:
+def _plain_week(structured) -> dict[str, tuple[str, str] | None] | None:
+    """hours_structured (JSON lists) or a parse result (tuples) as {day: (open, close) | None} for all seven days; None for a
+    season form or anything that is not one plain week."""
+    if not isinstance(structured, dict) or "seasons" in structured or set(structured) != set(DAYS):
+        return None
+    return {d: (tuple(w) if w else None) for d, w in structured.items()}
+
+
+def run_brookings_catalog(fetcher: PoliteFetcher, conn, apply: bool, today: date, all_pages: bool = False,
+                          only: list[str] | None = None) -> int:
     cur = conn.cursor()
     cur.execute("SELECT id, slug, name, hours_text, hours_structured, verification_method, source_url, "
                 "(SELECT count(*) FROM place_hours ph WHERE ph.place_id = p.id), name_aliases "
@@ -195,6 +204,14 @@ def run_brookings_catalog(fetcher: PoliteFetcher, conn, apply: bool, today: date
         for n in [r[2], *(r[8] or [])]:
             by_key.setdefault(name_key(n), r[:8])
     pending: list[tuple] = []
+    confirmed: list[int] = []
+    if only:
+        # One or more rows' own Details pages, nothing else (owner 2026-11-25: "kör katalogen för city-hall").
+        urls = [r[6] for r in places if r[1] in only and r[6] and BROOKINGS_DETAIL_RE.match(r[6])]
+        missing = sorted(set(only) - {r[1] for r in places if r[6] and BROOKINGS_DETAIL_RE.match(r[6])})
+        if missing:
+            print(f"[no Details page] {missing}")
+        return _catalog_pages(fetcher, cur, urls, by_key, pending, confirmed, apply, today)
     listing = fetcher.get(BROOKINGS_CATALOG)
     if isinstance(listing, Refused):
         print(f"[refused] {BROOKINGS_CATALOG}: {listing.reason}")
@@ -214,6 +231,10 @@ def run_brookings_catalog(fetcher: PoliteFetcher, conn, apply: bool, today: date
         print(f"{len(urls)} detail pages reachable by GET (list page 1 + pages the rows link to); --all-pages reads the rest by POST")
     elif extra:
         print(f"    + {len(extra)} page(s) the rows link to that the search did not list: {extra}")
+    return _catalog_pages(fetcher, cur, urls, by_key, pending, confirmed, apply, today)
+
+
+def _catalog_pages(fetcher, cur, urls, by_key, pending, confirmed, apply: bool, today: date) -> int:
     changed = 0
     for url in urls:
         got = fetcher.get(url)
@@ -233,8 +254,13 @@ def run_brookings_catalog(fetcher: PoliteFetcher, conn, apply: bool, today: date
             continue  # the same place reached again under another URL (a row's own source_url)
         has_own = bool(own_text or own_struct or n_rows)
         if has_own and method != CATALOG_METHOD:
-            same = (own_text or "").strip() == entry.hours_text
-            print(f"[{'same' if same else 'DIFFERS, kept'}] {slug}: own {own_text!r} / catalog {entry.hours_text!r}")
+            # A hand-verified row is never rewritten. When the catalog states the same week (read with the same parser), the
+            # catalog has confirmed it: verified_date = today (owner 2026-11-25); text, structure and method stay as they are.
+            catalog_week = _plain_week(parse_hours_text(entry.hours_text).structured)
+            same = catalog_week is not None and catalog_week == _plain_week(own_struct)
+            print(f"[{'same hours, verified_date -> today' if same else 'DIFFERS, kept'}] {slug}: own {own_text!r} / catalog {entry.hours_text!r}")
+            if same and pid not in confirmed:
+                confirmed.append(pid)
             continue
         parsed = parse_hours_text(entry.hours_text)
         print(f"[{'apply' if apply else 'dry-run'}] {slug}: {entry.hours_text!r} -> "
@@ -244,7 +270,10 @@ def run_brookings_catalog(fetcher: PoliteFetcher, conn, apply: bool, today: date
     if apply:
         for pid, text, parsed, url in pending:
             _write_text_and_structure(cur, pid, text, parsed, url, today, CATALOG_METHOD)
-    print(f"\n{changed} place(s) {'written' if apply else 'would change'}")
+        if confirmed:
+            cur.execute("UPDATE places SET verified_date = %s WHERE id = ANY(%s)", (today, confirmed))
+    print(f"\n{changed} place(s) {'written' if apply else 'would change'}, {len(confirmed)} hand-verified place(s) "
+          f"{'confirmed' if apply else 'would be confirmed'} (verified_date)")
     return 0
 
 
@@ -439,6 +468,7 @@ def main(argv: list[str]) -> int:
     ap.add_argument("job", choices=("brookings-catalog", "briggs", "broomfield-departments", "reverify"))
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--all-pages", action="store_true", help="brookings-catalog: every list page via the POST search (owner 2026-11-25)")
+    ap.add_argument("--only", nargs="+", metavar="SLUG", help="brookings-catalog: only these rows' own Details pages")
     args = ap.parse_args([a for a in argv if a != "--prod"])
     today = date.today()
     if args.job == "reverify":
@@ -448,7 +478,7 @@ def main(argv: list[str]) -> int:
     fetcher = PoliteFetcher("register", town)
     with get_conn() as conn:
         if args.job == "brookings-catalog":
-            return run_brookings_catalog(fetcher, conn, args.apply, today, args.all_pages)
+            return run_brookings_catalog(fetcher, conn, args.apply, today, args.all_pages, args.only)
         if args.job == "briggs":
             return run_briggs(fetcher, conn, args.apply, today)
         return run_broomfield_departments(fetcher, conn)
