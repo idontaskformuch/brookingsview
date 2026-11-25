@@ -6,6 +6,7 @@ and libcal.sdstate.edu name AI crawlers in robots.txt (llm_excluded), and nothin
     python -m scrapers.facility_hours brookings-catalog --apply     # write (the facility-hours workflow, first Monday of a month)
     python -m scrapers.facility_hours briggs [--apply]              # Briggs Library from LibCal (the workflow, every Monday)
     python -m scrapers.facility_hours broomfield-departments        # one read per page, report only, never writes
+    python -m scrapers.facility_hours reverify [--apply]            # re-read hours on file (all towns, see run_reverify)
 
 Sources:
   * Brookings facility catalog (CivicPlus, https://www.cityofbrookings-sd.gov/Facilities): every detail page has
@@ -316,15 +317,133 @@ def run_broomfield_departments(fetcher: PoliteFetcher, conn) -> int:
     return 0
 
 
+# --- re-verification of hours already on file (owner order 2026-11-25 kväll, punkt 3) ------------------------------------------
+# A place whose verification_method has a page reader here is re-read once a month (the workflow's first week, like the catalog).
+# Same week on the page as in place_hours -> verified_date = today. A different week, or a page that cannot be read -> no new
+# hours are written; one alert per place through scrapers/alert_state.py (key REVERIFY_SCOPE + town|slug), and the owner decides.
+
+GLASGOW_LIFE_METHOD = "glasgow_life_page"
+# scrapers/glasgow_life_events.REQUEST_DELAY_SECONDS: the same pace as the events reader, on top of PoliteFetcher's own gap.
+GLASGOW_LIFE_DELAY_S = 2.0
+REVERIFY_SCOPE = "hours-reverify|"
+_GL_TABLE_RE = re.compile(r'<table class="table table--opening-hours">(.*?)</table>', re.S)
+_GL_ROW_RE = re.compile(r'<th scope="row">\s*([A-Za-z]+)\s*</th>\s*<td>(.*?)</td>', re.S)
+
+
+def parse_glasgow_life_week(page_html: str) -> dict[int, tuple[str, str] | None] | None:
+    """{day_of_week (0 = Sunday): (opens, closes) | None for "Closed"} from a glasgowlife.org.uk venue page's "Opening Hours"
+    table (the first one). None unless all seven days are there once each and every cell reads as one time range or "Closed"."""
+    table = _GL_TABLE_RE.search(page_html)
+    if not table:
+        return None
+    week: dict[int, tuple[str, str] | None] = {}
+    for day, cell in _GL_ROW_RE.findall(table.group(1)):
+        d = day.lower()
+        if d not in DAYS or DAYS.index(d) in week:
+            return None
+        text = _text(cell)
+        if text.lower() == "closed":
+            week[DAYS.index(d)] = None
+            continue
+        window = _parse_time_range(_normalize(text))
+        if window is None or window[0] == "sunrise":
+            return None
+        week[DAYS.index(d)] = window
+    return week if len(week) == 7 else None
+
+
+REVERIFIERS = {GLASGOW_LIFE_METHOD: (parse_glasgow_life_week, GLASGOW_LIFE_DELAY_S)}
+
+
+def _week_line(week: dict[int, tuple[str, str] | None] | None) -> str:
+    if week is None:
+        return "none"
+    return ", ".join(f"{DAYS[d][:3].capitalize()} {'closed' if w is None else f'{w[0]}-{w[1]}'}" for d, w in sorted(week.items()))
+
+
+def _db_week(rows: list[tuple]) -> dict[int, tuple[str, str] | None] | None:
+    """place_hours rows (day_of_week, opens, closes, valid_from) as one plain week, or None when they are not one (dated rows,
+    two windows on a day, a missing day): such a place cannot be compared and is reported, never overwritten."""
+    week: dict[int, tuple[str, str] | None] = {}
+    for d, o, c, valid_from in rows:
+        if valid_from is not None or d in week:
+            return None
+        week[d] = None if o is None else (_hhmm(o), _hhmm(c))
+    return week if len(week) == 7 else None
+
+
+def run_reverify(conn, apply: bool, today: date, make_fetcher=None, sleep=None, reconcile_fn=None, send=None) -> int:
+    import time
+    from scrapers.alert_state import reconcile
+    from scrapers.alerts import send_alert
+    make_fetcher = make_fetcher or (lambda town: PoliteFetcher("register", town))
+    sleep = sleep or time.sleep
+    reconcile_fn = reconcile_fn or reconcile
+    send = send or send_alert
+    cur = conn.cursor()
+    cur.execute("SELECT id, town_id, slug, verification_method, source_url FROM places WHERE verification_method = ANY(%s) "
+                "ORDER BY town_id, slug", (list(REVERIFIERS),))
+    places = cur.fetchall()
+    cur.execute("SELECT place_id, day_of_week, opens, closes, valid_from FROM place_hours WHERE place_id = ANY(%s) "
+                "ORDER BY place_id, day_of_week, opens", ([p[0] for p in places],))
+    rows: dict[int, list[tuple]] = {}
+    for pid, d, o, c, vf in cur.fetchall():
+        rows.setdefault(pid, []).append((d, o, c, vf))
+    conn.commit()  # no transaction held open while the pages are read (2026-11-25, IdleInTransactionSessionTimeout)
+    fetchers: dict[str, PoliteFetcher] = {}
+    confirmed: list[int] = []
+    active: dict[str, str] = {}
+    for i, (pid, town, slug, method, url) in enumerate(places):
+        parse, delay = REVERIFIERS[method]
+        key = f"{REVERIFY_SCOPE}{town}|{slug}"
+        ours = _db_week(rows.get(pid, []))
+        if not url:
+            active[key] = f"{town}/{slug}: no source_url to re-read"
+            print(f"[unreadable] {town}/{slug}: no source_url")
+            continue
+        if i:
+            sleep(delay)
+        fetcher = fetchers.setdefault(town, make_fetcher(town))
+        got = fetcher.get(url)
+        page = None
+        if isinstance(got, Refused):
+            reason = got.reason
+        elif got.status != 200:
+            reason = f"HTTP {got.status}"
+        else:
+            page = parse(got.text)
+            reason = "no opening-hours table that reads as one week" if page is None else ""
+        if page is None:
+            active[key] = f"{town}/{slug}: page could not be read ({reason}); ours {_week_line(ours)} -- {url}"
+            print(f"[unreadable] {town}/{slug}: {reason}")
+        elif ours != page:
+            active[key] = f"{town}/{slug}: hours differ -- ours {_week_line(ours)} / page {_week_line(page)} -- {url}"
+            print(f"[DIFFERS] {town}/{slug}:\n    ours {_week_line(ours)}\n    page {_week_line(page)}")
+        else:
+            confirmed.append(pid)
+            print(f"[{'confirmed' if apply else 'dry-run: same'}] {town}/{slug}")
+    print(f"\n{len(confirmed)} same, {len(active)} to report{'' if apply else ' (dry run: nothing written, no alert)'}")
+    if not apply:
+        return 0
+    if confirmed:
+        cur.execute("UPDATE places SET verified_date = %s WHERE id = ANY(%s)", (today, confirmed))
+    if reconcile_fn(conn, REVERIFY_SCOPE, active, title="[facility hours] re-verification: owner's yes needed") is None and active:
+        send("\n".join(active[k] for k in sorted(active)), title="[facility hours] re-verification: owner's yes needed")
+    return 0
+
+
 def main(argv: list[str]) -> int:
     import argparse
     from db.db import get_conn  # reads --prod from sys.argv (the write guard); argv here is a copy that still holds it
     ap = argparse.ArgumentParser(prog="python -m scrapers.facility_hours")
-    ap.add_argument("job", choices=("brookings-catalog", "briggs", "broomfield-departments"))
+    ap.add_argument("job", choices=("brookings-catalog", "briggs", "broomfield-departments", "reverify"))
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--all-pages", action="store_true", help="brookings-catalog: every list page via the POST search (owner 2026-11-25)")
     args = ap.parse_args([a for a in argv if a != "--prod"])
     today = date.today()
+    if args.job == "reverify":
+        with get_conn() as conn:
+            return run_reverify(conn, args.apply, today)
     town = "broomfield_co" if args.job == "broomfield-departments" else "brookings_sd"
     fetcher = PoliteFetcher("register", town)
     with get_conn() as conn:

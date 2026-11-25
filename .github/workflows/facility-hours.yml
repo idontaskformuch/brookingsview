@@ -1,14 +1,16 @@
 name: facility-hours
 # Opening hours read from the towns' own pages (owner order D 4, 2026-11-25), scrapers/facility_hours.py. Started by the cron
 # dispatcher on the Monday 11:00 UTC scrape tick, or by hand. Every Monday: Briggs Library from LibCal (dated days; terms and
-# breaks change often). First Monday of a month (day 1-7): the Brookings facility catalog (Crawl-delay 10, robots.txt first).
+# breaks change often). First Monday of a month (day 1-7): the Brookings facility catalog (Crawl-delay 10, robots.txt first), then
+# the re-verification of hours already on file (every town: places whose verification_method has a page reader, e.g. Glasgow
+# Life venue pages): same week -> verified_date updated; changed or unreadable -> nothing written, one alert (alert_state).
 # Deterministic parsing only; neither source ever goes through a model (both name AI crawlers in robots.txt: llm_excluded).
 
 on:
   workflow_dispatch:
     inputs:
       catalog:
-        description: "Also read the Brookings facility catalog (normally only the first Monday of a month)"
+        description: "Also read the Brookings facility catalog and re-verify hours on file (normally only the first Monday of a month)"
         type: boolean
         default: false
 
@@ -17,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ALERT_WEBHOOK: ${{ secrets.ALERT_WEBHOOK }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -32,3 +35,10 @@ jobs:
         if: ${{ !inputs.catalog }}
         run: |
           if [ "$(date -u +%d)" -le 7 ]; then python -m scrapers.facility_hours brookings-catalog --apply; else echo "not the first week: catalog skipped"; fi
+      - name: Re-verify hours on file (with the catalog)
+        if: ${{ !cancelled() && inputs.catalog }}  # also when a catalog step failed
+        run: python -m scrapers.facility_hours reverify --apply
+      - name: Re-verify hours on file (monthly, by date)
+        if: ${{ !cancelled() && !inputs.catalog }}
+        run: |
+          if [ "$(date -u +%d)" -le 7 ]; then python -m scrapers.facility_hours reverify --apply; else echo "not the first week: re-verification skipped"; fi

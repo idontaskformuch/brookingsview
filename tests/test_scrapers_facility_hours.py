@@ -180,3 +180,86 @@ def test_catalog_finds_a_row_by_its_name_alias(monkeypatch):
                         lambda html, u: fh.CatalogEntry(url=u, name="Brookings Prairie", hours_text="Sunrise to 11:00p.m."))
     assert fh.run_brookings_catalog(F(), Conn(), True, date(2026, 11, 25)) == 0
     assert len(writes) == 1 and writes[0][0] == "Sunrise to 11:00p.m." and writes[0][-1] == 87
+
+
+# --- re-verification (owner order 2026-11-25 kväll, punkt 3) ---------------------------------------------------------------
+# glasgow/the-mitchell-library: place_hours as on file 2026-11-25 (Sun closed, Mon/Wed/Fri/Sat 09:00-17:00, Tue/Thu 09:00-20:00).
+MITCHELL_URL = "https://www.glasgowlife.org.uk/libraries/venues/the-mitchell-library"
+MITCHELL_ROWS = [(0, None, None, None), (1, "09:00:00", "17:00:00", None), (2, "09:00:00", "20:00:00", None),
+                 (3, "09:00:00", "17:00:00", None), (4, "09:00:00", "20:00:00", None), (5, "09:00:00", "17:00:00", None),
+                 (6, "09:00:00", "17:00:00", None)]
+
+
+def test_glasgow_life_table_reads_as_one_week():
+    from scrapers.facility_hours import parse_glasgow_life_week
+    week = parse_glasgow_life_week(_read("glasgow-life-mitchell-hours.html"))
+    assert week == {0: None, 1: ("09:00", "17:00"), 2: ("09:00", "20:00"), 3: ("09:00", "17:00"), 4: ("09:00", "20:00"),
+                    5: ("09:00", "17:00"), 6: ("09:00", "17:00")}
+
+
+def test_glasgow_life_table_with_an_unreadable_cell_is_none():
+    from scrapers.facility_hours import parse_glasgow_life_week
+    # The Mitchell's table with the one changed field marked: Tuesday's cell "By appointment".
+    page = _read("glasgow-life-mitchell-hours.html").replace("<td>9:00am - 8:00pm</td>", "<td>By appointment</td>", 1)
+    assert parse_glasgow_life_week(page) is None
+
+
+def _reverify(page_html, rows=MITCHELL_ROWS, refused=False):
+    import scrapers.facility_hours as fh
+    from scrapers.polite_fetch import Fetched, Refused
+    log = {"updates": [], "reconciled": None, "sent": [], "sleeps": []}
+
+    class Cur:
+        def __init__(self):
+            self.last = None
+
+        def execute(self, sql, params=None):
+            self.last = sql
+            if sql.startswith("UPDATE"):
+                log["updates"].append(params)
+
+        def fetchall(self):
+            if "FROM places" in self.last:
+                return [(11, "glasgow", "the-mitchell-library", fh.GLASGOW_LIFE_METHOD, MITCHELL_URL)]
+            return [(11, *r) for r in rows]
+
+    class Conn:
+        def cursor(self):
+            return Cur()
+
+        def commit(self):
+            pass
+
+    class F:
+        def get(self, url):
+            return Refused(url, "403") if refused else Fetched(url, url, 200, page_html.encode())
+
+    def reconcile(conn, scope, active, title, **k):
+        log["reconciled"] = (scope, active)
+        return {"new": list(active), "reminder": [], "resolved": []}
+
+    assert fh.run_reverify(Conn(), True, date(2026, 11, 25), make_fetcher=lambda t: F(), sleep=log["sleeps"].append,
+                           reconcile_fn=reconcile, send=lambda m, **k: log["sent"].append(m)) == 0
+    return log
+
+
+def test_reverify_same_week_updates_verified_date_and_raises_nothing():
+    log = _reverify(_read("glasgow-life-mitchell-hours.html"))
+    assert log["updates"] == [(date(2026, 11, 25), [11])]
+    assert log["reconciled"] == ("hours-reverify|", {})
+
+
+def test_reverify_changed_week_writes_nothing_and_alerts_with_both_weeks():
+    # The Mitchell's page with the one changed field marked: Thursday 9:00am - 6:00pm instead of 8:00pm.
+    page = _read("glasgow-life-mitchell-hours.html").replace("<td>9:00am - 8:00pm</td>", "<td>9:00am - 6:00pm</td>", 2)
+    page = page.replace("<td>9:00am - 6:00pm</td>", "<td>9:00am - 8:00pm</td>", 1)
+    log = _reverify(page)
+    assert log["updates"] == []
+    msg = log["reconciled"][1]["hours-reverify|glasgow|the-mitchell-library"]
+    assert "ours" in msg and "Thu 09:00-20:00" in msg and "Thu 09:00-18:00" in msg and MITCHELL_URL in msg
+
+
+def test_reverify_refused_page_writes_nothing_and_alerts():
+    log = _reverify("", refused=True)
+    assert log["updates"] == []
+    assert "page could not be read (403)" in log["reconciled"][1]["hours-reverify|glasgow|the-mitchell-library"]
