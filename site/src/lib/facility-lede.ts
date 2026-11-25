@@ -65,6 +65,7 @@ function pickPhoneConnector(slug: string): string {
 const DAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function clockWord(hhmm: string): string {
+  if (hhmm === 'sunrise') return 'sunrise';
   const [h, m] = hhmm.split(':').map(Number);
   if (h === 12 && m === 0) return 'noon';
   if ((h === 0 || h === 24) && m === 0) return 'midnight';
@@ -79,7 +80,7 @@ export function summarizeHours(rows: { day_of_week: number; opens: string | null
   const byDay = new Map<number, string>();
   for (const r of rows) {
     if (!r.opens || !r.closes) continue;
-    byDay.set(r.day_of_week, isRoundTheClock(r.opens, r.closes) ? '24 hours' : `${clockWord(r.opens.slice(0, 5))}–${clockWord(r.closes.slice(0, 5))}`);
+    byDay.set(r.day_of_week, isRoundTheClock(r.opens, r.closes) ? '24 hours' : `${clockWord(r.opens === 'sunrise' ? r.opens : r.opens.slice(0, 5))}–${clockWord(r.closes.slice(0, 5))}`);
   }
   if (byDay.size === 0) return null;
   if (byDay.size === 7 && [...byDay.values()].every((w) => w === '24 hours')) return '24 hours, 7 days a week';

@@ -33,6 +33,10 @@
 import type { PlaceHoursRow, PlaceHoursException } from './db';
 import { calendarDateParts } from './calendar-date';
 import { formatClock, isRoundTheClock } from './facility-hours';
+import { sunriseHHMM } from './sun';
+
+/** Where the town is, for an opening time of "sunrise" (order D 3): the window opens at that day's computed sunrise. */
+export interface SunContext { lat: number; lon: number; timezone: string }
 
 export type PlaceOpenStatus =
   | { known: false }
@@ -104,7 +108,7 @@ function compareCalendarDates(a: string | Date, b: string | Date): number {
  *  sourced fact, not "unknown"), otherwise every regular place_hours row
  *  for that weekday whose valid_from/valid_to (if set) covers the date. */
 function windowsForDate(
-  isoDate: string, weekday: number, hours: PlaceHoursRow[], exceptions: PlaceHoursException[],
+  isoDate: string, weekday: number, hours: PlaceHoursRow[], exceptions: PlaceHoursException[], sun: SunContext | null = null,
 ): { opens: string; closes: string }[] {
   const exception = exceptions.find((e) => sameCalendarDate(e.date, isoDate));
   if (exception) {
@@ -123,7 +127,14 @@ function windowsForDate(
     // backfill (2026-10-03) became the first real data to ever store one;
     // place_hours_exceptions already had the equivalent guard above.
     .filter((h) => h.opens !== null && h.closes !== null)
-    .map((h) => ({ opens: h.opens as string, closes: h.closes as string }));
+    .map((h) => ({ opens: resolveOpens(h.opens as string, isoDate, sun), closes: h.closes as string }))
+    // "sunrise" without the town's coordinates (or on a day the sun does not rise) is unknown, never a guessed time.
+    .filter((w): w is { opens: string; closes: string } => w.opens !== null);
+}
+
+function resolveOpens(opens: string, isoDate: string, sun: SunContext | null): string | null {
+  if (opens !== 'sunrise') return opens;
+  return sun ? sunriseHHMM(isoDate, sun.lat, sun.lon, sun.timezone) : null;
 }
 
 /** One calendar date's hours for /today/ (Broomfield AdSense plan F3, 2026-11-12): the windows, 'closed' when a sourced row or exception
@@ -157,15 +168,17 @@ export function hoursOnDate(
  *  reader when it actually reopens. */
 export function computePlaceOpenStatus(
   hours: PlaceHoursRow[], exceptions: PlaceHoursException[], now: Date, timezone: string, gb = false,
+  coords: { lat: number; lon: number } | null = null,
 ): PlaceOpenStatus {
+  const sun: SunContext | null = coords ? { ...coords, timezone } : null;
   if (hours.length === 0) return { known: false };
 
   const { weekday, isoDate, minutesOfDay } = localParts(now, timezone);
-  const todayWindows = windowsForDate(isoDate, weekday, hours, exceptions);
+  const todayWindows = windowsForDate(isoDate, weekday, hours, exceptions, sun);
 
   // Yesterday's window that runs past midnight is still open in the small hours.
   const yesterday = localParts(new Date(now.getTime() - 86_400_000), timezone);
-  for (const w of windowsForDate(yesterday.isoDate, yesterday.weekday, hours, exceptions)) {
+  for (const w of windowsForDate(yesterday.isoDate, yesterday.weekday, hours, exceptions, sun)) {
     if (endsNextDay(w) && minutesOfDay < toMinutes(w.closes)) {
       return { known: true, isOpen: true, closesAt: formatClock(w.closes, gb) };
     }
@@ -179,7 +192,7 @@ export function computePlaceOpenStatus(
   for (let offset = 0; offset < 7; offset++) {
     const future = new Date(now.getTime() + offset * 86_400_000);
     const futureParts = localParts(future, timezone);
-    const windows = offset === 0 ? todayWindows : windowsForDate(futureParts.isoDate, futureParts.weekday, hours, exceptions);
+    const windows = offset === 0 ? todayWindows : windowsForDate(futureParts.isoDate, futureParts.weekday, hours, exceptions, sun);
     for (const w of windows) {
       if (offset === 0 && toMinutes(w.opens) <= minutesOfDay) continue; // today's window already passed
       const label = offset === 0 ? 'today'
@@ -210,7 +223,7 @@ export function buildPlaceOpeningHoursSpecification(hours: PlaceHoursRow[]): Rec
   // has no "closed" value; the day's absence from this array IS the closed
   // signal, same as a weekday with no row at all.
   return hours
-    .filter((h) => h.opens !== null && h.closes !== null)
+    .filter((h) => h.opens !== null && h.closes !== null && h.opens !== 'sunrise')
     .map((h) => ({
       '@type': 'OpeningHoursSpecification',
       dayOfWeek: `https://schema.org/${SCHEMA_DAY_NAMES[h.day_of_week]}`,

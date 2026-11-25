@@ -37,7 +37,7 @@ _DAY_TOKEN_RE = "|".join(_DAY_ABBR)
 # En dash (U+2013) and em dash (U+2014) serve as range separators in hand-curated text; normalized to "-" up front.
 _DASH_RE = re.compile("[–—]")
 # "10 a.m." / "11:00p.m." -> "10am" / "11:00pm" (Brookings museum rows, Brookings facility catalog).
-_MERIDIEM_DOTS_RE = re.compile(r"\b([ap])\.\s?m\.?", re.IGNORECASE)
+_MERIDIEM_DOTS_RE = re.compile(r"(?<![A-Za-z])([ap])\.\s?m\.?", re.IGNORECASE)  # also "11:00p.m." (no word boundary)
 _SPACE_BEFORE_MERIDIEM_RE = re.compile(r"(\d)\s+(am|pm)\b", re.IGNORECASE)
 # "7:30am to 4pm", "Sunrise to 11pm": "to" between two times is a range separator.
 _TO_RANGE_RE = re.compile(r"(\d(?::\d{2})?(?:am|pm)?|noon|midnight|sunrise)\s+to\s+(?=\d|noon|midnight)", re.IGNORECASE)
@@ -324,6 +324,11 @@ def parse_hours_text(raw: str | None) -> ParsedHours:
             return ParsedHours(structured=seasonal, needs_review=False)
         if len(sentences) != 1:
             raise _Unparseable(f"more than one sentence, one week expected: {raw!r}")
+        # "Sunrise to 11:00p.m." (Brookings facility catalog, e.g. Pioneer Park): a posted park hour from sunrise, with no days,
+        # holds every day. Any other time without days stays flagged ("Open 10 a.m.-5 p.m.; see ... for which days").
+        lone = _parse_time_range(sentences[0])
+        if lone is not None and lone[0] == "sunrise":
+            return ParsedHours(structured={d: lone for d in DAY_ORDER}, needs_review=False)
         return ParsedHours(structured=_parse_week(sentences[0], raw), needs_review=False)
     except _Unparseable as exc:
         return ParsedHours(structured=None, needs_review=True, reason=str(exc))

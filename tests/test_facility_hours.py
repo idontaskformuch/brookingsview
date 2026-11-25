@@ -200,3 +200,17 @@ def test_childrens_museum_time_without_days_stays_flagged():
     # brookings_sd/childrens-museum-of-south-dakota
     result = parse_hours_text("Open 10 a.m.-5 p.m.; see the museum's Hours + Admission page for which days.")
     assert result.structured is None and result.needs_review is True
+
+
+# --- Order D 3: "Sunrise to 11 p.m." --------------------------------------------------------------------------------------
+
+def test_pioneer_park_sunrise_to_eleven_every_day():
+    # Brookings facility catalog, Pioneer Park, verbatim (.claude/audit/sources-brookings.md, read 2026-11-25)
+    result = parse_hours_text("Sunrise to 11:00p.m.")
+    assert result.needs_review is False
+    assert all(result.structured[d] == ("sunrise", "23:00") for d in result.structured)
+
+
+def test_plain_time_without_days_is_still_flagged():
+    # Only a sunrise park hour is read as daily without days; the Children's Museum's "Open 10 a.m.-5 p.m." is not.
+    assert parse_hours_text("10am-5pm").needs_review is True

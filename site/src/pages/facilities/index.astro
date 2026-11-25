@@ -105,7 +105,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
     <section class="fac-group">
       <SectionRule label={FACILITY_CATEGORY_LABELS[cat] ?? cat} />
       <ul class:list={['fac-list', GRID_CATEGORIES.has(cat) && 'fac-list--grid']}
-        data-open-status-tz={siteConfig.timezone} data-gb={forCountry(siteConfig.country, '', '1')}>
+        data-open-status-tz={siteConfig.timezone} data-gb={forCountry(siteConfig.country, '', '1')} data-sun={JSON.stringify(siteConfig.townCenter)}>
         {rowsFor(cat).map((r) => (
           <li class="fac">
             <a class="fac__name" href={`/facilities/${r.slug}/`}>{r.name}</a>
@@ -139,7 +139,8 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
       const raw = badge.dataset.hours;
       const pill = badge.querySelector<HTMLElement>('.ui-pill');
       if (!tz || !raw || !pill) return;
-      const status = computePlaceOpenStatus(JSON.parse(raw) as PlaceHoursRow[], [], new Date(), tz, list?.dataset.gb === '1');
+      const coords = list?.dataset.sun ? JSON.parse(list.dataset.sun) as { lat: number; lon: number } : null;
+      const status = computePlaceOpenStatus(JSON.parse(raw) as PlaceHoursRow[], [], new Date(), tz, list?.dataset.gb === '1', coords);
       if (!status.known) return;
       pill.classList.remove('ui-pill--neutral', 'ui-pill--ok');
       pill.classList.add(status.isOpen ? 'ui-pill--ok' : 'ui-pill--neutral');

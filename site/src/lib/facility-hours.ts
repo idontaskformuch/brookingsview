@@ -29,6 +29,7 @@ const DAY_KEYS: (keyof StructuredHours)[] = [
  *  uses (see lib/publish.py's fmt_time()/_fmt() equivalents on the Python
  *  side, same reasoning: readers think in 12-hour clock time). */
 export function formatClock(hhmm: string, gb = false): string {
+  if (hhmm === 'sunrise') return 'Sunrise'; // computed per day only where "now" is known (lib/sun.ts)
   const [h, m] = hhmm.split(':').map(Number);
   const hour12 = h % 12 || 12;
   // gb (owner 2026-10-28): "10am", "5:30pm" -- the same shape as country-profile's formatClockCompact.

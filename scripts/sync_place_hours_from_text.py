@@ -56,6 +56,13 @@ def main() -> int:
             for i, day in enumerate(DAYS):
                 w = parsed.structured.get(day)
                 print(f"    {day:<9} {'closed' if not w else f'{w[0]}-{w[1]}'}")
+            if any(w and w[0] == "sunrise" for w in parsed.structured.values()):
+                # "sunrise" is computed per day on the site (site/src/lib/sun.ts); place_hours.opens is a TIME and cannot hold it.
+                if args.apply:
+                    cur.execute("UPDATE places SET hours_structured = %s, hours_needs_review = false WHERE id = %s",
+                                (json.dumps(parsed.structured), pid))
+                    cur.execute("DELETE FROM place_hours WHERE place_id = %s", (pid,))
+                continue
             if args.apply:
                 cur.execute("UPDATE places SET hours_structured = %s, hours_needs_review = false WHERE id = %s",
                             (json.dumps({d: (list(parsed.structured[d]) if parsed.structured.get(d) else None) for d in DAYS}), pid))
