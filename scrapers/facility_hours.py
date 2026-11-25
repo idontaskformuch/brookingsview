@@ -181,13 +181,18 @@ def catalog_all_links(fetcher: PoliteFetcher, list_html: str) -> list[str] | Ref
 def run_brookings_catalog(fetcher: PoliteFetcher, conn, apply: bool, today: date, all_pages: bool = False) -> int:
     cur = conn.cursor()
     cur.execute("SELECT id, slug, name, hours_text, hours_structured, verification_method, source_url, "
-                "(SELECT count(*) FROM place_hours ph WHERE ph.place_id = p.id) "
+                "(SELECT count(*) FROM place_hours ph WHERE ph.place_id = p.id), name_aliases "
                 "FROM places p WHERE town_id = 'brookings_sd'")
     places = cur.fetchall()
     # Close the read transaction before the fetches: --all-pages takes ~10 minutes at 10 s a page and the database ends a
     # transaction left idle that long (2026-11-25, IdleInTransactionSessionTimeout); the writes are made together at the end.
     conn.commit()
-    by_key = {name_key(r[2]): r for r in places}
+    # A row is found by its own name or by one of its name_aliases: the catalog calls city-hall "City and County Government
+    # Center" and prairie-park "Brookings Prairie" (aliases set by hand, owner 2026-11-25); an alias is a name, never a guess.
+    by_key = {}
+    for r in places:
+        for n in [r[2], *(r[8] or [])]:
+            by_key.setdefault(name_key(n), r[:8])
     pending: list[tuple] = []
     listing = fetcher.get(BROOKINGS_CATALOG)
     if isinstance(listing, Refused):

@@ -112,7 +112,7 @@ def test_catalog_run_closes_the_read_transaction_before_fetching_and_writes_afte
             log.append("write" if sql.lstrip().upper().startswith(("UPDATE", "DELETE", "INSERT")) else "select")
 
         def fetchall(self):
-            return [(27, "arrowhead-park", "Arrowhead Park", None, None, None, arrowhead, 0)]
+            return [(27, "arrowhead-park", "Arrowhead Park", None, None, None, arrowhead, 0, [])]
 
     class Conn:
         def cursor(self):
@@ -146,3 +146,37 @@ def test_main_accepts_prod_flag_for_the_write_guard(monkeypatch):
     monkeypatch.setattr(fh, "run_briggs", lambda f, c, apply, today: seen.update(apply=apply) or 0)
     assert fh.main(["briggs", "--apply", "--prod"]) == 0
     assert seen == {"apply": True}
+
+
+def test_catalog_finds_a_row_by_its_name_alias(monkeypatch):
+    # 2026-11-25 dry run: "[no place row] 'Brookings Prairie': 'Sunrise to 11:00p.m.'" although brookings_sd place 87
+    # (prairie-park, "Prairie Park") is the same park; the owner set the catalog's name as its alias.
+    import scrapers.facility_hours as fh
+    from scrapers.polite_fetch import Fetched
+    url = "https://www.cityofbrookings-sd.gov/Facilities/Facility/Details/Brookings-Prairie-38"
+    writes: list[tuple] = []
+
+    class Cur:
+        def execute(self, sql, params=None):
+            if sql.lstrip().upper().startswith("UPDATE"):
+                writes.append(params)
+
+        def fetchall(self):
+            return [(87, "prairie-park", "Prairie Park", None, None, None, None, 0, ["Brookings Prairie"])]
+
+    class Conn:
+        def cursor(self):
+            return Cur()
+
+        def commit(self):
+            pass
+
+    class F:
+        def get(self, u):
+            return Fetched(u, u, 200, b"")
+
+    monkeypatch.setattr(fh, "catalog_detail_links", lambda html, base=fh.BROOKINGS_CATALOG: [url])
+    monkeypatch.setattr(fh, "parse_catalog_detail",
+                        lambda html, u: fh.CatalogEntry(url=u, name="Brookings Prairie", hours_text="Sunrise to 11:00p.m."))
+    assert fh.run_brookings_catalog(F(), Conn(), True, date(2026, 11, 25)) == 0
+    assert len(writes) == 1 and writes[0][0] == "Sunrise to 11:00p.m." and writes[0][-1] == 87
