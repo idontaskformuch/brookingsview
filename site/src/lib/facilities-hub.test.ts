@@ -41,6 +41,15 @@ describe('hubPromisesHours: the heading promises hours only when most places hav
   it('glasgow: 12 of 12 -> promise', () => {
     expect(hubPromisesHours(Array(12).fill(withHours))).toBe(true);
   });
+  it('event venues are left out of the count (brookings_sd SDSU stadium, arena, PAC)', () => {
+    const arenas = ['dana-j-dykhouse-stadium', 'first-bank-trust-arena', 'oscar-larson-performing-arts-center'];
+    const places = [
+      ...Array(10).fill(withHours), ...Array(10).fill(without).map((p, i) => ({ ...p, slug: `x${i}` })),
+      ...arenas.map((slug) => ({ hasHours: false, slug })),
+    ];
+    expect(hubPromisesHours(places)).toBe(false); // 10 of 23
+    expect(hubPromisesHours(places, arenas)).toBe(true); // 10 of 20
+  });
   it('half counts as most; empty never promises', () => {
     expect(hubPromisesHours([withHours, without])).toBe(true);
     expect(hubPromisesHours([])).toBe(false);

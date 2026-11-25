@@ -11,10 +11,12 @@ import { summarizeHours } from './facility-lede';
 /** True when at least half of the places have hours (effective hours: place_hours rows or hours_structured; before order D
  *  only hours_structured counted, so Broomfield's court, police and Workforce Center rows were invisible here). Below that the
  *  hub's heading names the kinds of places instead of promising hours (spec: "Rubriken får inte lova sådant som inte finns"). */
-export function hubPromisesHours(places: { hasHours: boolean }[]): boolean {
-  if (places.length === 0) return false;
-  const withHours = places.filter((p) => p.hasHours).length;
-  return withHours * 2 >= places.length;
+export function hubPromisesHours(places: { hasHours: boolean; slug?: string }[], eventVenues: string[] = []): boolean {
+  // Event venues (config/hours-scope.ts) have no opening hours to have: not counted either way (order D 6).
+  const counted = places.filter((p) => !(p.slug && eventVenues.includes(p.slug)));
+  if (counted.length === 0) return false;
+  const withHours = counted.filter((p) => p.hasHours).length;
+  return withHours * 2 >= counted.length;
 }
 
 function escapeRegExp(s: string): string {

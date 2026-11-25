@@ -30,6 +30,7 @@ import { resolveHubNavItems } from '../../lib/clusters';
 import { hubPromisesHours, parkAmenities, shortAddress, weeklyHoursLine } from '../../lib/facilities-hub';
 import { effectiveHours, seasonRangeLabel } from '../../lib/hours-spec';
 import { PARK_HOURS, PARK_HOURS_LABEL } from '../../config/park-hours';
+import { EVENT_VENUES } from '../../config/hours-scope';
 import { todayDate } from '../../lib/today-page';
 import ClusterNav from '../../components/ClusterNav.astro';
 
@@ -46,7 +47,7 @@ for (const r of await getAllPlaceHoursForTown()) {
 const buildDay = todayDate(new Date(), siteConfig.timezone).iso;
 const parkRule = PARK_HOURS[siteConfig.townId] ?? null;
 const hoursById = new Map(facilities.map((f) => [f.id, effectiveHours(f, rowsByPlace.get(f.id) ?? [], buildDay, parkRule)]));
-const h1 = hubPromisesHours(facilities.map((f) => ({ hasHours: hoursById.get(f.id) != null })))
+const h1 = hubPromisesHours(facilities.map((f) => ({ hasHours: hoursById.get(f.id) != null, slug: f.slug })), EVENT_VENUES[siteConfig.townId] ?? [])
   ? pageMeta.h1 : (pageMeta.h1WithoutHours ?? pageMeta.h1);
 
 const byCategory = new Map<string, typeof facilities>();
