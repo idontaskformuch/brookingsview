@@ -14,8 +14,9 @@ set -o pipefail
 # Lokala byggen skriver aldrig till live-DB (Fas 0.5, 2026-11-18): flaggan sätts bara i CI:s produktionsbyggen.
 unset IMAGE_HISTORY_WRITE
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-# Windows (Git Bash): ett ärvt "c:\..." (liten enhetsbokstav) gör att node laddar vitest från c:/ men Vite
-# (realpath.native) från C:/ -> två instanser av @vitest/runner, varje test faller (astro 6). pwd -W ger C:/...
+# QA build.lowercase-drive (ägaren 2026-11-25): vägra köra från "c:\..." (liten enhetsbokstav). Därifrån blir bygget grönt utan
+# komponent-CSS på någon sida, och vitest laddar två instanser av @vitest/runner. Kontrollen gäller katalogen batteriet startas i.
+node "$ROOT/site/scripts/require-upper-drive.mjs" || { echo "battery: AVBRUTET, inget steg kört (liten enhetsbokstav)" >&2; exit 2; }
 ROOT="$(cd "$ROOT" && { pwd -W 2>/dev/null || pwd; })"
 LOG="$(cd "$ROOT" && mkdir -p "${1:-scratch_tmp/battery}" && cd "${1:-scratch_tmp/battery}" && pwd)"
 CHECK_CITY="${CHECK_CITY:-brookings_sd}"

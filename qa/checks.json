@@ -496,6 +496,11 @@
         "born_from": "2026-11-25: a local Glasgow build finished green with no <style> and no /_astro/*.css on any page (bare HTML everywhere) after a JS comment was placed inside a template expression in components/CookieBanner.astro; seen in a screenshot, caught before commit was pushed. Regression fixture: tests/fixtures/qa_page_css_2026-11-25, tests/test_verify_page_css.py.",
         "what": "a built HTML page (not a redirect stub or verification file) with neither a <style> block nor a /_astro/*.css stylesheet link (scripts/verify_page_css.mjs on dist/ in the battery, as a step in every *-deploy.yml, and inside scripts/wrangler_deploy_retry.sh, which every deploy goes through: such a build is never deployed)"
     },
+    "build.lowercase-drive": {
+        "severity": "hard",
+        "born_from": "2026-11-25 (Fas 4 Facilities): a local Brookings `npm run build` from \"c:\\...\" (lowercase drive letter) exited 0 with no component CSS on 432 of 433 pages; the same commit built from \"C:\\...\" carried CSS on all 433. Seen in a screenshot, caught by scripts/verify_page_css.mjs, never committed. Regression: tests/test_require_upper_drive.py (fails before the fix).",
+        "what": "a build, astro check, dev server, vitest run or battery started from a working directory with a lowercase Windows drive letter: site/scripts/require-upper-drive.mjs refuses it with the fix in the message, from site/astro.config.mjs (every astro command and vitest) and as the first thing in scripts/battery.sh"
+    },
     "build.empty-state": {
         "severity": "hard",
         "born_from": "Owner 2026-11-24: Broomfield's /this-week/2026-w48/ (live) said \"A quiet week — no meetings, events or games recorded for Broomfield this week.\", and some 30 other empty-state lines (class=\"empty\", __empty, EmptyState) stood on pages in all four towns. Rule: an empty section is left out entirely, the page leads with what it has. Regression fixture: tests/fixtures/qa_empty_states_2026-11-24 (real Broomfield pages built at 66dcd830), tests/test_verify_empty_states.py.",

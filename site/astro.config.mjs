@@ -15,6 +15,13 @@ import { stripForeignGames } from './src/lib/game-owners.mjs';
 import { NAV_ONLY_INDEXABLE_TOWNS, pruneNavInDist } from './src/lib/nav-prune.mjs';
 import { checkNewIndexable, fetchLiveSitemapPaths, sitemapPaths } from './scripts/new-indexable.mjs';
 import imageVariants from './integrations/image-variants.mjs';
+import { driveLetterProblem } from './scripts/require-upper-drive.mjs';
+
+// QA build.lowercase-drive (owner 2026-11-25): from "c:\..." the build is green with no component CSS on any page. Refuse first.
+{
+  const problem = driveLetterProblem(process.cwd());
+  if (problem) throw new Error(problem);
+}
 
 // Statiskt bygge: all data hämtas från Neon vid build-time, sedan serveras rena
 // HTML-filer från Cloudflares edge. GitHub Actions pingar deploy-hooken efter
