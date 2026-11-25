@@ -1,14 +1,13 @@
 ---
-/** The top of /city-hall/: the next meeting as a hero ("in 5 days") with its agenda under it, then "This week" (the following 7 days) and
+/** The top of /city-hall/: the next meeting as a full MeetingCard (owner 2026-11-25, Tillägg A: no display number), then "This week" (the following 7 days) and
  *  "Coming up", with organ chips over the lists when there are enough meetings to filter. An organ group the town folds away (Glasgow's Area
  *  Partnerships) sits in one fold under the lists. With no meeting ahead the whole block is left out (owner 2026-11-24: no empty-state text).
  *  The build knows "today" only as of the build: "in 5 days" is written by the browser (lib/client/time-status.ts, Fas 3; the date without
  *  JS), and the small script below hides a meeting that is over and runs the chips. Without JS everything shows. */
 import SectionRule from '../SectionRule.astro';
-import HeroStat from '../ui/HeroStat.astro';
 import Chips from '../ui/Chips.astro';
 import MeetingCard from './MeetingCard.astro';
-import { daysBetween, chipCounts, meetingTitle, type MeetingView } from '../../lib/meetings-view';
+import { daysBetween, chipCounts, type MeetingView } from '../../lib/meetings-view';
 
 interface Props {
   meetings: MeetingView[];
@@ -29,22 +28,16 @@ const week = others.filter((m) => !m.collapsedGroup && daysBetween(todayYmd, m.y
 const later = others.filter((m) => !m.collapsedGroup && daysBetween(todayYmd, m.ymd) > 7);
 const foldedOthers = others.filter((m) => m.collapsedGroup);
 const foldGroups = [...new Set(foldedOthers.map((m) => m.collapsedGroup!))];
+// Next up (owner 2026-11-25, Tillägg A): no display number. The next meeting is the same card as every other one: organ, a heading with
+// date and time, then "in 5 days" (browser, Fas 3) and the place. Without JS the date stands once.
 const hrefFor = (m: MeetingView) => (commentHref && commentBodyKeys.includes(m.bodyKey) ? commentHref : null);
-const nextEnd = next?.startMs != null ? next.startMs + 3 * 3_600_000 : null;
 ---
 {next && (
 <section class="up" data-mtg-root data-tz={timezone}>
   <SectionRule label="Next up" />
-  <article class="up__next" data-ymd={next.ymd} data-end={nextEnd ?? undefined}>
-    <HeroStat
-      label={meetingTitle(next)}
-      value={next.dateLabel}
-      sub={`${next.dateLabel}${next.time ? ` · ${next.time}` : ''}`}
-      meta={next.location ?? undefined}
-      valueAttrs={{ 'data-rel-day': next.ymd }}
-    />
-    <MeetingCard m={next} bare todayYmd={todayYmd} commentHref={hrefFor(next)} portal={portal} />
-  </article>
+  <div class="up__next">
+    <MeetingCard m={next} todayYmd={todayYmd} commentHref={hrefFor(next)} portal={portal} />
+  </div>
 
   <Chips counts={chipCounts(others)} label="Filter upcoming meetings" dataKey="mtg-chip" navAttrs={{ 'data-mtg-chips': '' }} class="up__chips" />
 
