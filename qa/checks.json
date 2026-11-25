@@ -91,6 +91,11 @@
       "born_from": "2026-11-08: the register's dated rules lapsed on 11-05 (first run on a Thursday, the Monday run skipped its venues as checked <6 days ago) and Broomfield's register has valid rules for 1 of 7 venues; nothing watched it. Owner minimums: Glasgow 4, Broomfield 1",
       "what": "a town's evening register has fewer venues with a valid rule than its minimum (dated 8 days, recurring 36), or no venue check for 9 days"
     },
+    "ops.hours-verified": {
+      "severity": "hard",
+      "born_from": "Owner 2026-11-25: Glasgow's 12 places were verified 2026-10-23 and would have lost their hours on the site on 2026-12-07 (45-day limit) with nothing watching; the monthly facility-hours re-verification can be missed. scripts/check_freshness.py (GitHub's own schedule) opens an issue when a place's verified_date is older than 35 days. Regression fixture: tests/test_freshness.py 'hours' tests (brookings_sd/city-hall verified 2026-10-15, glasgow/the-mitchell-library verified 2026-11-25).",
+      "what": "a place with opening hours whose verified_date is older than 35 days or missing (the site hides hours after 45)"
+    },
     "ops.token-expiry": {
       "severity": "hard",
       "born_from": "2026-11-08: the cron-dispatcher's weather/warnings/sports jobs failed only in Cloudflare's logs, which nobody reads; scripts/check_freshness.py on GitHub's own schedule opens an issue instead",

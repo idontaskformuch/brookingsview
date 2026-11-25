@@ -12,6 +12,8 @@ issues are independent (qa/report.py `scope_checks`: a run of this script only e
   ops.evening-register-freshness  evening_register_* per town with a register: too few venues with a valid rule, or no venue check for 9 days
                          (owner 2026-11-08: Glasgow < 4, Broomfield < 1; a dated rule counts 8 days, a recurring one 36)
   ops.token-expiry       the cron-dispatcher's GITHUB_TOKEN runs out: an issue opens TOKEN_WARN_DAYS before TOKEN_EXPIRES
+  ops.hours-verified     a place with opening hours whose verified_date is older than HOURS_WARN_DAYS (35), or missing: the site hides
+                         hours older than 45 days (placeStaleness.hoursDays), so a missed monthly facility-hours run shows 10 days early
 
 Runs on GitHub's own schedule (.github/workflows/freshness-check.yml), not from the Worker: a dead Worker must not silence its own alarm.
 The `events` table cannot show alerts liveness (rows are written only when a warning changes); hence the heartbeat table (migration 069).
@@ -44,7 +46,8 @@ TOKEN_WARN_DAYS = 30  # the issue opens on 2027-09-21
 LIMIT_HOURS = {"sport": 26, "weather": 3, "alerts": 2, "safety": 3}
 SPORT_WARNING_DAYS = 3
 CHECK_ID = {"sport": "ops.sport-freshness", "sportwarn": "ops.sport-warning", "weather": "ops.weather-freshness", "alerts": "ops.alerts-freshness",
-            "safety": "ops.safety-freshness", "register": "ops.evening-register-freshness", "token": "ops.token-expiry"}
+            "safety": "ops.safety-freshness", "register": "ops.evening-register-freshness", "token": "ops.token-expiry",
+            "hours": "ops.hours-verified"}
 FRESHNESS_CHECKS = set(CHECK_ID.values())
 
 # Which towns the Worker runs each job for. Mirrors cron-dispatcher/src/{alerts,weather,safety}/towns.ts
@@ -63,6 +66,13 @@ REGISTER_DATED_DAYS = 8
 REGISTER_RECURRING_DAYS = 36
 REGISTER_CHECK_MAX_DAYS = 9
 REGISTER_PATTERN = "evening-register"  # both findings of a town share it, so they land in one issue
+
+# Opening hours (owner 2026-11-25): the site hides a place's hours once verified_date is more than 45 days old
+# (site/src/lib/place-hours.ts isPastStalenessThreshold, SiteConfig.placeStaleness.hoursDays default 45). The facility-hours workflow
+# re-reads its sources monthly (first week); an issue at 35 days leaves 10 days to notice and re-run a missed month.
+HOURS_WARN_DAYS = 35
+HOURS_HIDDEN_DAYS = 45
+HOURS_PATTERN = "hours-verified"  # every place of a town in one issue
 
 
 def is_stale(last: datetime | None, now: datetime, max_hours: float) -> bool:
@@ -130,6 +140,22 @@ def token_findings(today: date) -> list[dict]:
              "message": f"The cron-dispatcher's GITHUB_TOKEN {when} ({TOKEN_EXPIRES.isoformat()}). Create a new fine-grained token (this repo only, "
                         "Actions: read and write), run `npx wrangler secret put GITHUB_TOKEN` in cron-dispatcher/, then update TOKEN_EXPIRES in "
                         "scripts/check_freshness.py."}]
+
+
+def hours_findings(rows: list[tuple], today: date) -> list[dict]:
+    """rows: (town_id, slug, verified_date, verification_method) of every place with opening hours (hours_structured or place_hours rows).
+    A finding per place whose verified_date is missing or more than HOURS_WARN_DAYS before today. Pure, so it is tested without a DB."""
+    out: list[dict] = []
+    for town, slug, verified, method in rows:
+        age = None if verified is None else (today - verified).days
+        if age is not None and age <= HOURS_WARN_DAYS:
+            continue
+        when = "never verified" if age is None else f"last verified {verified.isoformat()} ({age} days ago)"
+        out.append({"check": CHECK_ID["hours"], "town": town, "pattern": HOURS_PATTERN, "path": f"/{town}/{HOURS_PATTERN}/{slug}",
+                    "message": f"{slug}: opening hours {when}; warn after {HOURS_WARN_DAYS} days, the site hides them after {HOURS_HIDDEN_DAYS} "
+                               f"(verification_method {method or 'none'}). Check the facility-hours workflow run (reverify, brookings-catalog, briggs) "
+                               "or re-verify by hand from the source."})
+    return out
 
 
 _HINT = {"sport": " Check the brookings-sports workflow run and sport_sources_health.last_error.",
@@ -209,6 +235,13 @@ def collect(conn, now: datetime, only: set[str], today: date) -> tuple[list[dict
             lines.append(f"  [freshness] register {town}: {'STALE' if found else 'ok'} -- {valid} venue(s) with a valid rule (min {REGISTER_MIN_VENUES[town]}), "
                          f"last check {age_text(last, now)}")
             findings += found
+    if "hours" in only:
+        rows = conn.execute("SELECT town_id, slug, verified_date, verification_method FROM places p WHERE hours_structured IS NOT NULL "
+                            "OR EXISTS (SELECT 1 FROM place_hours ph WHERE ph.place_id = p.id) ORDER BY town_id, slug").fetchall()
+        h = hours_findings(rows, today)
+        lines.append(f"  [freshness] hours: {len(h)} of {len(rows)} place(s) with hours verified more than {HOURS_WARN_DAYS} days ago or never"
+                     + "".join(f"\n    {f['town']}: {f['message'].split(';')[0]}" for f in h))
+        findings += h
     if "token" in only:
         t = token_findings(today)
         lines.append(f"  [freshness] token: {'ISSUE' if t else 'ok'} -- expires {TOKEN_EXPIRES.isoformat()}")

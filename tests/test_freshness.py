@@ -278,3 +278,33 @@ def test_the_store_keeps_the_time_of_the_first_identical_warning():
     from sports import store
     sql = inspect.getsource(store.record_health)
     assert "IS NOT DISTINCT FROM EXCLUDED.last_error" in sql and "COALESCE(sport_sources_health.last_error_at, EXCLUDED.last_error_at)" in sql
+
+
+# ---------------------------------------------------------------- opening hours verified (owner 2026-11-25)
+# Real rows: brookings_sd/city-hall (verified_date 2026-10-15, verification_method NULL) and glasgow/the-mitchell-library
+# (verified 2026-11-25 by the facility-hours re-verification, glasgow_life_page).
+CITY_HALL = ("brookings_sd", "city-hall", date(2026, 10, 15), None)
+MITCHELL = ("glasgow", "the-mitchell-library", date(2026, 11, 25), "glasgow_life_page")
+
+
+def test_hours_warn_ten_days_before_the_site_hides_them():
+    assert (cf.HOURS_WARN_DAYS, cf.HOURS_HIDDEN_DAYS) == (35, 45)
+
+
+def test_hours_older_than_35_days_is_a_finding_fresh_is_not():
+    found = cf.hours_findings([CITY_HALL, MITCHELL], date(2026, 11, 25))
+    assert [(f["town"], f["path"]) for f in found] == [("brookings_sd", "/brookings_sd/hours-verified/city-hall")]
+    assert found[0]["check"] == "ops.hours-verified" == cf.CHECK_ID["hours"]
+    assert "last verified 2026-10-15 (41 days ago)" in found[0]["message"]
+
+
+def test_hours_exactly_35_days_is_fresh_36_is_a_finding():
+    # The Mitchell's row with the one changed field marked: the day of the check.
+    assert cf.hours_findings([MITCHELL], date(2026, 12, 30)) == []
+    assert len(cf.hours_findings([MITCHELL], date(2026, 12, 31))) == 1
+
+
+def test_hours_never_verified_is_a_finding():
+    # City hall's row with the one changed field marked: verified_date NULL.
+    found = cf.hours_findings([(*CITY_HALL[:2], None, None)], date(2026, 11, 25))
+    assert len(found) == 1 and "never verified" in found[0]["message"]
