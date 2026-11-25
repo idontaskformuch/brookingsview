@@ -5,6 +5,7 @@ Gäller alla fyra sajter. Källa: ägarens handoff 2026-11-05 (.claude/specs/pre
 ## Hårda regler
 - Ingen AI-prosa. All text är källdata eller mallsträngar byggda av datafält, med tester.
 - Inget utan data. Ingen siffra, badge, insikt, chip eller ikon visas om datan saknas. Gissa aldrig.
+- Inga kommentarer (`{/* */}`, `/* */`) inne i Astro-mallar: två gånger 2026-11-25 tog en sådan bort all komponent-CSS i ett grönt bygge. Kommentarer i frontmatter. scripts/verify_page_css.mjs stoppar bygget i batteriet och i varje deploy (scripts/wrangler_deploy_retry.sh).
 - Tidsberoende ord räknas i webbläsaren (SPEC Fas 3, 2026-11-25). "today/tomorrow/in N days/N days away" och "Today" skrivs av lib/client/time-status.ts från `data-rel-day="YYYY-MM-DD"` (stil in/away/day, `data-rel-prefix`) i stadens zon, vid laddning och varje minut; utan JS står datumet ensamt (elementet är tomt och `hidden`). /events/-översiktens "N things on today · N tonight · N free" räknas av lib/client/events-glance.ts och visas inte utan JS. Öppet/stängt: facilities-skripten och lib/client/open-tonight-list.ts. Ingen komponent skriver relativa ord vid build (lib/client/time-status.test.ts).
 - Inga tomlägestexter (ägaren 2026-11-24, alla städer). En tom sektion döljs helt, rubriken också; sidan leder med det som finns. Ingen `class="empty"`/`__empty`, inga "No X yet"/"A quiet week"/"check back". Bygget fäller dem (scripts/verify_no_empty_messages.mjs, QA build.empty-state). Undantag: filtrets "Nothing matched" i klientsidans tabeller (svar på besökarens eget filter, aldrig i byggd HTML).
 - Svaret först. Det besökaren söker syns utan scroll i 390 px. Förklaringar, källor och disclaimers samlas under "About this page" längst ner (ersätter PageGuide överst, beslut 2026-11-05). Enda undantaget är aktiva varningar: banner överst.
@@ -82,7 +83,7 @@ Format per layout: syfte (frågan den besvarar), komponent, config-fält, tomma 
 ### Meetings
 - Syfte: "När är nästa möte, vad står på dagordningen och hur tar jag mig dit?"
 - Komponent: components/meetings/{MeetingCard,MeetingsUpcoming,ArchivePage}.astro + lib/meetings-view.ts; .ics via pages/city-hall/calendar/[id].ics.ts.
-- Hjälte: nästa möte ("Next up"). Datarader: datum, tid, organ, plats, dagordningspunkter ordagrant från källan, länk till agenda/protokoll, .ics. Ingen AI-text (beslut 2026-11-05).
+- Fokus: nästa möte ("Next up") som ett vanligt MeetingCard (organ, rubrik med datum · tid, "in N days" från webbläsaren · plats), ingen stor siffra (ägaren 2026-11-25, Tillägg A). Datarader: datum, tid, organ, plats, dagordningspunkter ordagrant från källan, länk till agenda/protokoll, .ics. Ingen AI-text (beslut 2026-11-05).
 - Config: MEETINGS_TOWNS och BODIES per stad (flyttas till per-stad-config i Fas 3; Glasgow: Area Partnerships i utfällbar grupp).
 - Regler: dedup = samma datum + normaliserat organ, Legistar behålls; tidskonflikt mellan källor visar "Time: see agenda"; quorum-notiser är inte möten; Event-JSON-LD och .ics bara med start+plats.
 - Tomt läge: inga kommande möten -> hela "Next up"-blocket utelämnas (ägaren 2026-11-24); Recent meetings och arkivlänken står kvar.
