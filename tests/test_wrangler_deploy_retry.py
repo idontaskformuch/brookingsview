@@ -10,6 +10,17 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "scripts" / "wrangler_deploy_retry.sh"
 BASH = shutil.which("bash")
+CSS_FIX = ROOT / "tests" / "fixtures" / "qa_page_css_2026-11-25"
+
+
+@pytest.fixture(autouse=True)
+def _site_dir(tmp_path, monkeypatch):
+    """The script runs from site/ and checks dist/ before it deploys (build.page-css): every test runs in a site dir whose dist holds
+    the real Glasgow /today/ of the fixed build (tests/fixtures/qa_page_css_2026-11-25/after)."""
+    site = tmp_path / "site"
+    shutil.copytree(CSS_FIX / "after", site / "dist")
+    monkeypatch.chdir(site)
+    return site
 
 
 def test_no_workflow_calls_wrangler_deploy_directly():
@@ -105,3 +116,27 @@ def test_refuses_to_deploy_a_local_launch_preview(tmp_path):
     assert r.returncode == 4
     assert "launch preview" in r.stderr
     assert not marker.exists()
+
+
+@pytest.mark.skipif(BASH is None, reason="bash not available")
+def test_refuses_to_deploy_a_page_without_css(tmp_path):
+    """QA build.page-css (owner 2026-11-25): the broken build's page (no <style>, no /_astro/*.css) never reaches wrangler."""
+    site = tmp_path / "broken"
+    shutil.copytree(CSS_FIX / "before", site / "dist")
+    marker = tmp_path / "ran"
+    env = dict(os.environ, DEPLOY_RETRY_PAUSE="0", INDEXNOW_DELAY="0", INDEXNOW_SKIP="1", DEPLOY_CMD=f"touch {marker.as_posix()}")
+    r = subprocess.run([BASH, SCRIPT.as_posix(), "--env", "glasgow"], env=env, capture_output=True, text=True, cwd=site)
+    assert r.returncode == 5
+    assert "no CSS" in r.stderr
+    assert not marker.exists()
+
+
+@pytest.mark.skipif(BASH is None, reason="bash not available")
+def test_deploys_when_every_page_has_css(_site_dir, tmp_path):
+    marker = tmp_path / "ran"
+    fake = tmp_path / "deploy.sh"
+    fake.write_text(f'touch "{marker.as_posix()}"' + chr(10))  # ignores --env, like a successful wrangler
+    env = dict(os.environ, DEPLOY_RETRY_PAUSE="0", INDEXNOW_DELAY="0", INDEXNOW_SKIP="1", DEPLOY_CMD=f"bash {fake.as_posix()}")
+    r = subprocess.run([BASH, SCRIPT.as_posix(), "--env", "glasgow"], env=env, capture_output=True, text=True, cwd=_site_dir)
+    assert r.returncode == 0, r.stderr
+    assert marker.exists()

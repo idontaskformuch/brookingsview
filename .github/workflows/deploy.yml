@@ -70,6 +70,8 @@ jobs:
         run: node scripts/verify_no_empty_messages.mjs site/dist
       - name: Content first (no explanations between H1 and content)
         run: node scripts/verify_content_first.mjs site/dist
+      - name: Every page carries its CSS (build.page-css; the deploy script refuses too)
+        run: node scripts/verify_page_css.mjs site/dist
       - name: No internal notes (NEEDS-HUMAN-REVIEW, .md, TODO, PENDING, FIXME) on any page
         run: node scripts/verify_no_internal_notes.mjs site/dist
       - name: After Election Day, no live wording on /election-results/ and /vote/ noindex and unlinked

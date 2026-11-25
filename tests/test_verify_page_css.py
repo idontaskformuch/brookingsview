@@ -26,3 +26,14 @@ def test_cookie_banner_has_no_comment_inside_its_template():
     src = (ROOT / "site" / "src" / "components" / "CookieBanner.astro").read_text(encoding="utf-8")
     template = src.split("---", 2)[2].split("<style>", 1)[0]
     assert "/*" not in template and "//" not in template.replace("https://", "")
+
+
+def test_every_deploy_is_gated():
+    """Owner 2026-11-25: a page without CSS can never be deployed. Every deploy goes through scripts/wrangler_deploy_retry.sh
+    (tests/test_wrangler_deploy_retry.py: no workflow calls wrangler deploy directly), which runs the check before wrangler; the four
+    *-deploy.yml also run it as a named step next to the other dist checks."""
+    script = (ROOT / "scripts" / "wrangler_deploy_retry.sh").read_text(encoding="utf-8")
+    assert 'node "$(dirname "$0")/verify_page_css.mjs" dist' in script
+    assert script.index("verify_page_css.mjs") < script.index("$cmd \"$@\"")
+    for wf in ("deploy.yml", "glasgow-deploy.yml", "broomfield-deploy.yml", "moval-deploy.yml"):
+        assert "run: node scripts/verify_page_css.mjs site/dist" in (ROOT / ".github" / "workflows" / wf).read_text(encoding="utf-8"), wf

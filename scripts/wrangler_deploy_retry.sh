@@ -11,6 +11,12 @@ if [ -f dist/.launch-preview ]; then
   echo "refusing to deploy: dist/ is a local launch preview (dist/.launch-preview exists). Rebuild normally first." >&2
   exit 4
 fi
+# Every built page carries its CSS (QA build.page-css, owner 2026-11-25): every deploy workflow goes through this script, so a page
+# without CSS can never be deployed, whichever job built it. No skip switch.
+if ! node "$(dirname "$0")/verify_page_css.mjs" dist; then
+  echo "refusing to deploy: a built page has no CSS (scripts/verify_page_css.mjs dist)" >&2
+  exit 5
+fi
 # IndexNow (owner 2026-11-03, scripts/indexnow.py): prepare before the deploy (diff against the live manifest), ping after a
 # successful one. Best effort: neither step can change the exit code. INDEXNOW_SKIP=1 turns both off.
 indexnow_env=""
