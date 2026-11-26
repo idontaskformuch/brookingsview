@@ -16,7 +16,44 @@ export type AnswerBlock =
   /** A season: `during` up to and including `to` (town's today), `after` from the day after. */
   | { kind: 'season'; to: string; during: Inline; after: Inline; note?: boolean }
   /** A page-specific interactive part, by name (components/answers/CityAnswers.astro maps the name to its component). */
-  | { kind: 'component'; name: 'brookings-trash-picker' | 'brookings-trash-holidays' };
+  | { kind: 'component'; name: 'brookings-trash-picker' | 'brookings-trash-holidays' }
+  /** The page's `facility` as fact rows (Where, Hours, Who, Cost): the same fields that make the <title> and the meta description
+   *  (lib/answer-facility.ts facilityRows), so the page and its meta cannot differ (owner order 2026-11-26 (11)). */
+  | { kind: 'facility-facts' }
+  /** The page's `facility.closed` as dated lines, as `dated` (past dates drop off), from the same field the meta's "Next closed" reads. */
+  | { kind: 'facility-closed'; intro?: Inline; none: Inline };
+
+/** Hours as data: the days (0 = Sunday .. 6 = Saturday) and one opening and closing time ("13:00", "17:00"). */
+export interface FacilityHours { days: number[]; from: string; to: string }
+
+/** A facility or service a page is about, as data (owner order 2026-11-26 (11), first page: Broomfield's leaf and branch drop-off). The page's
+ *  visible fact rows, FAQ sentence, <title> and meta description are all made from these fields (lib/answer-facility.ts); nothing is parsed
+ *  from free text. */
+export interface AnswerFacility {
+  /** The facility as the title names it: "<Town> <name>: Hours & Rules (<year>)". */
+  name: string;
+  /** The place as the Where row names it ("Tree Branch Recycling Facility"). */
+  place: string;
+  /** The street address as the page writes it ("2990 W 124th Avenue"); the meta abbreviates the street word ("Ave"). Left out when unknown. */
+  street?: string;
+  /** The Where row's last clause without "within " ("the Tree Branch Recycle & RV Wastewater Disposal Facility"). */
+  within?: string;
+  /** Who may use it: `label` ("Broomfield residents"), `only` adds " only", `detail` is the rest of the row (ends with a full stop). */
+  who?: { label: string; only?: boolean; detail?: string };
+  /** What it costs: `label` ("Free"), `detail` the rest of the row. */
+  cost?: { label: string; detail?: string };
+  hours?: FacilityHours[];
+  /** After the hours on the page: "year-round, with some exceptions for holidays". */
+  hoursNote?: string;
+  /** Closed days (the meta's "Next closed" is the first of these within 30 days). */
+  closed?: { date: string; text: Inline }[];
+  /** The page has a rules part (what is accepted, limits, residency): the title says "Hours & Rules", otherwise "Hours & Address". */
+  rules: boolean;
+  /** What is only on the page, the meta's last sentence ("Accepted items, size limits, residency rules."). */
+  rulesLine?: string;
+  /** The FAQ sentence's start, before the place, address and hours ("Broomfield residents can drop off leaves, branches and yard waste for free"). */
+  faqLead?: string;
+}
 
 export interface Answer {
   /** Anchor on the page. */
@@ -41,10 +78,13 @@ export interface Answer {
 
 export interface AnswerPage {
   slug: string;
-  /** <title> */
-  title: string;
+  /** <title>. Not used when the page has a `facility`: then the title is made from it (lib/answer-facility.ts). */
+  title?: string;
   h1: string;
-  description: string;
+  /** Meta description. Not used when the page has a `facility`. */
+  description?: string;
+  /** The facility the page is about, as data: title, meta, fact rows and closed days all come from it. */
+  facility?: AnswerFacility;
   answers: Answer[];
   /** About this page text (what the page is, from which sources). */
   about: Inline;

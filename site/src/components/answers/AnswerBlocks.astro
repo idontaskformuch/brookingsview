@@ -1,13 +1,14 @@
 ---
 /** Renders an answer's data blocks (config/city-answers/types.ts). Dated lines and seasons are resolved against the town's today at build
  *  time (pages are built twice a day). Inline text goes through lib/city-answers.ts inlineHtml (**bold**, [link](href), all else escaped). */
-import type { AnswerBlock } from '../../config/city-answers/types';
+import type { AnswerBlock, AnswerFacility } from '../../config/city-answers/types';
 import { inlineHtml, upcomingDated, seasonText } from '../../lib/city-answers';
+import { facilityRows } from '../../lib/answer-facility';
 import BrookingsTrashPicker from './BrookingsTrashPicker.astro';
 import BrookingsTrashHolidays from './BrookingsTrashHolidays.astro';
 
-interface Props { blocks: AnswerBlock[]; today: string }
-const { blocks, today } = Astro.props;
+interface Props { blocks: AnswerBlock[]; today: string; facility?: AnswerFacility }
+const { blocks, today, facility } = Astro.props;
 const COMPONENTS = { 'brookings-trash-picker': BrookingsTrashPicker, 'brookings-trash-holidays': BrookingsTrashHolidays } as const;
 ---
 {blocks.map((b) => {
@@ -21,9 +22,17 @@ const COMPONENTS = { 'brookings-trash-picker': BrookingsTrashPicker, 'brookings-
       <tbody>{b.rows.map((r) => <tr><th scope="row" set:html={inlineHtml(r.th)} />{r.cells.map((c) => <td set:html={inlineHtml(c)} />)}</tr>)}</tbody>
     </table>
   );
-  if (b.kind === 'cols') return <div class="ans-cols">{b.cols.map((c) => <section><h3>{c.heading}</h3><Astro.self blocks={c.blocks} today={today} /></section>)}</div>;
+  if (b.kind === 'cols') return <div class="ans-cols">{b.cols.map((c) => <section><h3>{c.heading}</h3><Astro.self blocks={c.blocks} today={today} facility={facility} /></section>)}</div>;
   if (b.kind === 'dated') {
     const left = upcomingDated(b.items, today);
+    return left.length > 0
+      ? <>{b.intro && <p set:html={inlineHtml(b.intro)} />}<ul>{left.map((i) => <li set:html={inlineHtml(i.text)} />)}</ul></>
+      : <p set:html={inlineHtml(b.none)} />;
+  }
+  // The page's `facility` as rows and as dated closed days: the same fields as its title and meta (lib/answer-facility.ts).
+  if (b.kind === 'facility-facts' && facility) return <dl class="ans-dl">{facilityRows(facility).map((r) => <><dt set:html={inlineHtml(r.label)} /><dd set:html={inlineHtml(r.value)} /></>)}</dl>;
+  if (b.kind === 'facility-closed' && facility) {
+    const left = upcomingDated(facility.closed ?? [], today);
     return left.length > 0
       ? <>{b.intro && <p set:html={inlineHtml(b.intro)} />}<ul>{left.map((i) => <li set:html={inlineHtml(i.text)} />)}</ul></>
       : <p set:html={inlineHtml(b.none)} />;

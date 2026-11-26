@@ -1,5 +1,6 @@
 /** Rules for the "How do I..." answer pages (Fas 3). Pure, so every rule is tested in city-answers.test.ts. */
 import type { Answer, AnswerBlock, AnswerPage, Inline } from '../config/city-answers/types';
+import { facilityMeta, facilityTitle } from './answer-facility';
 
 /** An answer whose sources were read more than this many days ago is shown as unconfirmed (owner 2026-11-19). */
 export const UNCONFIRMED_AFTER_DAYS = 120;
@@ -45,6 +46,15 @@ export function upcomingDated(items: { date: string; text: Inline }[], today: st
 /** The season text for today: `during` through `to`, `after` from the day after. */
 export function seasonText(b: Extract<AnswerBlock, { kind: 'season' }>, today: string): Inline {
   return today <= b.to ? b.during : b.after;
+}
+
+/** The page's <title> and meta description. A page with a `facility` gets both made from it (lib/answer-facility.ts: the year is the town's
+ *  today's, so a build in January says the new year); any other page its hand-written `title` (with `{Site}` filled in) and `description`. */
+export function answerMeta(page: AnswerPage, o: { siteName: string; town: string; today: string; country?: 'us' | 'gb' }): { title: string; description: string } {
+  if (page.facility) {
+    return { title: facilityTitle(page.facility, o.town, o.today.slice(0, 4)), description: facilityMeta(page.facility, o.today, o.country ?? 'us') };
+  }
+  return { title: (page.title ?? '').replace('{Site}', o.siteName), description: page.description ?? '' };
 }
 
 /** FAQPage JSON-LD for a hub or a page: confirmed answers with a `faq` sentence only (owner: never for unconfirmed). Null when none. */

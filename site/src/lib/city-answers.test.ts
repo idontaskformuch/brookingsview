@@ -54,8 +54,9 @@ describe('config/city-answers', () => {
   it('every page: a unique slug that no static page file takes, a {Site} title, answers with https sources and checkAt after checked', () => {
     for (const { town, p } of all) {
       expect(existsSync(new URL(`../pages/${p.slug}.astro`, import.meta.url)), `${town} ${p.slug} collides with a static page`).toBe(false);
-      expect(p.title).toContain('{Site}');
-      expect(p.description.length).toBeLessThanOrEqual(160);
+      // A page with a `facility` has its title and meta made from it (lib/answer-facility.ts, tested in answer-facility.test.ts); no hand-written ones.
+      if (p.facility) { expect(p.title, `${town} ${p.slug}`).toBeUndefined(); expect(p.description, `${town} ${p.slug}`).toBeUndefined(); }
+      else { expect(p.title).toContain('{Site}'); expect((p.description ?? '').length).toBeLessThanOrEqual(160); }
       expect(p.answers.length).toBeGreaterThan(0);
       for (const a of p.answers) {
         expect(a.sources.length, a.id).toBeGreaterThan(0);

@@ -20,7 +20,7 @@ const { page, today } = Astro.props;
     {answerStatus(a, today) === 'unconfirmed' && (
       <p class="ans-status">Unconfirmed: the source has not confirmed this for the current season yet. Check the source before you go.</p>
     )}
-    <AnswerBlocks blocks={a.blocks} today={today} />
+    <AnswerBlocks blocks={a.blocks} today={today} facility={page.facility} />
     {a.actions && a.actions.length > 0 && (
       <p class="ans-actions">{a.actions.map((x) => <a class="ans-action" href={x.href} rel={/^https?:/i.test(x.href) ? 'noopener' : undefined}>{x.label} &rarr;</a>)}</p>
     )}
@@ -29,7 +29,7 @@ const { page, today } = Astro.props;
 {page.tail && (
   <>
     <SectionRule label={page.tail.heading} />
-    <AnswerBlocks blocks={page.tail.blocks} today={today} />
+    <AnswerBlocks blocks={page.tail.blocks} today={today} facility={page.facility} />
   </>
 )}
 <style>

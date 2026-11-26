@@ -1,7 +1,8 @@
 /** Broomfield answer pages (Fas 3). broomfield.org read where ViewMediaBot's group / `*` allows the path (owner decision 5, 2026-11-19);
  *  every page below read once through PoliteFetcher on 2026-11-19, evidence in .claude/evidence/city-answers-2026-11/. The content paths are
  *  not disallowed for any AI crawler either; nothing here goes through a model. */
-import type { AnswerPage } from './types';
+import type { AnswerFacility, AnswerPage } from './types';
+import { facilityFaq } from '../../lib/answer-facility';
 
 const B = 'https://www.broomfield.org';
 const HAULERS = { name: 'City and County of Broomfield: Licensed Trash Haulers', url: 'https://broomfield.org/1091' };
@@ -11,6 +12,28 @@ const SNOW_CONTROL = { name: 'City and County of Broomfield: Snow and Ice Contro
 const PAY = { name: 'City and County of Broomfield: Pay a Bill Online', url: `${B}/2348/Pay-Online` };
 const TREES = { name: 'City and County of Broomfield: Holiday Tree Recycling', url: 'https://broomfield.org/4401/Holiday-Tree-Recycling' };
 const checked = '2026-11-19';
+
+/** The leaf and branch drop-off as data (owner order 2026-11-26 (11)): the page's fact rows, closed days, FAQ sentence, <title> and meta
+ *  description are all made from this (lib/answer-facility.ts). Facts as read from the Tree Branch Recycling page on 2026-11-19. */
+const LEAF: AnswerFacility = {
+  name: 'Leaf & Branch Drop-Off',
+  place: 'Tree Branch Recycling Facility',
+  street: '2990 W 124th Avenue',
+  within: 'the Tree Branch Recycle & RV Wastewater Disposal Facility',
+  who: { label: 'Broomfield residents', only: true, detail: 'no contractors or non-residents. Proof of residency is required at the gate.' },
+  cost: { label: 'Free', detail: 'Free mulch is available year-round for residents: bring a shovel.' },
+  hours: [{ days: [3], from: '13:00', to: '17:00' }, { days: [6], from: '08:00', to: '17:00' }],
+  hoursNote: 'year-round, with some exceptions for holidays',
+  closed: [
+    { date: '2026-11-28', text: 'Saturday, November 28, 2026' },
+    { date: '2026-12-23', text: 'Wednesday, December 23, 2026' },
+    { date: '2026-12-26', text: 'Saturday, December 26, 2026' },
+    { date: '2027-01-02', text: 'Saturday, January 2, 2027' },
+  ],
+  rules: true,
+  rulesLine: 'Accepted items, size limits, residency rules.',
+  faqLead: 'Broomfield residents can drop off leaves, branches and yard waste for free',
+};
 
 export const BROOMFIELD_ANSWERS: AnswerPage[] = [
   // B2 (owner: yes; no pickup day or holiday shift, the source has neither).
@@ -53,23 +76,18 @@ export const BROOMFIELD_ANSWERS: AnswerPage[] = [
   // B3 (owner: yes; past closure dates drop off by themselves).
   {
     slug: 'leaf-branch-drop-off',
-    title: 'Leaf & Branch Drop-Off | {Site}',
+    // <title> and meta description come from `facility` (lib/answer-facility.ts), like the fact rows, the closed days and the FAQ sentence.
+    facility: LEAF,
     h1: 'Broomfield leaf, branch and yard waste drop-off: hours, rules and closed days',
-    description: "Where Broomfield residents drop off leaves, branches and yard waste for free: the Tree Branch Recycling Facility's hours, what it takes and its closed days.",
     about: "Broomfield's free drop-off for leaves, branches and yard waste, from the City and County of Broomfield's Tree Branch Recycling Facility page. Closed days drop off this page once they have passed.",
     answers: [
       {
         id: 'where', question: 'Where do I take leaves and branches?', sources: [BRANCH], checked, checkAt: '2027-01-15',
         blocks: [
-          { kind: 'facts', rows: [
-            { label: 'Where', value: '**Tree Branch Recycling Facility, 2990 W 124th Avenue**, within the Tree Branch Recycle & RV Wastewater Disposal Facility.' },
-            { label: 'Hours', value: 'Wednesdays 1 to 5 p.m. and Saturdays 8 a.m. to 5 p.m., year-round, with some exceptions for holidays.' },
-            { label: 'Who', value: 'Broomfield residents only, no contractors or non-residents. Proof of residency is required at the gate.' },
-            { label: 'Cost', value: 'Free. Free mulch is available year-round for residents: bring a shovel.' },
-          ] },
+          { kind: 'facility-facts' },
           { kind: 'p', text: 'The site may close if it is extremely muddy or wet. If in doubt, call 303-464-5651.' },
         ],
-        faq: 'Broomfield residents can drop off leaves, branches and yard waste for free at the Tree Branch Recycling Facility, 2990 W 124th Avenue, Wednesdays 1 to 5 p.m. and Saturdays 8 a.m. to 5 p.m.',
+        faq: facilityFaq(LEAF),
       },
       {
         id: 'what', question: 'What can I bring?', sources: [BRANCH], checked, checkAt: '2027-01-15',
@@ -81,12 +99,7 @@ export const BROOMFIELD_ANSWERS: AnswerPage[] = [
       {
         id: 'closed', question: 'When is it closed?', sources: [BRANCH], checked, checkAt: '2027-01-15',
         blocks: [
-          { kind: 'dated', intro: 'Closed on these days:', none: 'No closed days are listed for the coming weeks. Call 303-464-5651 if in doubt.', items: [
-            { date: '2026-11-28', text: 'Saturday, November 28, 2026' },
-            { date: '2026-12-23', text: 'Wednesday, December 23, 2026' },
-            { date: '2026-12-26', text: 'Saturday, December 26, 2026' },
-            { date: '2027-01-02', text: 'Saturday, January 2, 2027' },
-          ] },
+          { kind: 'facility-closed', intro: 'Closed on these days:', none: 'No closed days are listed for the coming weeks. Call 303-464-5651 if in doubt.' },
         ],
         actions: [{ label: 'Questions about tree branches: 303-464-5651', href: 'tel:+13034645651' }, { label: 'Yard waste questions: 303-438-6329', href: 'tel:+13034386329' }],
       },

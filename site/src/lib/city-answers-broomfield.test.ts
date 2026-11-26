@@ -4,6 +4,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import CityAnswers from '../components/answers/CityAnswers.astro';
 import { BROOMFIELD_ANSWERS } from '../config/city-answers/broomfield_co';
 import { answerPagesFor } from '../config/city-answers';
+import { answerMeta } from './city-answers';
 import { visibleText } from './visible-text.mjs';
 
 // Broomfield B1-B5 (owner 2026-11-19). Facts are checked against the pages read on 2026-11-19 (.claude/evidence/city-answers-2026-11/).
@@ -34,6 +35,23 @@ describe('Broomfield answer pages', () => {
     const jan3 = await render('leaf-branch-drop-off', '2027-01-03');
     expect(jan3).toContain('No closed days are listed for the coming weeks.');
     expect(jan3).not.toMatch(/December 2[36]|January 2, 2027/);
+  });
+  it('B3: the page\'s <title>, meta, fact rows and closed days all come from its `facility` (owner order 2026-11-26 (11))', async () => {
+    const m = answerMeta(page('leaf-branch-drop-off'), { siteName: 'Broomfield View', town: 'Broomfield', today: '2026-11-26' });
+    expect(m.title).toBe('Broomfield Leaf & Branch Drop-Off: Hours & Rules (2026)');
+    expect(m.description).toBe('Free for Broomfield residents at 2990 W 124th Ave. Open Wed 1–5 PM & Sat 8 AM–5 PM. Next closed: Sat Nov 28. Accepted items, size limits, residency rules.');
+    const t = await render('leaf-branch-drop-off', '2026-11-26');
+    // The rows as the page had them before the fields: hours, address and the closed days appear once, as written.
+    for (const s of ['Tree Branch Recycling Facility, 2990 W 124th Avenue', 'Wednesdays 1 to 5 p.m. and Saturdays 8 a.m. to 5 p.m., year-round, with some exceptions for holidays.',
+      'Broomfield residents only, no contractors or non-residents. Proof of residency is required at the gate.', 'Free. Free mulch is available year-round for residents: bring a shovel.',
+      'Saturday, November 28, 2026', 'Wednesday, December 23, 2026']) expect(t).toContain(s);
+    // Every hour and every date in the meta is on the page: a change in the fields changes both.
+    expect(t).toContain('Wednesdays 1 to 5 p.m.');
+    expect(t).toContain('Saturdays 8 a.m. to 5 p.m.');
+  });
+  it('other pages keep their hand-written title and meta (with {Site} filled in)', () => {
+    const p = page('pay-water-bill');
+    expect(answerMeta(p, { siteName: 'Broomfield View', town: 'Broomfield', today: '2026-11-26' })).toEqual({ title: 'Pay Your Water Bill | Broomfield View', description: p.description });
   });
   it('the facts are the source pages\' own (B3 hours and closures, B4 thresholds, B5 no fee)', () => {
     const branch = evidence('broomfield-org-2995-tree-branch-recycling.html');

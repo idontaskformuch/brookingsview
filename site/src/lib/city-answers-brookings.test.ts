@@ -27,7 +27,7 @@ describe('K1: Brookings trash guide, same content before and after the move', ()
     expect(now.hrefs).toEqual(FIXTURE.hrefs);
   });
   it('title and description are the same', () => {
-    expect(PAGE.title.replace('{Site}', 'Brookings View').replace('&', '&amp;')).toBe(FIXTURE.title);
+    expect(PAGE.title!.replace('{Site}', 'Brookings View').replace('&', '&amp;')).toBe(FIXTURE.title);
     expect(PAGE.description).toBe(FIXTURE.description);
   });
 });

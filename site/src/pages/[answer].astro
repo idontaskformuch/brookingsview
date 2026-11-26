@@ -6,7 +6,7 @@ import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import CityAnswers from '../components/answers/CityAnswers.astro';
 import { siteConfig } from '../lib/site-config';
 import { answerPagesFor } from '../config/city-answers';
-import { checkAtWarnings, faqJsonLd, inlineHtml, todayIn } from '../lib/city-answers';
+import { answerMeta, checkAtWarnings, faqJsonLd, inlineHtml, todayIn } from '../lib/city-answers';
 import { formatIsoDate } from '../lib/holiday-page';
 import { countryProfile } from '../lib/country-profile';
 import type { AnswerPage } from '../config/city-answers/types';
@@ -23,8 +23,9 @@ const faq = faqJsonLd(page.answers, today);
 const checked = [...page.answers.map((a) => a.checked)].sort().at(-1)!;
 const sources = page.sourcesInAbout === false ? [] : [...new Map(page.answers.flatMap((a) => a.sources).map((s) => [s.url, { name: s.name, href: s.url }])).values()];
 const locale = countryProfile(siteConfig.country).locale as 'en-US' | 'en-GB';
+const meta = answerMeta(page, { siteName: siteConfig.siteName, town: siteConfig.cityName, today, country: siteConfig.country === 'gb' ? 'gb' : 'us' });
 ---
-<BaseLayout title={page.title.replace('{Site}', siteConfig.siteName)} description={page.description} wide>
+<BaseLayout title={meta.title} description={meta.description} wide>
   {faq && <script type="application/ld+json" is:inline slot="head" set:html={JSON.stringify(faq)} />}
   <CityAnswers page={page} today={today} />
   <AboutThisPage slot="about" sources={sources}>
