@@ -9,12 +9,15 @@ interface Props {
   level?: 2 | 3 | 4;
   id?: string;
   hidden?: boolean;
+  /** The day's digest line under the heading ("6 events · 2 music · 3 free", lib/day-digest.ts; owner 2026-11-26 (7)). */
+  digest?: string;
 }
-const { label, datetime, level = 3, id, hidden = false } = Astro.props;
+const { label, datetime, level = 3, id, hidden = false, digest } = Astro.props;
 const H = `h${level}` as 'h2' | 'h3' | 'h4';
 ---
 <section class="day-group" id={id} hidden={hidden}>
   <H class="day-group__label">{datetime ? <time datetime={datetime}>{label}</time> : label}</H>
+  {digest && <p class="day-group__digest">{digest}</p>}
   <div class="day-group__body" data-bucket-body>
     <ul class="day-group__rows"><slot /></ul>
     <slot name="after" />
@@ -25,6 +28,7 @@ const H = `h${level}` as 'h2' | 'h3' | 'h4';
   .day-group { margin: 0 0 1.5rem; }
   .day-group[hidden] { display: none; }
   .day-group__label { margin: 0 0 0.25rem; font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); }
+  .day-group__digest { margin: 0 0 0.5rem; font-family: var(--font-ui); font-size: 0.9375rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
   .day-group__rows { list-style: none; margin: 0; padding: 0; border-bottom: 1px solid var(--rule); }
   .day-group__rows > li { margin: 0; }
   .day-group__sub { margin: 0.75rem 0 0.125rem; font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 600; color: var(--ink-soft); }

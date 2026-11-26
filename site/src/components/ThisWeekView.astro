@@ -5,7 +5,9 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import AboutThisPage from './ui/AboutThisPage.astro';
 import ShareButton from './ShareButton.astro';
-import WeekGroupList from './WeekGroupList.astro';
+import EventDays from './events/EventDays.astro';
+import RunCarousel from './ui/RunCarousel.astro';
+import { labelOfDay, mixedCategories, rowEnvFor, type EventRowData } from '../lib/event-row';
 import { formatOccursAt } from '../lib/db';
 import { publicBody, linkTarget } from '../lib/ai-text';
 import { buildDisplayRows } from '../lib/this-week';
@@ -15,7 +17,7 @@ import { weekDescription } from '../lib/meta-description';
 import { resolvePageMeta } from '../lib/page-meta';
 import { resolveHubBacklink } from '../lib/clusters';
 import { sportsHref as townSportsHref } from '../lib/sections';
-import { groupWeekItems } from '../lib/week-groups';
+import { weekDayBlocks } from '../lib/week-groups';
 import { storyHref } from '../lib/content-slugs';
 import { getLiveFacetSlugs } from '../lib/event-facets-live';
 
@@ -39,12 +41,19 @@ const hasAnyItems = days.some((d) => d.items.length > 0);
 // Past-day omission only makes sense for the still-in-progress current
 // week -- a completed historical week keeps all 7 days as its own record.
 const displayRows = buildDisplayRows(days, siteConfig.timezone, isCurrent);
-// 2026-10-23 restructure: the body of the page is a deterministic theme-grouped list (lib/week-groups.ts),
-// with the day and time on each line; the model only writes the short introduction above it.
-const weekGroups = groupWeekItems(
+// Design lift rollout a (owner 2026-11-26 (7)): the body is day blocks, as on /events/ (components/events/EventDays.astro): per day a
+// digest line, one featured event, compact rows; what runs on 3+ days is one card each in the "All week" carousel above them
+// (lib/week-groups.ts weekDayBlocks). Was a theme-grouped list (2026-10-23). The model only writes the short introduction.
+const rowEnv = rowEnvFor(siteConfig, new Date());
+const weekBlocks = weekDayBlocks(
   displayRows.flatMap((r) => (r.kind === 'day' ? [r.day] : [])), days, siteConfig.timezone,
-  siteConfig.topEvents?.patterns ?? [], siteConfig.cityName,
+  (ymd) => labelOfDay(ymd, rowEnv.now, rowEnv.country, rowEnv.tz), siteConfig.cityName,
 );
+const topPatterns = (siteConfig.topEvents?.patterns ?? []).map((p) => p.toLowerCase());
+const isTop = (r: EventRowData) => topPatterns.some((p) => r.title.toLowerCase().includes(p));
+const showCategory = mixedCategories(weekBlocks.days.flatMap((d) => d.rows));
+// Every row stays in the browser, as before the rollout (WeekGroupList keepOver): past days of the current week are left out at build.
+const keepOver = true;
 
 const itemListJsonLd = hasAnyItems ? {
   '@context': 'https://schema.org',
@@ -77,7 +86,11 @@ const itemListJsonLd = hasAnyItems ? {
     </aside>
   )}
 
-  <WeekGroupList groups={weekGroups} idPrefix="wk" keepOver />
+  <RunCarousel heading="All week" id="wk-all" keepOver={keepOver} tz={siteConfig.timezone}
+    items={weekBlocks.allWeek.map((r) => ({ when: r.when, title: r.title, place: r.venue, href: r.href, rel: r.external ? 'noopener' : null, start: r.start, end: r.end }))} />
+  <div class="wk-days">
+    <EventDays groups={weekBlocks.days} tz={siteConfig.timezone} idPrefix="wk" isTop={isTop} showCategory={showCategory} keepOver={keepOver} />
+  </div>
 
   <nav class="cross-links" aria-label="Related sections">
     <a href="/events/">All events →</a>
@@ -175,6 +188,7 @@ const itemListJsonLd = hasAnyItems ? {
 .day__quiet--range { padding: 1rem 0; border-top: 1px solid var(--rule); }
 .day__quiet--range:last-child { border-bottom: 1px solid var(--rule); }
 
+.wk-days { margin-top: 1.5rem; max-width: 42rem; }
 .cross-links { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 2rem 0 1rem; }
 .cross-links a {
   font-family: var(--font-ui);

@@ -235,6 +235,8 @@ export interface DayItem {
   /** Venue text and source categories, used only to place the item in a theme group (lib/week-groups.ts). */
   venue?: string | null;
   categories?: string[];
+  /** The source marks it as a repeating series (is_recurring_series, or a weekly/monthly recurrence): never a day's featured card. */
+  recurring?: boolean;
 }
 
 export interface DayBucket {
@@ -294,6 +296,8 @@ export function buildWeekDays(
         endsAt: item.sourceKind === 'story' ? (item.story.ends_at ?? null) : item.event.ends_at,
         venue: item.sourceKind === 'story' ? (item.story.venue_raw ?? null) : item.event.location,
         categories: item.sourceKind === 'arts' ? item.event.categories : [],
+        recurring: item.sourceKind === 'story'
+          && (Boolean(item.story.is_recurring_series) || /^(weekly|monthly|daily)$/i.test(item.story.meta?.recurrence ?? '')),
       });
     }
 

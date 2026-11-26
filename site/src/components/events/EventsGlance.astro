@@ -45,6 +45,9 @@ const entries: GlanceEntry[] = view.days.flatMap((d) => d.rows).map((r) => ({
 <style is:global>
   /* Global: the browser writes this markup (lib/client/events-glance.ts). */
   .evg { display: grid; gap: var(--ui-3); }
+  /* A grid item may not grow to its content: the 7-day strip scrolls inside its own box instead of widening the page (Glasgow /events/
+     was 572 px wide at 375, 2026-11-26; QA web.hscroll, lib/event-day-view.test.ts). */
+  .evg > * { min-width: 0; }
   .evg[hidden], .evg__top[hidden] { display: none; }
   .evg__title { margin: 0; font-family: var(--font-head); font-size: 1.5rem; }
   /* The next-day pointer: the same look as components/ui/EmptyState.astro, written here by the browser. */

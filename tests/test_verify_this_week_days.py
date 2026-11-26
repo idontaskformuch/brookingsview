@@ -45,5 +45,25 @@ def test_glasgow_title_format(tmp_path):
     assert run(_page(tmp_path, "2026-11-10", "Tue 10 Nov", "Planning Committee — Tue 10 Nov 2026")).returncode == 0
 
 
+def _block_page(tmp_path: Path, key: str, title: str, cls: str = "ev-row__title") -> Path:
+    """The day-block markup since 2026-11-26 (components/events/EventDays.astro): no tile, the day is the li's data-day-key."""
+    page = tmp_path / "this-week" / "2026-w46" / "index.html"
+    page.parent.mkdir(parents=True)
+    page.write_text(f'<ul class="day-group__rows"><li data-day-key="{key}"><article class="ev-row"><span class="ev-row__time"></span>'
+                    f'<div class="ev-row__body"><h3 class="{cls}"><a href="/s/x/">{title}</a></h3></div></article></li></ul>',
+                    encoding="utf-8")
+    return tmp_path
+
+
+def test_day_block_rows_are_checked(tmp_path):
+    # The before/ Broomfield row (title as live 2026-11-12) in the new markup, under the wrong day: still caught.
+    r = run(_block_page(tmp_path, "2026-11-11", "City Council Regular Meeting — Tue, Nov 10, 2026"))
+    assert r.returncode == 1 and 'is listed under day 2026-11-11' in r.stderr
+
+
+def test_day_block_featured_card_on_its_day_passes(tmp_path):
+    assert run(_block_page(tmp_path, "2026-11-10", "City Council Regular Meeting — Tue, Nov 10, 2026", "ev-feature__title")).returncode == 0
+
+
 def test_rows_without_a_title_date_are_not_checked(tmp_path):
     assert run(_page(tmp_path, "2026-11-11", "Wed Nov 11", "Farmers Market")).returncode == 0

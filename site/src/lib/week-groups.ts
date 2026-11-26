@@ -16,6 +16,8 @@ import { isAllDay, localMidnightIso } from './local-day';
 import { formatClockCompact } from './country-profile';
 import type { DayBucket, DayItem } from './this-week';
 import { otherTownOf } from './place-locality';
+import type { DayGroupData, EventRowData } from './event-row';
+import type { Category } from './ui/ui-helpers';
 
 export type ThemeId =
   | 'big' | 'city' | 'campus' | 'music' | 'arts' | 'library' | 'family' | 'outdoors' | 'food' | 'sports' | 'community';
@@ -218,6 +220,78 @@ function mergeAcrossDays(rows: FlatRow[]): Merged[] {
     if (hit) { hit.rows.push(row); hit.days.push(row.dayIndex); } else out.push({ rows: [row], days: [row.dayIndex] });
   }
   return out;
+}
+
+/** A row on several days at the same time counts as "all week" from this many days: it leaves the day blocks for the week's carousel
+ *  (owner 2026-11-26 (7), principle 4: break the rhythm; a daily class is not news on each of its days). */
+export const ALL_WEEK_DAYS = 3;
+
+/** Theme -> the event row's category, so a week's day blocks read like /events/ (digest by category). Themes with no category: none. */
+const THEME_CATEGORY: Partial<Record<ThemeId, Category>> = { city: 'civic', music: 'music', arts: 'arts', family: 'family', sports: 'sports', food: 'food' };
+
+export interface WeekDayBlocks {
+  /** Items on ALL_WEEK_DAYS or more days, one row each ("Mon–Fri 9am"): the carousel above the days. */
+  allWeek: WeekRow[];
+  /** One group per day that has rows, in day order: the same row data as /events/ (components/events/EventDays.astro). */
+  days: DayGroupData<EventRowData>[];
+}
+
+/** The week as day blocks (owner 2026-11-26 (7), rollout a): the same cleaning as groupWeekItems (quorum notices out, sport titles,
+ *  same-day duplicates merged), then items on ALL_WEEK_DAYS+ days to `allWeek`, everything else under its own day. `label` turns a
+ *  day's "YYYY-MM-DD" into its heading (lib/event-row.ts labelOfDay). */
+export function weekDayBlocks(
+  days: DayBucket[], allDays: DayBucket[], timezone: string, label: (ymd: string) => string, homeCity?: string,
+): WeekDayBlocks {
+  const flat: FlatRow[] = [];
+  for (const day of days) {
+    const dayIndex = allDays.indexOf(day);
+    for (const item of day.items) {
+      if (isQuorumNotice(item.title)) continue;
+      const start = item.startsAt ? new Date(item.startsAt).getTime() : 0;
+      flat.push({
+        dayIndex, timeLabel: timeLabel(item, timezone), startMs: Number.isFinite(start) ? start : 0, item,
+        title: isSportItem(item) ? normalizeSportTitle(item.title) : item.title, venue: shortVenue(item.venue, homeCity),
+      });
+    }
+  }
+  const ymd = (i: number) => { const d = allDays[i].date; return `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`; };
+  const allWeek: WeekRow[] = [];
+  const byDay = new Map<number, { sort: number; row: EventRowData }[]>();
+  for (const merged of mergeAcrossDays(mergeSameDay(flat))) {
+    const first = merged.rows[0];
+    if (merged.days.length >= ALL_WEEK_DAYS) {
+      const last = merged.rows[merged.rows.length - 1];
+      allWeek.push({
+        when: first.timeLabel ? `${formatDays(merged.days)} ${first.timeLabel}` : formatDays(merged.days),
+        title: first.title, href: first.item.href, external: first.item.external, venue: first.venue,
+        start: last.item.startsAt ?? localMidnightIso(allDays[last.dayIndex].date, timezone), end: last.item.endsAt ?? null,
+        firstStart: first.item.startsAt ?? localMidnightIso(allDays[first.dayIndex].date, timezone),
+      });
+      continue;
+    }
+    const category = THEME_CATEGORY[themeOf({ ...first.item, title: first.title, venue: first.venue })] ?? null;
+    for (const r of merged.rows) {
+      const list = byDay.get(r.dayIndex) ?? [];
+      list.push({
+        sort: r.startMs,
+        row: {
+          start: r.item.startsAt ?? localMidnightIso(allDays[r.dayIndex].date, timezone), end: r.item.endsAt ?? null, day: ymd(r.dayIndex),
+          time: r.timeLabel, title: r.title, href: r.item.href, rel: r.item.external ? 'noopener' : null,
+          place: r.venue ? [r.venue] : [], extra: merged.days.length > 1 ? [formatDays(merged.days)] : [], category,
+          ...(r.item.recurring ? { recurring: true } : {}),
+        },
+      });
+      byDay.set(r.dayIndex, list);
+    }
+  }
+  return {
+    allWeek,
+    days: [...byDay.keys()].sort((a, b) => a - b).map((i) => ({
+      key: ymd(i), label: label(ymd(i)),
+      // Untimed rows (a meeting) first, as on /events/ ("all day" before the clock); then by time, then title.
+      rows: byDay.get(i)!.sort((a, b) => a.sort - b.sort || a.row.title.localeCompare(b.row.title)).map((x) => x.row),
+    })),
+  };
 }
 
 /** Group the week's items. `days` are the days to show (past days of the current week left out); `allDays`

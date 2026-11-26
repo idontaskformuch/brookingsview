@@ -1,0 +1,32 @@
+---
+/** The day's featured event (owner 2026-11-26 (7), "ett utvalt, resten kompakt"): one larger card above a day's compact EventRows.
+ *  Same data as an EventRow (lib/event-row.ts EventRowData), only bigger: the time on top, the title in the display face, place and
+ *  extras under it. No image (none is licensed for these rows); no date (the DayGroup heading says the day). Chosen by
+ *  lib/day-digest.ts featuredIndex. data-start/data-end stay for the browser's sweep script. */
+import { CATEGORY_LABEL, type EventRowData } from '../../lib/event-row';
+
+interface Props { row: EventRowData; showCategory?: boolean; level?: 3 | 4 }
+const { row, showCategory = false, level = 3 } = Astro.props;
+const Title = `h${level}` as 'h3' | 'h4';
+const meta = [...row.place, ...row.extra];
+---
+<article class="ev-feature" data-start={row.start ?? undefined} data-end={row.end ?? undefined}>
+  {(row.time || (showCategory && row.category)) && (
+    <p class="ev-feature__top">
+      {row.time && (row.start ? <time class="ev-feature__time" datetime={row.start}>{row.time}</time> : <span class="ev-feature__time">{row.time}</span>)}
+      {showCategory && row.category && <span class="ev-feature__cat">{CATEGORY_LABEL[row.category]}</span>}
+    </p>
+  )}
+  <Title class="ev-feature__title">{row.href ? <a href={row.href} rel={row.rel ?? undefined}>{row.title}</a> : row.title}</Title>
+  {meta.length > 0 && <p class="ev-feature__meta">{meta.join(' · ')}</p>}
+</article>
+<style is:global>
+  .ev-feature { margin: 0.25rem 0 0.5rem; padding: 0.875rem 1rem; border-radius: var(--ui-radius); background: var(--ui-surface-2); border-top: 3px solid var(--accent); }
+  .ev-feature__top { display: flex; flex-wrap: wrap; gap: 0 0.75rem; margin: 0 0 0.25rem; font-family: var(--font-ui); font-size: 0.9375rem; }
+  .ev-feature__time { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .ev-feature__cat { color: var(--ink-soft); }
+  .ev-feature__title { margin: 0; font-family: var(--font-head); font-size: 1.375rem; line-height: 1.2; overflow-wrap: anywhere; }
+  .ev-feature__title a { color: var(--ink); text-decoration: none; }
+  .ev-feature__title a:hover { text-decoration: underline; }
+  .ev-feature__meta { margin: 0.25rem 0 0; font-family: var(--font-ui); font-size: 0.875rem; color: var(--ink-soft); overflow-wrap: anywhere; }
+</style>

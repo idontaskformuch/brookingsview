@@ -53,6 +53,14 @@ Komponenter i site/src/components/holiday/, data som rena funktioner i lib/holid
 - **Säsongstema** (config/holiday-themes.ts, `themeStyle`): två färger per helg (ink + warm, ljus och mörk), bara på linjer, datumbrickor och små ornament vid rubrikerna. Inga snöflingor, glitter eller animationer. Jul = gran + guld, Thanksgiving = rost + skördeguld; helg utan post behåller sajtens accent. AA-test i lib/holiday-festive.test.ts.
 - **Rytmbrott:** flerdagarsevenemang som karusell (`seasonRuns`); övriga veckor med digest (`weekGroups`).
 - Tester: lib/holiday-festive.test.ts (riktiga julsidedata från config), holiday-season.test.ts (serier/panto).
+- **Utrullning a (2026-11-26, order 26 nov (7)): /events/ och /this-week/** via delade komponenter, alla städer: components/events/EventDays.astro
+  = DayGroup (rubrik + digest-rad, prop `digest`) + ui/EventFeature (ett utvalt kort) + EventRow (max `MAX_COMPACT` = 5, resten bakom "N more").
+  Regler i lib/day-digest.ts: digest = antal · två vanligaste kategorierna (bara när dagen blandar) · antal "Free"; ingen digest för en dag
+  med en rad. Utvalt = stadens toppevenemang (siteConfig.topEvents) > första engångshändelse med länk > första period (run) med länk;
+  aldrig något återkommande (extra "Weekly/Regular/…" eller `recurring` från källan); ingen ruta för en dag med en rad.
+  /this-week/ (lib/week-groups.ts weekDayBlocks): samma dagblock; det som går >= `ALL_WEEK_DAYS` = 3 dagar blir ett kort var i
+  karusellen "All week" (ui/RunCarousel.astro) i stället för en rad per dag. Temagrupperna (groupWeekItems) används bara av
+  universitetsdigesten. Tester: lib/day-digest.test.ts, week-groups.test.ts (riktiga Glasgow-rader 2026-11-26).
 
 Regel: ingen sida skriver egen CSS för något biblioteket redan har. Städer får inte ha kodvägar i layouten (`townId ===`, stadsnamn, `country ===`); skillnader ligger i config. Test: lib/ui/standard-layout.test.ts.
 

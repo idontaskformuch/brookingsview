@@ -48,7 +48,10 @@ function meetingDayProblems(html) {
   const out = [];
   for (const row of html.matchAll(/<li\b[^>]*\bdata-day-key="(\d{4}-\d{2}-\d{2})"[^>]*>([\s\S]*?)<\/li>/g)) {
     const [, key, body] = row;
-    const title = body.match(/class="pl__title"[^>]*>([\s\S]*?)<\/span>/)?.[1]?.replace(/<[^>]+>/g, '');
+    // The date-tile list (pl__title) until 2026-11-26; since the design lift the day blocks' EventRow / EventFeature titles, whose day
+    // is the li's data-day-key under the DayGroup heading (no tile per row).
+    const title = (body.match(/class="pl__title"[^>]*>([\s\S]*?)<\/span>/)
+      ?? body.match(/class="ev-(?:row|feature)__title"[^>]*>([\s\S]*?)<\/h[2-4]>/))?.[1]?.replace(/<[^>]+>/g, '').trim();
     const named = title ? titleDate(title) : null;
     if (!named) continue;
     if (key !== named) { out.push(`"${decode(title)}" is listed under day ${key}`); continue; }

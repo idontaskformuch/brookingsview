@@ -35,6 +35,8 @@ export interface EventRowData {
   extra: string[];
   /** The library category (lib/event-category.ts); shown only when the list mixes categories. */
   category: Category | null;
+  /** The source marks it as repeating while no extra says so (the /this-week/ rows); read by lib/day-digest.ts isRecurring. */
+  recurring?: boolean;
 }
 
 export interface RowEnv {

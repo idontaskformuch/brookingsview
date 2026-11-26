@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  formatDays, formatWhen, groupWeekItems, isQuorumNotice, isSportItem, normalizeSportTitle, shortVenue, themeOf, titleIncludes,
+  ALL_WEEK_DAYS, formatDays, formatWhen, groupWeekItems, weekDayBlocks, isQuorumNotice, isSportItem, normalizeSportTitle, shortVenue, themeOf, titleIncludes,
 } from './week-groups';
 import type { DayBucket, DayItem } from './this-week';
 
@@ -217,5 +217,46 @@ describe('rows carry start/end so the browser can drop passed ones (university d
     const rows = groupWeekItems(all, all, TZ).flatMap((g) => g.rows);
     expect(rows[0].start).toBe('2026-10-19T05:00:00.000Z');
     expect(rows[0].end).toBeNull();
+  });
+});
+
+describe('weekDayBlocks (design lift rollout a, owner 2026-11-26 (7))', () => {
+  // Real rows: Glasgow /this-week/2026-w48/ as built 2026-11-26 (battery build): title, href, venue and time ordagrant.
+  const LON = 'Europe/London';
+  const GL = 'https://www.glasgowlife.org.uk/event';
+  const gday = (items: DayItem[], i: number): DayBucket => ({ date: { y: 2026, m: 11, d: 23 + i }, weekdayName: NAMES[i], leadVertical: 'events', items });
+  const meeting: DayItem = { vertical: 'city_hall', title: 'Contracts and Property Committee — Thu 26 Nov 2026', href: '/s/meeting-2026-11-26-15127/', external: false, detail: '', startsAt: null };
+  const softPlay: DayItem = { vertical: 'events', title: 'Soft Play Music Mornings', href: `${GL}/1/soft-play-music-mornings`, external: true, detail: '', startsAt: '2026-11-26T09:30:00Z', venue: 'Kelvin Hall' };
+  const knitting: DayItem = { vertical: 'events', title: 'Honey Bees Knitting group', href: `${GL}/1/honey-bees-knitting-group`, external: true, detail: '', startsAt: '2026-11-26T13:30:00Z', venue: 'Royston Library' };
+  const artClub: DayItem = { vertical: 'events', title: 'Saturday Art Club', href: `${GL}/28/saturday-art-club`, external: true, detail: '', startsAt: '2026-11-28T10:30:00Z', venue: 'Gallery of Modern Art' };
+  const label = (ymd: string) => `L ${ymd}`;
+
+  it('one group per day with rows, keyed by the town day; the meeting (no time) first, then by time', () => {
+    const days = NAMES.map((_, i) => gday(i === 3 ? [softPlay, knitting, meeting] : i === 5 ? [artClub] : [], i));
+    const b = weekDayBlocks(days, days, LON, label, 'Glasgow');
+    expect(b.allWeek).toEqual([]);
+    expect(b.days.map((d) => [d.key, d.label])).toEqual([['2026-11-26', 'L 2026-11-26'], ['2026-11-28', 'L 2026-11-28']]);
+    expect(b.days[0].rows.map((r) => [r.time, r.title, r.category])).toEqual([
+      ['', 'Contracts and Property Committee — Thu 26 Nov 2026', 'civic'],
+      ['9:30am', 'Soft Play Music Mornings', 'music'],
+      ['1:30pm', 'Honey Bees Knitting group', null],
+    ]);
+    expect(b.days[0].rows[1]).toMatchObject({ href: `${GL}/1/soft-play-music-mornings`, rel: 'noopener', place: ['Kelvin Hall'], day: '2026-11-26' });
+  });
+
+  it(`on ${ALL_WEEK_DAYS}+ days: one card in "All week", gone from the days (Soft Play, changed field: also on Fri 27 and Sat 28)`, () => {
+    const fri = { ...softPlay, startsAt: '2026-11-27T09:30:00Z' };
+    const sat = { ...softPlay, startsAt: '2026-11-28T09:30:00Z' };
+    const days = NAMES.map((_, i) => gday(i === 3 ? [softPlay, knitting] : i === 4 ? [fri] : i === 5 ? [sat, artClub] : [], i));
+    const b = weekDayBlocks(days, days, LON, label, 'Glasgow');
+    expect(b.allWeek.map((r) => [r.when, r.title, r.venue])).toEqual([['Thu–Sat 9:30am', 'Soft Play Music Mornings', 'Kelvin Hall']]);
+    expect(b.days.flatMap((d) => d.rows.map((r) => r.title))).toEqual(['Honey Bees Knitting group', 'Saturday Art Club']);
+  });
+
+  it('on two days: stays under each day, with the days as an extra (so it is not the featured card)', () => {
+    const sat = { ...softPlay, startsAt: '2026-11-28T09:30:00Z' };
+    const days = NAMES.map((_, i) => gday(i === 3 ? [softPlay] : i === 5 ? [sat] : [], i));
+    const b = weekDayBlocks(days, days, LON, label, 'Glasgow');
+    expect(b.days.map((d) => d.rows[0].extra)).toEqual([['Thu, Sat'], ['Thu, Sat']]);
   });
 });

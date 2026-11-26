@@ -111,6 +111,9 @@ const laterMoreGroups = asGroups(groupRowsByDay(view.furtherOut.slice(FOLD)));
 const nearbyGroups = asGroups(groupRowsByDay(nearbyRows), nearbyPlace);
 // Category on a row only when the page's lists mix them (as on Today).
 const showCategory = mixedCategories([...busyGroups, ...laterGroups, ...laterMoreGroups, ...nearbyGroups].flatMap((g) => g.rows));
+// The town's top events (siteConfig.topEvents, e.g. Hobo Day) are the day's featured card first (lib/day-digest.ts).
+const topPatterns = (siteConfig.topEvents?.patterns ?? []).map((p) => p.toLowerCase());
+const isTop = (r: EventRowData) => topPatterns.some((p) => r.title.toLowerCase().includes(p));
 
 const canonicalUrl = new URL('/events/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = [
@@ -207,7 +210,7 @@ const webPageJsonLd = dateModified ? {
     ))}
   </nav>
 
-  <EventDays groups={busyGroups} tz={siteConfig.timezone} showCategory={showCategory} />
+  <EventDays groups={busyGroups} tz={siteConfig.timezone} isTop={isTop} showCategory={showCategory} />
   {eventsEmpty && calendarLinks.length > 0 && (
     <nav class="ev-calendars" aria-label="Event calendars">
       {calendarLinks.map((c) => <a href={c.url}>{c.label}</a>)}
@@ -217,11 +220,11 @@ const webPageJsonLd = dateModified ? {
   {view.furtherOut.length > 0 && (
     <section class="ev-day" aria-labelledby="h-later">
       <h2 class="ev-day__h" id="h-later">Further out</h2>
-      <EventDays groups={laterGroups} tz={siteConfig.timezone} idPrefix="later" level={3} showCategory={showCategory} />
+      <EventDays groups={laterGroups} tz={siteConfig.timezone} isTop={isTop} idPrefix="later" level={3} showCategory={showCategory} />
       {view.furtherOut.length > FOLD && (
         <details class="ev-more">
           <summary>{view.furtherOut.length - FOLD} more</summary>
-          <EventDays groups={laterMoreGroups} tz={siteConfig.timezone} idPrefix="later-more" level={3} showCategory={showCategory} />
+          <EventDays groups={laterMoreGroups} tz={siteConfig.timezone} isTop={isTop} idPrefix="later-more" level={3} showCategory={showCategory} />
         </details>
       )}
     </section>
@@ -230,7 +233,7 @@ const webPageJsonLd = dateModified ? {
   {nearbyRows.length > 0 && (
     <section class="ev-day" aria-labelledby="h-nearby">
       <h2 class="ev-day__h" id="h-nearby">Nearby</h2>
-      <EventDays groups={nearbyGroups} tz={siteConfig.timezone} idPrefix="nearby" level={3} showCategory={showCategory} />
+      <EventDays groups={nearbyGroups} tz={siteConfig.timezone} isTop={isTop} idPrefix="nearby" level={3} showCategory={showCategory} />
     </section>
   )}
 

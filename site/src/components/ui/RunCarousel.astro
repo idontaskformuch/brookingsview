@@ -1,0 +1,36 @@
+---
+/** A row of cards that scrolls sideways (owner 2026-11-26, principle 4 "bryt rytmen"): what runs over several days (a market every
+ *  day this week, a season's run), pulled out of the day lists so each day shows what is particular to it. Each card: when (the days
+ *  or dates, as the source gives them), title, place. Same look as the Christmas page's "All season" carousel. */
+interface Item { when: string; title: string; place?: string | null; href?: string | null; rel?: string | null; start?: string | null; end?: string | null }
+interface Props { heading: string; items: Item[]; id?: string; level?: 2 | 3; keepOver?: boolean; tz?: string }
+const { heading, items, id = 'runs', level = 2, keepOver = false, tz } = Astro.props;
+const H = `h${level}` as 'h2' | 'h3';
+---
+{items.length > 0 && (
+  <section class="ui-runs" aria-labelledby={`${id}-h`} data-pop-group={keepOver ? undefined : ''}>
+    <H class="ui-runs__h" id={`${id}-h`}>{heading}</H>
+    <ul class="ui-runs__list">
+      {items.map((it) => (
+        <li class="ui-runs__item" {...(keepOver ? {} : { 'data-pop-row': '', 'data-start': it.start ?? undefined, 'data-end': it.end ?? undefined, 'data-tz': tz })}>
+          {it.href
+            ? <a class="ui-runs__card" href={it.href} rel={it.rel ?? undefined}><span class="ui-runs__when">{it.when}</span><span class="ui-runs__title">{it.title}</span>{it.place && <span class="ui-runs__place">{it.place}</span>}</a>
+            : <span class="ui-runs__card"><span class="ui-runs__when">{it.when}</span><span class="ui-runs__title">{it.title}</span>{it.place && <span class="ui-runs__place">{it.place}</span>}</span>}
+        </li>
+      ))}
+    </ul>
+  </section>
+)}
+<style>
+  .ui-runs { margin: var(--ui-4) 0 var(--ui-5); min-width: 0; }
+  .ui-runs[hidden] { display: none; }
+  .ui-runs__h { margin: 0 0 var(--ui-2); font-family: var(--font-head); font-size: 1.25rem; }
+  .ui-runs__list { list-style: none; margin: 0; padding: 0 0 var(--ui-2); display: grid; grid-auto-flow: column; grid-auto-columns: minmax(13rem, 17rem); gap: var(--ui-3); overflow-x: auto; scroll-snap-type: x proximity; }
+  .ui-runs__item { scroll-snap-align: start; display: flex; }
+  .ui-runs__item[hidden] { display: none; }
+  .ui-runs__card { flex: 1; display: grid; align-content: start; gap: 0.2rem; padding: var(--ui-3); border-radius: var(--ui-radius); background: var(--ui-surface-2); color: var(--ink); text-decoration: none; border-left: 3px solid var(--accent); }
+  a.ui-runs__card:hover .ui-runs__title { text-decoration: underline; }
+  .ui-runs__when { font-family: var(--font-ui); font-size: var(--ui-meta); font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .ui-runs__title { font-family: var(--font-head); font-weight: 600; line-height: 1.25; }
+  .ui-runs__place { font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); }
+</style>

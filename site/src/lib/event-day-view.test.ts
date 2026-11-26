@@ -240,6 +240,12 @@ describe('events never show a big card or a full-size FallbackTile', () => {
   it('the old per-day list and row components are gone and no page uses them', () => {
     for (const f of ['../pages/index.astro', '../pages/events.astro']) expect(readFileSync(new URL(f, import.meta.url), 'utf8'), f).not.toMatch(/EventDayList|events\/EventRow/);
   });
+  it('QA web.hscroll (2026-11-26): the 7-day strip scrolls in its own box; Glasgow /events/ was 572 px wide at 375 px', () => {
+    // .evg is a grid; a grid item's min-width is auto, so the strip's row of seven tiles widened the page. Fails on f39edb9a.
+    const glance = readFileSync(new URL('../components/events/EventsGlance.astro', import.meta.url), 'utf8');
+    expect(glance).toMatch(/\.evg > \* \{ min-width: 0; \}/);
+    expect(readFileSync(new URL('../components/ui/DayStrip.astro', import.meta.url), 'utf8')).toMatch(/\.ui-days \{[^}]*overflow-x: auto/);
+  });
   it('events.astro prints one DayGroup per day (Fas 4, owner 2026-11-21); /university/ the date-tile list; the front page section blocks', () => {
     const ev = readFileSync(new URL('../pages/events.astro', import.meta.url), 'utf8');
     expect(ev).toMatch(/<EventDays groups=\{busyGroups\}/);
