@@ -1,6 +1,7 @@
 """scripts/watch_sources.py (owner order 2026-11-26 (13)): a daily, generic source watch; one GitHub issue per watch when a rule no longer holds.
 Fixture: broomfield.org/4401/Holiday-Tree-Recycling as read 2026-11-19 (PoliteFetcher, one request); the committed baseline was written from the
-page of 2026-11-26 and the two are identical. Each failing case changes ONE thing in that real page."""
+page of 2026-11-26 and the two are identical. Each failing case changes ONE thing in that real page. The fixture is the page without its <script>
+blocks and with the value of its hidden Google Maps key field emptied (gitleaks refused the page's public keys); the visible text is untouched."""
 from pathlib import Path
 
 from qa.report import fingerprint, group, plan_actions
