@@ -6,9 +6,10 @@ import { SCOTLAND_BANK_HOLIDAYS } from '../config/holiday-pages/gb/bank-holidays
 import { buildChristmasPage } from '../config/holiday-pages/christmas';
 import { holidayPageDef } from '../config/holiday-pages/calendar';
 import {
-  daysWithCards, eventPopDays, eventsOn, hoursRowsMissingRunStart, factsOn, lastSeasonBankHoliday, seasonBankHolidays, seasonDays, seasonEvents, seasonHero, upcomingDays,
+  hoursRowsMissingRunStart, factsOn, lastSeasonBankHoliday, seasonBankHolidays, seasonDays,
 } from './holiday-season';
-import { gridClosedLine, seasonClosureGrid } from './holiday-view';
+import { seasonClosureGrid } from './holiday-view';
+import { dayBlocks, seasonRuns, timeText } from './holiday-festive';
 import { matchRegisterRows, matchTicketmasterEvents } from './holiday-calendar-events';
 import { calendarExcludesFor } from '../config/holiday-pages/registry';
 import type { TicketmasterFeedItem } from './ticketmaster';
@@ -56,13 +57,6 @@ describe('days from GOV.UK (nothing hard-coded, owner 2026-11-14)', () => {
     ]);
   });
 
-  it('passed days are not built, and the hero counts down to the next bank holiday or Hogmanay', () => {
-    expect(upcomingDays(days, '2026-12-27').map((d) => d.anchor)).toEqual(['dec-28', 'dec-31', 'jan-01', 'jan-02', 'jan-04']);
-    expect(seasonHero(days, '2026-11-14')).toEqual({ label: 'Christmas Day is', value: 'Friday', sub: '25 Dec' });
-    expect(seasonHero(days, '2026-12-26')).toEqual({ label: 'Boxing Day bank holiday is', value: 'Monday', sub: '28 Dec' });
-    expect(seasonHero(days, '2027-01-02')).toEqual({ label: '2 January bank holiday is', value: 'Monday', sub: '4 Jan' });
-    expect(seasonHero(days, '2027-01-05')).toBeNull();
-  });
 });
 
 describe('cards per day', () => {
@@ -74,19 +68,6 @@ describe('cards per day', () => {
     ]);
     expect(factsOn(page, '2027-01-01').map((f) => [f.label, f.value])).toEqual([['Winter Wonderland, Glasgow Green', '2pm–10pm'], ['ScotRail', 'No trains']]);
     expect(factsOn(page, '2027-01-04')).toEqual([]);
-  });
-
-  it('no card, no section: Mon 4 Jan is left out while it has none and comes back with one (owner 2026-11-14)', () => {
-    const events = page.events.filter((e): e is ConfirmedEvent => e.status === 'confirmed');
-    // Since 2026-11-21 closures are in the grid, not day cards: a day has a section with a one-day event (Toyland, 24 Dec) or a
-    // closures line from the grid (25 Dec, 1 Jan: owner 2026-11-21). 26, 28, 31 Dec, 2 and 4 Jan have neither in the config data.
-    expect(daysWithCards(page, events, '2026-11-14').map((d) => d.anchor)).toEqual(['dec-24']);
-    const grid = seasonClosureGrid(page);
-    expect(daysWithCards(page, events, '2026-11-14', (date) => gridClosedLine(grid, date) !== null).map((d) => d.anchor)).toEqual(['dec-24', 'dec-25', 'jan-01']);
-    // The real Toyland row with one changed field: date 2027-01-04 (it is 2026-12-24 in the data).
-    const toyland = events.find((e) => e.name === 'The McDougalls: Christmas in Toyland')!;
-    const moved = [...events, { ...toyland, date: '2027-01-04' }];
-    expect(daysWithCards(page, moved, '2026-11-14').map((d) => d.anchor)).toContain('jan-04');
   });
 
   it('one fact, one marking: a place with the same value has the same status on every day (owner 2026-11-14, ScotRail "No trains")', () => {
@@ -101,25 +82,6 @@ describe('cards per day', () => {
     expect(seen.get('ScotRail · No trains')).toBe('closed');
   });
 
-  it('a one-day event sits under its day; runs and other days are in the season list, past ones left out', () => {
-    const events = page.events.filter((e): e is ConfirmedEvent => e.status === 'confirmed');
-    expect(eventsOn(events, '2026-12-24').map((e) => e.name)).toEqual(['The McDougalls: Christmas in Toyland']);
-    const later = seasonEvents(events, days, '2026-12-03').map((e) => e.name);
-    expect(later).toContain("Glasgow's Winter Wonderland, Glasgow Green");
-    expect(later).not.toContain("Disney's The Muppet Christmas Carol in Concert"); // 2 Dec, over
-    expect(later).not.toContain('The McDougalls: Christmas in Toyland'); // under 24 Dec
-  });
-
-  it('event rows carry their source for the QA check and end at the end of a date-only day', () => {
-    const events = page.events.filter((e): e is ConfirmedEvent => e.status === 'confirmed');
-    const [day] = eventPopDays(events.filter((e) => e.name === 'Riverside Christmas Market'), TZ);
-    expect(day.rows[0]).toMatchObject({
-      start: '2026-11-28T00:00:00+00:00', end: '2026-11-29T23:59:00+00:00', timeLabel: '',
-      attrs: { 'data-hp-item': '', 'data-source': 'https://www.glasgowlife.org.uk/christmas-in-glasgow' },
-    });
-    const [toy] = eventPopDays(eventsOn(events, '2026-12-24'), TZ);
-    expect(toy.rows[0].timeLabel).toBe('1pm');
-  });
 });
 
 describe('Ticketmaster rows and series (owner 2026-11-15)', () => {
@@ -157,24 +119,15 @@ describe('Ticketmaster rows and series (owner 2026-11-15)', () => {
     expect(red.venue).toEqual({ name: "Saint Luke's", street: '17 Bain Street', locality: 'Glasgow' });
   });
 
-  it('the panto: one season row 25 Nov – 3 Jan linking to the next performance, one card per day with that day\'s times', () => {
-    const later = seasonEvents(events, days, '2026-11-15').filter((e) => e.name === PANTO);
-    expect(later.map((e) => [e.date, e.endDate, e.startTime, e.url])).toEqual([['2026-11-25', '2027-01-03', undefined, PANTO_URL]]);
-    const [row] = eventPopDays(later, TZ)[0].rows;
-    expect([row.start, row.end, row.timeLabel]).toEqual(['2026-11-25T00:00:00+00:00', '2027-01-03T23:59:00+00:00', '']);
-    // Once 25 Nov is over the row starts at the next performance.
-    expect(seasonEvents(events, days, '2026-11-26').find((e) => e.name === PANTO)?.date).toBe('2026-12-24');
-    const dec28 = eventsOn(events, '2026-12-28');
-    expect(dec28.map((e) => [e.name, e.startTime])).toEqual([[PANTO, '12:00']]);
-    expect(eventPopDays(dec28, TZ)[0].rows[0].timeLabel).toBe('12 noon and 2pm');
-    expect(eventPopDays(eventsOn(events, '2026-12-24'), TZ)[0].rows[0].timeLabel).toBe('12 noon');
-  });
-
-  it('a series on one day only is one card under that day and no season row', () => {
-    // The two 28 Dec performances alone (the other three left out of the input).
-    const one = events.filter((e) => e.name === PANTO && e.date === '2026-12-28');
-    expect(eventsOn(one, '2026-12-28')).toHaveLength(1);
-    expect(seasonEvents(one, days, '2026-11-15')).toEqual([]);
+  it('the panto: one row per day with the times of that day, never a season run (festive page, owner 2026-11-26)', () => {
+    const grid = seasonClosureGrid(page);
+    const dec28 = dayBlocks(page, events, grid, '2026-11-15').find((b) => b.iso === '2026-12-28')!;
+    const panto = [dec28.featured!, ...dec28.rows].filter((e) => e.name === PANTO);
+    expect(panto).toHaveLength(1);
+    expect(timeText(panto[0], 'en-GB')).toBe('Noon & 2pm');
+    const dec24 = dayBlocks(page, events, grid, '2026-11-15').find((b) => b.iso === '2026-12-24')!;
+    expect(timeText([dec24.featured!, ...dec24.rows].find((e) => e.name === PANTO)!, 'en-GB')).toBe('Noon');
+    expect(seasonRuns(events, '2026-11-15').map((e) => e.name)).not.toContain(PANTO);
   });
 
   it('a Ticketmaster row is a feed row: it keeps its build-day checkedOn but never moves the page\'s "Checked" (owner 2026-11-15)', () => {
@@ -189,12 +142,13 @@ describe('Ticketmaster rows and series (owner 2026-11-15)', () => {
     expect(checkedSpan({ ...page, events: [...page.events, ...events] }).last).toBe(checkedSpan(page).last);
   });
 
-  it('every season page: no title and venue twice under a day or in the season list', () => {
+  it('every season page: no title and venue twice in a day block', () => {
     const all = [...page.events.filter((e): e is ConfirmedEvent => e.status === 'confirmed'), ...events];
     const keys = (list: ConfirmedEvent[]) => list.map((e) => `${e.name}|${e.venue.name}`);
-    for (const d of daysWithCards(page, all, '2026-11-15')) expect(new Set(keys(d.events)).size).toBe(d.events.length);
-    const later = seasonEvents(all, days, '2026-11-15');
-    expect(new Set(keys(later)).size).toBe(later.length);
+    for (const b of dayBlocks(page, all, seasonClosureGrid(page), '2026-11-15')) {
+      const list = [...(b.featured ? [b.featured] : []), ...b.rows];
+      expect(new Set(keys(list)).size).toBe(list.length);
+    }
   });
 });
 

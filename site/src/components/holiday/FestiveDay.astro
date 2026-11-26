@@ -1,14 +1,14 @@
 ---
 /** One day of a festive holiday page (owner 2026-11-26): a date tile, the day's name, a digest line ("3 events · St Enoch closed ·
  *  No trains"), ONE featured event as a larger card, then the rest as dense rows (at most MAX_ROWS, the others behind "N more").
- *  `layout`: 'stack' (featured above the rows) or 'split' (featured left, rows right from 62rem). Data: lib/holiday-festive.ts dayBlocks. */
+ *  Featured above the rows on a phone, featured left and rows right from 62rem (owner's pick, variant B). Data: lib/holiday-festive.ts dayBlocks. */
 import type { DayBlock } from '../../lib/holiday-festive';
 import { timeText } from '../../lib/holiday-festive';
 import type { ConfirmedEvent, HolidayLocale } from '../../lib/holiday-page';
 import { TICKET_LINK_REL } from '../../lib/whats-on';
 
-interface Props { day: DayBlock; locale: HolidayLocale; layout?: 'stack' | 'split' }
-const { day, locale, layout = 'stack' } = Astro.props;
+interface Props { day: DayBlock; locale: HolidayLocale }
+const { day, locale } = Astro.props;
 const MAX_ROWS = 5;
 const shown = day.rows.slice(0, MAX_ROWS);
 const more = day.rows.slice(MAX_ROWS);
@@ -16,7 +16,7 @@ const rel = (e: ConfirmedEvent) => (e.fromCalendar?.startsWith('tm:') ? TICKET_L
 const note = (e: ConfirmedEvent) => [...(e.details ?? []), ...(e.clarify ? [e.clarify] : [])].join(' ');
 const attrs = (e: ConfirmedEvent) => ({ 'data-hp-item': '', 'data-source': e.source.url, 'data-hp-venue': e.venue.name });
 ---
-<section class:list={['fd', `fd--${layout}`]} id={day.anchor} data-hp-day={day.iso} aria-labelledby={`${day.anchor}-h`}>
+<section class="fd" id={day.anchor} data-hp-day={day.iso} aria-labelledby={`${day.anchor}-h`}>
   <header class="fd__head">
     <span class="fd__tile" aria-hidden="true"><span class="fd__tile-wd">{day.weekday}</span><span class="fd__tile-d">{day.day}</span><span class="fd__tile-m">{day.month}</span></span>
     <div class="fd__titles">
@@ -98,8 +98,8 @@ const attrs = (e: ConfirmedEvent) => ({ 'data-hp-item': '', 'data-source': e.sou
   .fd__venue { font-size: var(--ui-meta); color: var(--ink-soft); }
   .fd__more summary { cursor: pointer; padding: var(--ui-2) 0; font-family: var(--font-ui); font-weight: 600; color: var(--hol-ink, var(--accent)); min-height: 2.75rem; display: flex; align-items: center; }
   @media (min-width: 62rem) {
-    .fd--split .fd__body { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); align-items: start; }
-    .fd--split .fd__more { grid-column: 2; }
+    .fd__body { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); align-items: start; }
+    .fd__more { grid-column: 2; }
   }
   @media (max-width: 30rem) { .fd__row { grid-template-columns: 6.5rem minmax(0, 1fr); } .fd__time { white-space: normal; } }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

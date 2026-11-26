@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { holidayPageFor } from '../config/holiday-pages/registry';
 import { HOLIDAY_THEMES } from '../config/holiday-themes';
 import { closureGrid, seasonClosureGrid } from './holiday-view';
-import { adventStrip, clock, dayBlocks, digestLine, featuredOf, holidayMatrix, keyDays, seasonRuns, stripRange, weekGroups } from './holiday-festive';
+import { adventStrip, clock, dayBlocks, digestLine, featuredOf, footnoteCells, holidayMatrix, keyDays, MAX_CELL, MIN_STRIP_EVENT_DAYS, seasonRuns, stripRange, weekGroups } from './holiday-festive';
 import type { ConfirmedEvent, HolidayPageData } from './holiday-page';
 
 // Real data: the towns' own Christmas pages (config/holiday-pages/christmas*.ts), as the build reads them.
@@ -17,16 +17,34 @@ describe('the strip and the key days', () => {
     expect(keyDays(2026)).toEqual(['2026-12-24', '2026-12-25', '2026-12-26', '2026-12-31', '2027-01-01']);
   });
 
+  // Glasgow's config has one-day events on 2 strip days; the build adds its calendar and Ticketmaster rows (Hogmanay, the panto ...).
+  // A third day for the tests: the real Toyland row (config, 24 Dec) with one changed field, date 2026-12-27.
+  const gp = page('glasgow');
+  const toyland = confirmed(gp).find((e) => e.name === 'The McDougalls: Christmas in Toyland')!;
+  const evDays = (list: ConfirmedEvent[]) => new Set(list.filter((e) => e.date >= '2026-12-20' && e.date <= '2027-01-02' && (!e.endDate || e.endDate === e.date)).map((e) => e.date)).size;
+  const glasgowEvents = [...confirmed(gp), { ...toyland, date: '2026-12-27' }];
+
   it('Glasgow: 14 tiles; 25 Dec has a closure and no trains (ScotRail), and links to its day', () => {
-    const p = page('glasgow');
+    const p = gp;
     const g = grid(p);
-    const blocks = dayBlocks(p, confirmed(p), g, TODAY);
-    const strip = adventStrip(p, confirmed(p), g, new Set(blocks.map((b) => b.iso)));
+    const blocks = dayBlocks(p, glasgowEvents, g, TODAY);
+    const strip = adventStrip(p, glasgowEvents, g, new Set(blocks.map((b) => b.iso)))!;
     expect(strip).toHaveLength(14);
     const xmas = strip.find((d) => d.iso === '2026-12-25')!;
     expect([xmas.closed, xmas.noTransit, xmas.href]).toEqual([true, true, '#dec-25']);
     expect(strip[0].month).toBe('Dec');
     expect(strip.find((d) => d.iso === '2027-01-01')!.month).toBe('Jan');
+  });
+
+  it('empty-state rule (owner 2026-11-26 (6)): fewer than 3 days with events -> no strip (Broomfield has none 20 Dec – 2 Jan)', () => {
+    const p = page('broomfield_co');
+    const g = grid(p);
+    expect(adventStrip(p, confirmed(p), g, new Set())).toBeNull();
+    // Glasgow's config rows alone: events on 2 strip days -> no strip; with the moved Toyland row, 3 days -> a strip.
+    expect(evDays(confirmed(gp))).toBe(MIN_STRIP_EVENT_DAYS - 1);
+    expect(adventStrip(gp, confirmed(gp), grid(gp), new Set())).toBeNull();
+    expect(evDays(glasgowEvents)).toBe(MIN_STRIP_EVENT_DAYS);
+    expect(adventStrip(gp, glasgowEvents, grid(gp), new Set())).toHaveLength(14);
   });
 });
 
@@ -48,6 +66,27 @@ describe('the matrix', () => {
     for (const k of keyDays(2026)) expect(m.days.map((d) => d.iso)).toContain(k);
   });
 
+  it('cells hold at most MAX_CELL characters; ScotRail "Last trains leave earlier than normal" is footnote 1, once for both days', () => {
+    const p = page('glasgow');
+    const m = holidayMatrix(p, grid(p))!;
+    for (const r of m.rows) for (const c of r.cells) expect(c.text.length, `${r.name}: ${c.text}`).toBeLessThanOrEqual(MAX_CELL);
+    expect(m.notes).toEqual(['Last trains leave earlier than normal']);
+    const rail = m.rows.find((r) => r.name === 'ScotRail')!;
+    const at = (iso: string) => rail.cells[m.days.findIndex((d) => d.iso === iso)];
+    expect(at('2026-12-24')).toEqual({ kind: 'hours', text: 'Changed', note: 1 });
+    expect(at('2026-12-31')).toEqual({ kind: 'hours', text: 'Changed', note: 1 });
+    expect(at('2026-12-25')).toEqual({ kind: 'closed', text: 'No trains' });
+  });
+
+  it('footnotes: a long closed text keeps "Closed"; two different texts are 1 and 2 (the real ScotRail cell, text changed in the second)', () => {
+    const long = 'Last trains leave earlier than normal';
+    const { rows, notes } = footnoteCells([{ name: 'ScotRail', cells: [
+      { kind: 'hours', text: long }, { kind: 'closed', text: `${long} (closed)` }, { kind: 'hours', text: long }, { kind: 'normal', text: 'Normal' },
+    ] }]);
+    expect(notes).toEqual([long, `${long} (closed)`]);
+    expect(rows[0].cells.map((c) => [c.text, c.note])).toEqual([['Changed', 1], ['Closed', 2], ['Changed', 1], ['Normal', undefined]]);
+  });
+
   it('no grid, no matrix', () => {
     expect(holidayMatrix(page('broomfield_co'), null)).toBeNull();
   });
@@ -67,6 +106,12 @@ describe('day blocks', () => {
       ['2026-12-24', 'Christmas Eve'], ['2026-12-25', 'Christmas Day'], ['2027-01-01', "New Year's Day"],
     ]);
     expect(blocks[0].digest).toMatch(/FISH food bank closed$/);
+  });
+
+  it('Glasgow 25 Dec: the digest names what is shut in the words of the source, short names (owner 2026-11-21 rule, now the digest)', () => {
+    const p = page('glasgow');
+    const xmas = dayBlocks(p, confirmed(p), grid(p), TODAY).find((b) => b.iso === '2026-12-25')!;
+    expect(xmas.digest).toMatch(/St Enoch closed · Glasgow Green closed · No trains$/);
   });
 
   it('Glasgow: the featured event is the one on the fewest days of the season, not the daily panto', () => {

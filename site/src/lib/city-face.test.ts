@@ -134,8 +134,8 @@ describe('holiday page band photo', () => {
       expect('holiday' in b && b.holiday, town).toBe('christmas');
     }
   });
-  it('both page templates render the band (HolidaySeasonPage carries Glasgow\'s /christmas/)', () => {
-    for (const f of ['HolidayPage.astro', 'HolidaySeasonPage.astro']) {
+  it('both page templates render the band (HolidayFestivePage carries every town\'s /christmas/ since 2026-11-26)', () => {
+    for (const f of ['HolidayPage.astro', 'holiday/HolidayFestivePage.astro']) {
       const src = readFileSync(join(__dirname, '..', 'components', f), 'utf8');
       expect(src, f).toContain('holidayBandImage(siteConfig.townId, def.holidayId');
       expect(src, f).toContain('<CityPhoto image={band} variant="band" priority>');

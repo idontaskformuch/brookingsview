@@ -33,6 +33,7 @@ const { matrix, heading = 'Closed and open', lead = false } = Astro.props;
             {r.cells.map((c) => (
               <td class={`hm__c hm__c--${c.kind}`} data-cell={c.kind}>
                 {c.kind === 'closed' ? <span class="hm__closed"><Icon name="closed" size={14} />{c.text}</span> : c.text}
+                {c.note && <a class="hm__ref" href={`#hm-note-${c.note}`} aria-label={`note ${c.note}`}><sup>{c.note}</sup></a>}
               </td>
             ))}
           </tr>
@@ -40,6 +41,11 @@ const { matrix, heading = 'Closed and open', lead = false } = Astro.props;
       </tbody>
     </table>
   </div>
+  {matrix.notes.length > 0 && (
+    <ol class="hm__notes">
+      {matrix.notes.map((n, i) => <li id={`hm-note-${i + 1}`}>{n}</li>)}
+    </ol>
+  )}
   <p class="hm__key">Normal = no change announced by the source.</p>
 </section>
 
@@ -65,6 +71,9 @@ const { matrix, heading = 'Closed and open', lead = false } = Astro.props;
     white-space: nowrap; display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.1rem 0.45rem; border-radius: 999px; font-weight: 600;
     color: var(--hol-warm, var(--accent)); background: color-mix(in srgb, var(--hol-warm, var(--accent)) 12%, var(--paper));
   }
+  .hm__ref { margin-left: 0.15rem; color: var(--hol-ink, var(--accent)); font-weight: 700; text-decoration: none; }
+  .hm__notes { margin: var(--ui-2) 0 0; padding-left: 1.4rem; font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink); }
+  .hm__notes li { margin: 0.15rem 0; scroll-margin-top: var(--ui-5); }
   .hm__key { margin: var(--ui-2) 0 0; font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); }
   @media (max-width: 40rem) { .hm__t .hm__corner, .hm__t .hm__place { min-width: 7.5rem; max-width: 9.5rem; } }
 </style>

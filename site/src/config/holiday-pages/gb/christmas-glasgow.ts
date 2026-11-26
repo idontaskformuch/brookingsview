@@ -1,4 +1,4 @@
-/** Glasgow /christmas/ data (British spelling, hence gb/). Rendered by components/HolidaySeasonPage.astro while the window is open
+/** Glasgow /christmas/ data (British spelling, hence gb/). Rendered by components/holiday/HolidayFestivePage.astro (HolidaySeasonPage until 2026-11-26) while the window is open
  *  (day-by-day, owner 2026-11-14, .claude/specs/glasgow-christmas-2026.md) and by components/HolidayPage.astro outside it; see
  *  config/holiday-pages/christmas.ts for the sourcing rules (council behind Cloudflare, 403 hosts).
  *

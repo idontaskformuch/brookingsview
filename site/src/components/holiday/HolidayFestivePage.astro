@@ -2,15 +2,12 @@
 /** The festive holiday page, every town's Christmas (owner 2026-11-26, .claude/specs/design-lift-holiday-2026-11-26.md). One component
  *  for all towns; the data decides what shows (lib/holiday-festive.ts). Order: photo band with the H1 -> the lead -> days -> the season's
  *  runs as one carousel -> other weeks -> support, check-before-you-go, links -> "Checked" small at the bottom.
- *  Two variants until the owner picks one (HOLIDAY_VARIANT, dev and review only):
- *    A  calendar first: the advent strip is the lead, then the matrix; days stacked (featured above the rows); rail beside.
- *    B  closures first: the matrix is the lead, the strip a sticky day bar above the days; days split (featured | rows); full width.
+ *  Layout (owner's pick, variant B, 26 nov (6)): closures first -- the matrix is the lead, the advent strip a sticky day bar above
+ *  the days (hidden when fewer than 3 days in the range have events); days split (featured | rows); full width, no rail.
  *  Season colours: config/holiday-themes.ts, only on lines, date tiles and the heading ornament.
  *
  *  Resident question: what is on, and what is open or closed, on each day from Christmas Eve to New Year in <town>? */
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import RailLayout from '../RailLayout.astro';
-import RailModules from '../rail/RailModules.astro';
 import HolidayRail from '../HolidayRail.astro';
 import CityPhoto from '../CityPhoto.astro';
 import Card from '../ui/Card.astro';
@@ -39,7 +36,6 @@ import { driveLabel, driveMinutes } from '../../lib/evening-items';
 
 interface Props { page: HolidayPageData; def: HolidayPageDef; evergreen?: boolean; note?: string | null }
 const { page, def, evergreen = false, note = null } = Astro.props;
-const variant = (import.meta.env.HOLIDAY_VARIANT ?? process.env.HOLIDAY_VARIANT ?? 'A') === 'B' ? 'B' : 'A';
 const tz = siteConfig.timezone;
 const today = localToday(Date.now(), tz);
 const meta = buildHolidayMeta(page, def.label, siteConfig.cityName, evergreen);
@@ -85,68 +81,17 @@ const jsonLd = buildHolidayEventsJsonLd(page, tz, countryProfile(siteConfig.coun
   {jsonLd.map((ld) => <script type="application/ld+json" is:inline slot="head" set:html={JSON.stringify(ld)} />)}
   {bandSrc && <link slot="head" rel="preload" as="image" href={bandSrc.src} imagesrcset={bandSrc.srcset} imagesizes={bandSrc.srcset ? CITY_PHOTO_SIZES.band : undefined} fetchpriority="high" />}
 
-  <div class={`hol hol--${variant}`} style={theme} data-holiday-theme={def.holidayId} data-holiday-season={page.holiday} data-hp-rows-checked={rowsChecked} data-variant={variant}>
+  <div class="hol" style={theme} data-holiday-theme={def.holidayId} data-holiday-season={page.holiday} data-hp-rows-checked={rowsChecked}>
     <header class="hol__title">
       {band ? <CityPhoto image={band} variant="band" priority><h1 class="hol__h1--photo">{meta.h1}</h1></CityPhoto> : <h1>{meta.h1}</h1>}
       {note && <p class="hol__note">{note}</p>}
     </header>
 
-    {variant === 'A' ? (
-      <RailLayout>
-        <AdventStrip days={strip} size="hero" />
-        {insights.length > 0 && <ul class="hol__insights">{insights.map((l) => <li>{l}</li>)}</ul>}
-        {matrix && <HolidayMatrix matrix={matrix} />}
-        {blocks.map((b) => <FestiveDay day={b} locale={page.locale} layout="stack" />)}
-        {runs.length > 0 && (
-          <section class="hol__runs" aria-labelledby="hol-runs-h">
-            <h2 class="hol-h" id="hol-runs-h">All season</h2>
-            <ul class="hol__carousel">
-              {runs.map((e) => (
-                <li data-hp-item data-source={e.source.url} data-hp-venue={e.venue.name}>
-                  <a class="hol__run" href={e.url} rel={rel(e)}>
-                    <span class="hol__run-dates">{runDates(e, page.locale)}</span>
-                    <span class="hol__run-title">{e.name}</span>
-                    <span class="hol__run-venue">{placeOf(e)}</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-        {weeks.map((w) => (
-          <section class="hol__week" aria-label={w.heading}>
-            <h2 class="hol-h hol-h--sm">{w.heading}<span class="hol__wdigest"> · {w.digest}</span></h2>
-            <ul class="hol__wrows">
-              {w.rows.slice(0, ROWS).map(({ e, day }) => (
-                <li data-hp-item data-source={e.source.url} data-hp-venue={e.venue.name}>
-                  <span class="hol__wday">{day}</span><span class="hol__wtime">{timeText(e, page.locale)}</span>
-                  <a href={e.url} rel={rel(e)}>{e.name}</a><span class="hol__wvenue">{placeOf(e)}</span>
-                </li>
-              ))}
-            </ul>
-            {w.rows.length > ROWS && (
-              <details class="hol__wmore"><summary>{w.rows.length - ROWS} more this week</summary>
-                <ul class="hol__wrows">
-                  {w.rows.slice(ROWS).map(({ e, day }) => (
-                    <li data-hp-item data-source={e.source.url} data-hp-venue={e.venue.name}>
-                      <span class="hol__wday">{day}</span><span class="hol__wtime">{timeText(e, page.locale)}</span>
-                      <a href={e.url} rel={rel(e)}>{e.name}</a><span class="hol__wvenue">{placeOf(e)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            )}
-          </section>
-        ))}
-        <RailModules slot="rail" now={new Date()} page="holiday" excludeHolidaySlugs={new Set([def.slug])} frontImageId={frontPhoto?.id ?? null} />
-        {(hours.length > 0 || foodHelp.length > 0) && <HolidayRail slot="rail" hours={hours} foodHelp={foodHelp} />}
-      </RailLayout>
-    ) : (
-      <div class="hol__wide">
+    <div class="hol__wide">
         {matrix && <HolidayMatrix matrix={matrix} lead />}
         {insights.length > 0 && <ul class="hol__insights">{insights.map((l) => <li>{l}</li>)}</ul>}
-        <AdventStrip days={strip} size="nav" />
-        {blocks.map((b) => <FestiveDay day={b} locale={page.locale} layout="split" />)}
+        {strip && <AdventStrip days={strip} />}
+        {blocks.map((b) => <FestiveDay day={b} locale={page.locale} />)}
         {runs.length > 0 && (
           <section class="hol__runs" aria-labelledby="hol-runs-h">
             <h2 class="hol-h" id="hol-runs-h">All season</h2>
@@ -191,8 +136,7 @@ const jsonLd = buildHolidayEventsJsonLd(page, tz, countryProfile(siteConfig.coun
           ))}
         </div>
         {(hours.length > 0 || foodHelp.length > 0) && <div class="hol__railbelow"><HolidayRail hours={hours} foodHelp={foodHelp} /></div>}
-      </div>
-    )}
+    </div>
 
     {help.length > 0 && (
       <section class="hol__group" aria-labelledby="hol-help-h">
@@ -294,7 +238,7 @@ const jsonLd = buildHolidayEventsJsonLd(page, tz, countryProfile(siteConfig.coun
   .hol__links li { margin: 0.35rem 0; }
   .hol__checked { margin: var(--ui-6) 0 0; font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
   .hol__wide { max-width: 74rem; }
-  .hol--B .hol__weeks { display: grid; gap: 0 var(--ui-5); }
-  @media (min-width: 62rem) { .hol--B .hol__weeks { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .hol__weeks { display: grid; gap: 0 var(--ui-5); }
+  @media (min-width: 62rem) { .hol__weeks { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .hol__railbelow { margin: var(--ui-group-gap) 0 0; max-width: 32rem; }
 </style>

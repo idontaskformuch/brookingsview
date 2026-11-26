@@ -242,7 +242,7 @@ export interface HolidayPageData {
   nearbySection?: true;
   /** No "N places closed" anywhere (hero, front page, /holidays/): the confirmed rows are a small part of what closes (Glasgow). */
   noClosedCount?: boolean;
-  /** Day-by-day sections (lib/holiday-season.ts), rendered by components/HolidaySeasonPage.astro while the window is open. */
+  /** Day-by-day sections (lib/holiday-season.ts), rendered by components/holiday/HolidayFestivePage.astro (HolidaySeasonPage until 2026-11-26) while the window is open. */
   season?: { days: SeasonDay[] };
   /** Extra front-page posts with their own visible days (local, inclusive) and the days the deck counts down to, e.g.
    *  "Hogmanay and New Year" 27 Dec to the last bank holiday (owner 2026-11-14). */

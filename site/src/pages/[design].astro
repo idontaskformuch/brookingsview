@@ -24,6 +24,14 @@ import Icon from '../components/ui/Icon.astro';
 import { ICONS } from '../lib/ui/icons';
 import { siteConfig } from '../lib/site-config';
 import { CATEGORIES } from '../lib/ui/ui-helpers';
+import AdventStrip from '../components/holiday/AdventStrip.astro';
+import HolidayMatrix from '../components/holiday/HolidayMatrix.astro';
+import FestiveDay from '../components/holiday/FestiveDay.astro';
+import { holidayPageFor } from '../config/holiday-pages/registry';
+import { HOLIDAY_THEMES, themeStyle } from '../config/holiday-themes';
+import { closureGrid, seasonClosureGrid } from '../lib/holiday-view';
+import { adventStrip, dayBlocks, holidayMatrix, MIN_STRIP_EVENT_DAYS } from '../lib/holiday-festive';
+import type { ConfirmedEvent } from '../lib/holiday-page';
 
 export function getStaticPaths() {
   return process.env.BUILD_DESIGN === '1' ? [{ params: { design: '_design' } }] : [];
@@ -39,6 +47,15 @@ const days = [
 ];
 const chipCounts = { Downtown: 7, Eastside: 4, 'Near campus': 3, Airport: 1 };
 const catLabel: Record<string, string> = { civic: 'Civic', music: 'Music', family: 'Family', sports: 'Sports', food: 'Food', arts: 'Arts', nightlife: 'Nightlife' };
+
+// Holiday patterns (owner 2026-11-26 (6)): this town's own Christmas config rows, as committed (no calendar or Ticketmaster rows).
+const xmas = holidayPageFor('christmas', siteConfig.townId)?.page ?? null;
+const xmasEvents = xmas ? xmas.events.filter((e): e is ConfirmedEvent => e.status === 'confirmed') : [];
+const xmasGrid = xmas ? (xmas.season ? seasonClosureGrid(xmas) : closureGrid(xmas)) : null;
+const xmasMatrix = xmas ? holidayMatrix(xmas, xmasGrid) : null;
+const xmasBlocks = xmas ? dayBlocks(xmas, xmasEvents, xmasGrid, `${xmas.year}-11-01`) : [];
+const xmasStrip = xmas ? adventStrip(xmas, xmasEvents, xmasGrid, new Set(xmasBlocks.map((b) => b.iso))) : null;
+const xmasDay = xmasBlocks.find((b) => b.featured && b.rows.length > 0) ?? xmasBlocks.find((b) => b.featured) ?? xmasBlocks[0] ?? null;
 ---
 <BaseLayout title="Design gallery" description="Component gallery for the ui library. Not a public page." noindex>
   <main class="shell g">
@@ -139,6 +156,18 @@ const catLabel: Record<string, string> = { civic: 'Civic', music: 'Music', famil
     <SectionHeader title="EmptyState" />
     <EmptyState href="#top" linkLabel="Thu: 4 things">Next on the calendar:</EmptyState>
 
+    {xmas && (
+      <div class="g__hol" style={themeStyle(HOLIDAY_THEMES.christmas)}>
+        <SectionHeader title="Holiday patterns" kicker="components/holiday/, standards.md: Mönster för helg- och dagsidor" />
+        <p class="g__cap">This town's Christmas config rows as committed (the build adds calendar and Ticketmaster rows). Season theme: christmas.</p>
+        {xmasMatrix ? <HolidayMatrix matrix={xmasMatrix} heading="Holiday matrix" /> : <p class="g__cap">Holiday matrix: no closures grid in this town's data.</p>}
+        <p class="g__cap">Advent strip (shown only when at least {MIN_STRIP_EVENT_DAYS} days in 20 Dec – 2 Jan have events):</p>
+        {xmasStrip ? <AdventStrip days={xmasStrip} /> : <p class="g__cap">Hidden here: fewer than {MIN_STRIP_EVENT_DAYS} days with events in this town's config rows.</p>}
+        <p class="g__cap">Day block: date tile, digest line, one featured, compact rows:</p>
+        {xmasDay ? <FestiveDay day={xmasDay} locale={xmas.locale} /> : <p class="g__cap">No day block in this town's data.</p>}
+      </div>
+    )}
+
     <SectionHeader title="Icon" kicker="Stroke 1.75, one set" />
     <ul class="g__icons">
       {(Object.keys(ICONS) as (keyof typeof ICONS)[]).map((n) => <li><Icon name={n} size={24} /><span>{n}</span></li>)}
@@ -160,5 +189,8 @@ const catLabel: Record<string, string> = { civic: 'Civic', music: 'Music', famil
   .g__t { margin: 0; font-size: var(--ui-primary); font-weight: var(--ui-primary-weight); }
   .g__m { margin: 0; font-size: var(--ui-meta); color: var(--ink-soft); }
   .g__icons { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ui-3); grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr)); }
+  .g__hol { --hol-ink: var(--hol-ink-l); --hol-on: var(--hol-on-l); --hol-warm: var(--hol-warm-l); display: grid; gap: var(--ui-2); }
+  @media (prefers-color-scheme: dark) { :global(:root:not([data-theme="light"])) .g__hol { --hol-ink: var(--hol-ink-d); --hol-on: var(--hol-on-d); --hol-warm: var(--hol-warm-d); } }
+  :global(:root[data-theme="dark"]) .g__hol { --hol-ink: var(--hol-ink-d); --hol-on: var(--hol-on-d); --hol-warm: var(--hol-warm-d); }
   .g__icons li { display: flex; align-items: center; gap: var(--ui-2); font-size: var(--ui-meta); color: var(--ink-soft); }
 </style>

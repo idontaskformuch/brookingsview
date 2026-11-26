@@ -80,9 +80,13 @@ export interface StripDay {
   name: string | null;
 }
 
-export function adventStrip(page: HolidayPageData, events: ConfirmedEvent[], grid: ClosureGridView | null, blockDays: Set<string>): StripDay[] {
+/** The empty-state rule (owner 2026-11-26 (6)): the strip is left out when fewer than this many of its days have events. */
+export const MIN_STRIP_EVENT_DAYS = 3;
+
+/** The strip's tiles, or null when fewer than MIN_STRIP_EVENT_DAYS days in the range have a one-day event (Broomfield, Nov 2026). */
+export function adventStrip(page: HolidayPageData, events: ConfirmedEvent[], grid: ClosureGridView | null, blockDays: Set<string>): StripDay[] | null {
   const { first, last } = stripRange(page.year);
-  return days(first, last).map((iso, i) => {
+  const tiles = days(first, last).map((iso, i) => {
     const c = closedWords(grid, iso);
     return {
       iso, weekday: WD[dow(iso)], day: Number(iso.slice(8, 10)),
@@ -93,14 +97,39 @@ export function adventStrip(page: HolidayPageData, events: ConfirmedEvent[], gri
       name: dayName(page, iso),
     };
   });
+  return tiles.filter((t) => t.events > 0).length < MIN_STRIP_EVENT_DAYS ? null : tiles;
 }
 
 export type MatrixKind = 'closed' | 'hours' | 'normal';
-export interface MatrixCell { kind: MatrixKind; text: string }
+/** `note`: the number of the footnote under the matrix that holds the source's full text (a cell longer than MAX_CELL). */
+export interface MatrixCell { kind: MatrixKind; text: string; note?: number }
 export interface MatrixView {
   days: { iso: string; weekday: string; label: string; name: string | null }[];
   rows: { name: string; href?: string; note?: string; cells: MatrixCell[] }[];
+  /** numbered footnotes, 1 first: the full source text of every cell that was too long */
+  notes: string[];
   checked: string;
+}
+
+/** A matrix cell holds at most about this many characters ("Closed", "No trains", "Last 21:00", "10:00–20:00"); longer source text
+ *  goes to a numbered footnote under the matrix (owner 2026-11-26 (6); ScotRail's "Last trains leave earlier than normal"). */
+export const MAX_CELL = 15;
+/** The cell word in place of a too-long text: no wording of our own beyond the kind of change. */
+const CELL_FALLBACK: Record<Exclude<MatrixKind, 'normal'>, string> = { closed: 'Closed', hours: 'Changed' };
+
+/** Too-long cells get the fallback word and a footnote; the same text is the same footnote. */
+export function footnoteCells(rows: MatrixView['rows']): { rows: MatrixView['rows']; notes: string[] } {
+  const notes: string[] = [];
+  const out = rows.map((r) => ({
+    ...r,
+    cells: r.cells.map((c): MatrixCell => {
+      if (c.kind === 'normal' || c.text.length <= MAX_CELL) return c;
+      let n = notes.indexOf(c.text) + 1;
+      if (n === 0) n = notes.push(c.text);
+      return { kind: c.kind, text: CELL_FALLBACK[c.kind], note: n };
+    }),
+  }));
+  return { rows: out, notes };
 }
 
 /** Places by key day. Columns: the five key days, plus any other day a place changes (Glasgow's substitute bank holidays), in date
@@ -111,9 +140,7 @@ export function holidayMatrix(page: HolidayPageData, grid: ClosureGridView | nul
   const changed = grid.days.filter((_, i) => rows.some((r) => r.cells[i].kind !== 'usual')).map((d) => d.iso);
   const isos = [...new Set([...keyDays(page.year), ...changed])].sort();
   const sep = page.locale === 'en-GB' ? (d: number, m: string) => `${d} ${m}` : (d: number, m: string) => `${m} ${d}`;
-  return {
-    days: isos.map((iso) => ({ iso, weekday: WD[dow(iso)], label: sep(Number(iso.slice(8, 10)), MON[Number(iso.slice(5, 7)) - 1]), name: dayName(page, iso) })),
-    rows: rows.map((r) => ({
+  const { rows: noted, notes } = footnoteCells(rows.map((r) => ({
       name: r.name, ...(r.href ? { href: r.href } : {}), ...(r.note ? { note: r.note } : {}),
       cells: isos.map((iso): MatrixCell => {
         const i = grid.days.findIndex((d) => d.iso === iso);
@@ -121,7 +148,11 @@ export function holidayMatrix(page: HolidayPageData, grid: ClosureGridView | nul
         if (!c || c.kind === 'usual') return { kind: 'normal', text: 'Normal' };
         return c.kind === 'closed' ? { kind: 'closed', text: c.text } : { kind: 'hours', text: c.short ?? c.text };
       }),
-    })),
+  })));
+  return {
+    days: isos.map((iso) => ({ iso, weekday: WD[dow(iso)], label: sep(Number(iso.slice(8, 10)), MON[Number(iso.slice(5, 7)) - 1]), name: dayName(page, iso) })),
+    rows: noted,
+    notes,
     checked: grid.checked,
   };
 }

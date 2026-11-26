@@ -6,10 +6,9 @@
  *  year, outside it the page is a standing page with last season's facts labelled by year
  *  (.claude/specs/evergreen-holidays.md). Rows from the town's own event calendars and venue register (and, on a season page,
  *  Ticketmaster's, owner 2026-11-15) are added here, at build
- *  time (lib/holiday-calendar-events.ts); every match is printed to the build log. A page with day-by-day data (`season`) is
- *  rendered by HolidaySeasonPage while its window is open (Glasgow's Christmas and New Year, owner 2026-11-14). */
+ *  time (lib/holiday-calendar-events.ts); every match is printed to the build log. Christmas in every town (layout 'festive') is
+ *  rendered by holiday/HolidayFestivePage (owner 2026-11-26); the day-by-day season page it replaced is gone. */
 import HolidayPage from '../components/HolidayPage.astro';
-import HolidaySeasonPage from '../components/HolidaySeasonPage.astro';
 import HolidayFestivePage from '../components/holiday/HolidayFestivePage.astro';
 import { siteConfig } from '../lib/site-config';
 import { HOLIDAY_PAGE_DEFS } from '../config/holiday-pages/calendar';
@@ -28,7 +27,6 @@ const state = resolvePageState(entry.def, entry.page.year, Date.now(), siteConfi
 
 // Calendar, venue-register and Ticketmaster rows (lib/holiday-page-build.ts, the same rows the evening layer's holiday group reads).
 const page = await holidayPageWithRows(entry, Date.now(), true);
-const season = !!page.season && state.kind === 'active';
 // The festive layout (owner 2026-11-26) shows this season's facts: inside the window, or before it with the coming season's data. A page
 // whose facts are an earlier season's (timeless) keeps the standard template, where nothing reads as if it is about to happen.
 const evergreen = state.kind === 'evergreen';
@@ -37,6 +35,4 @@ const festiveNote = festive && state.kind === 'evergreen' ? evergreenLines(entry
 ---
 {festive
   ? <HolidayFestivePage page={page} def={entry.def} evergreen={evergreen} note={festiveNote} />
-  : season
-  ? <HolidaySeasonPage page={page} def={entry.def} />
   : <HolidayPage page={page} def={entry.def} state={state} hasClosures={!!siteConfig.hasClosureWatch} />}

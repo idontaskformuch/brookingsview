@@ -43,6 +43,17 @@ Bricolage Grotesque (Google Fonts-bygget) har OpenType-featuren `tnum` (och `pnu
 ## Komponentbiblioteket (site/src/components/ui/)
 HeroStat (bara temperatur, matchresultat, pris), EventRow, EventCard, DayGroup, InsightLine, RangeBar, HourStrip (timmar med temperaturkurva + regnstaplar), DayRows (en rad per dag, detaljer bakom tryck), TimeStrip, Card (toppkant 4 px i kategorifärg), CompactRow (vänsterkant 3 px), Chips (>=3 per chip, >=2 chips, inga siffror), DayStrip, Pill/Badge, SectionHeader, WarningBanner, EmptyState, AboutThisPage, FallbackTile, Icon. Tokens i site/src/design/ui-tokens.css; accent från site.config. Galleri: `/_design/` (pages/[design].astro, noindex, ej i sitemap, bara byggt med BUILD_DESIGN=1).
 
+## Mönster för helg- och dagsidor (ägarbeslut 2026-11-26, designlyften; pilot: julsidan, variant B)
+Principer (ordagrant i specs/design-lift-holiday-2026-11-26.md): storlek efter vikt (en hero per sida, den svarar på det besökaren kom för); text till struktur (matriser, chips, ikoner, inte meningar); sammanfatta före detaljerna (digest-rad); bryt rytmen (max ca 5 likadana kort i rad, sedan annan modultyp); ett utvalt, resten kompakt; metadata ("Checked …") längst ner, liten. Tider "12:00"/"Noon", aldrig "PM" plus jättesiffra.
+Komponenter i site/src/components/holiday/, data som rena funktioner i lib/holiday-festive.ts. Galleri: sektionen "Holiday patterns" på `/_design/` (stadens egna julrader).
+- **Matris** (HolidayMatrix, `holidayMatrix`): ställen som rader, nyckeldagar som kolumner (+ varje annan dag ett ställe ändrar). Cell = "Closed"/källans eget ord (markerad, ikon), en tid, eller "Normal". Max `MAX_CELL` = 15 tecken; längre källtext blir "Changed"/"Closed" + numrerad fotnot under matrisen, samma text = samma nummer (`footnoteCells`). Riktig `<table>`, sticky första kolumn, sidscroll på mobil. Används när frågan är "vad är öppet vilken dag" och det finns >= 2 ställen eller >= 2 dagar.
+- **Digest-rad** (`digestLine`): inleder varje dag/grupp: "3 events · St Enoch closed · No trains". Bara delar som har data; högst 3 stängningar, sedan "+N more closed".
+- **Utvalt + kompakt** (FestiveDay, `dayBlocks`/`featuredOf`): datumbricka, digest, ETT utvalt kort (serien med färst dagar, tidigast vid lika), sedan högst 5 täta rader och "N more" bakom tryck. En serie (samma titel + plats) = en rad per dag med alla tider. Utvalt vänster / rader höger från 62rem.
+- **Adventsremsa** (AdventStrip, `adventStrip`): en ruta per dag i intervallet, prick per evenemang (max 3), ikon för stängt/inga tåg, tryck -> dagen. Kompakt, sticky ovanför dagblocken, sidscroll på mobil. **Tomlägesregel:** döljs helt om färre än `MIN_STRIP_EVENT_DAYS` = 3 dagar i intervallet har evenemang (Broomfield nov 2026).
+- **Säsongstema** (config/holiday-themes.ts, `themeStyle`): två färger per helg (ink + warm, ljus och mörk), bara på linjer, datumbrickor och små ornament vid rubrikerna. Inga snöflingor, glitter eller animationer. Jul = gran + guld, Thanksgiving = rost + skördeguld; helg utan post behåller sajtens accent. AA-test i lib/holiday-festive.test.ts.
+- **Rytmbrott:** flerdagarsevenemang som karusell (`seasonRuns`); övriga veckor med digest (`weekGroups`).
+- Tester: lib/holiday-festive.test.ts (riktiga julsidedata från config), holiday-season.test.ts (serier/panto).
+
 Regel: ingen sida skriver egen CSS för något biblioteket redan har. Städer får inte ha kodvägar i layouten (`townId ===`, stadsnamn, `country ===`); skillnader ligger i config. Test: lib/ui/standard-layout.test.ts.
 
 ## Standardlayouter
@@ -57,11 +68,11 @@ Format per layout: syfte (frågan den besvarar), komponent, config-fält, tomma 
 
 ### Helgsidor (Thanksgiving, Veterans Day, Christmas, ...)
 - Syfte: "Vad är stängt/öppet, och vad händer, på <helg> här?"
-- Komponent: HolidayPage.astro + lib/holiday-page.ts; data i config/holiday-pages/*.ts.
+- Komponent: HolidayPage.astro + lib/holiday-page.ts; data i config/holiday-pages/*.ts. Julen i alla städer (def `layout: 'festive'`): holiday/HolidayFestivePage.astro, ordning matris -> insikter -> adventsremsa -> dagblock -> karusell -> veckor -> support/kolla innan/länkar -> "Checked" (se Mönster ovan). HolidaySeasonPage borttagen 2026-11-26.
 - Modell: HolidayFact = confirmed | unconfirmed (unconfirmed kräver lastYear eller checkAt); HolidayEvent; linkOnly för robots-spärrade källor (visas som länk, hämtas aldrig, CLAUDE.md #13); Event-JSON-LD bara för confirmed; vanliga öppettider under "More" (section hours), aldrig i closures.
 - Config: locale (en-US/en-GB), metaOverride (fast godkänd text), fönsterregel (~6 veckor före första bekräftade event till sista dagen).
 - Tomt läge: sektion utan bekräftad rad nämns inte i title/H1; unconfirmed-rader visar checkAt.
-- Tester: lib/holiday-page.test.ts, lib/christmas.test.ts, veterans-day.
+- Tester: lib/holiday-page.test.ts, lib/christmas.test.ts, veterans-day, lib/holiday-festive.test.ts.
 
 ### Tonight
 - Syfte: "Vad händer ikväll, och vad är öppet sent?"

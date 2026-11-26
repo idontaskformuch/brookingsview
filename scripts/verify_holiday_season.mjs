@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Owner 2026-11-14 (.claude/specs/glasgow-christmas-2026.md): a day-by-day holiday page (components/HolidaySeasonPage.astro, marked
+ * Owner 2026-11-14 (.claude/specs/glasgow-christmas-2026.md): a day-by-day holiday page (components/holiday/HolidayFestivePage.astro (HolidaySeasonPage until 2026-11-26), marked
  * data-holiday-season) never shows a day or an event that has passed, and every fact on it has a source link. Reads the real `dist/`:
  *  - a day section or day chip (data-hp-day="YYYY-MM-DD") before today fails;
  *  - an event row (data-pop-row) whose end (or start) date is before today fails;
