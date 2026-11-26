@@ -546,15 +546,33 @@ def _date_headings(page_text: str, today: date) -> list[_Heading]:
     """The page's date headings, each with its offset in _norm(page_text) (= the normalised non-empty lines joined by one space)."""
     out: list[_Heading] = []
     pos = 0
-    for line in page_text.split("\n"):
+    lines = [ln for ln in page_text.split("\n") if _norm(ln)]
+    for i, line in enumerate(lines):
         n = _norm(line)
-        if not n:
-            continue
         d = _heading_date(line, today)
         if d is not None:
             out.append(_Heading(pos, n, d, line.strip()))
+        elif i + 1 < len(lines) and (d2 := _two_line_date(line, lines[i + 1])) is not None:
+            out.append(_Heading(pos, f"{n} {_norm(lines[i + 1])}", d2, f"{line.strip()}\n{lines[i + 1].strip()}"))
         pos += len(n) + 1
     return out
+
+
+_WD_DAY_RE = re.compile(r"^(?P<wd>mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?\s+(?P<day>\d{1,2})$", re.I)
+_MON_YY_RE = re.compile(r"^(?P<mon>jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+['’](?P<yy>\d\d)$", re.I)
+
+
+def _two_line_date(line: str, next_line: str) -> date | None:
+    """A date heading split over two lines (owner 2026-11-26, SWG3): "Tue 01" then "Dec '26". The weekday must fit the date, as for a
+    one-line heading (rule 15); anything else is no heading."""
+    a, b = _WD_DAY_RE.match(line.strip()), _MON_YY_RE.match(next_line.strip())
+    if not a or not b:
+        return None
+    try:
+        d = date(2000 + int(b["yy"]), _MONTHS.index(b["mon"].lower()[:3]) + 1, int(a["day"]))
+    except ValueError:
+        return None
+    return d if WEEKDAYS[d.weekday()] == a["wd"].lower()[:3] else None
 
 
 def _headings_above(quote_norm: str, page_norm: str, headings: list[_Heading]) -> list["_Heading | None"]:
@@ -588,7 +606,11 @@ def _spread_over_days(rule: Rule, page_text: str, headings: list[_Heading], toda
     if not days:
         return [rule]
     title = rule.title
-    if _has_seven_consecutive_days([h.day for h in headings]):
+    # A weekday is only "every week" when the line stands under EVERY heading of that weekday on the page (owner 2026-11-26): on a week
+    # view (Old Man: one Tuesday) nothing changes; on a programme of months (SWG3, nine Tuesdays) one show stays a dated show.
+    page_weekdays = {d.weekday(): sum(1 for h in headings if h.day.weekday() == d.weekday()) for d in days}
+    under_all = all(sum(1 for d in days if d.weekday() == wd) == n for wd, n in page_weekdays.items())
+    if under_all and _has_seven_consecutive_days([h.day for h in headings]):
         weekdays = sorted({d.isoweekday() for d in days})
         span = f"{_MONTHS[days[0].month - 1].title()} {days[0].day}-{_MONTHS[days[-1].month - 1].title()} {days[-1].day}"
         quote = (f"{rule.rule_line} (listed under each day {span})" if len(days) > 1

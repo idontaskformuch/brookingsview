@@ -91,6 +91,11 @@
       "born_from": "2026-11-08: the register's dated rules lapsed on 11-05 (first run on a Thursday, the Monday run skipped its venues as checked <6 days ago) and Broomfield's register has valid rules for 1 of 7 venues; nothing watched it. Owner minimums: Glasgow 4, Broomfield 1",
       "what": "a town's evening register has fewer venues with a valid rule than its minimum (dated 8 days, recurring 36), or no venue check for 9 days"
     },
+    "data.register-two-line-date": {
+      "severity": "hard",
+      "born_from": "2026-11-26 SWG3 dry runs kept 66 and 26 rules: the model sometimes quoted SWG3's date as two lines ('Tue 01' + \"Dec '26\"), which validation did not read as a date heading, so ~40 shows were rejected. Owner 2026-11-26: read the two-line form deterministically (weekday must fit the date). Reading it exposed proposal 6c's week-view rule turning one show into an every-Tuesday rule on a months-long programme; a weekday is now recurring only when the line stands under every heading of that weekday. Two dry runs after the fix: 67 kept, identical. Regression fixtures: test_two_line_date_heading_is_read, test_swg3_entry_* in tests/test_evening_register.py (SWG3 fixture).",
+      "what": "a venue's date heading over two lines is not read, or one show on a long programme becomes a weekly rule (pytest)"
+    },
     "ops.evening-register-cutoff": {
       "severity": "hard",
       "born_from": "2026-11-25 run 45701360375: glasgow/swg3's model reply was cut off at max_tokens 8000 (the page lists a year of shows); the annotation pointed only to '.github#28' (GitHub's location for a ::warning:: without a file, no issue) and the alert was never sent (ALERT_WEBHOOK missing in evening-register.yml). Owner 2026-11-26: never raise max_tokens again, crop the page / send it in parts, and let the alert point to an issue that exists. Regression fixtures: tests/fixtures/evening_register/swg3-events-2026-11-26.html (test_swg3_* in tests/test_evening_register.py) and the registercut tests in tests/test_freshness.py.",

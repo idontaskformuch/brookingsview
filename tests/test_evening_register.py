@@ -641,3 +641,38 @@ def test_swg3_flow_is_not_cut_off_when_the_model_runs_out_on_long_input():
     assert [r.title for r in res.rules] == ["Dea Matrona"] and res.rules[0].on_date == NOV26
     assert len(calls) >= 2 and all(len(c) <= er.CHUNK_CHARS for c in calls)
     assert not any("Feb '27" in c for c in calls)
+
+
+# --- a date heading over two lines (owner 2026-11-26): SWG3 writes "Tue 01" then "Dec '26" ---------------------------------------
+# The entry is the model's own reply from the 2026-11-26 dry run (rejected then as "not the date heading directly above the quote").
+RAMPANTS = {"kind": "dated", "title": "The Rampants", "weekdays": [], "weeks_of_month": [], "date": "2026-12-01", "valid_until": None,
+            "times": ["19:00"], "quote": "The Rampants\n19:00", "date_quote": "Tue 01\nDec '26"}
+
+
+def _swg3_text():
+    _, full = er.parse_page(SWG3_HTML, limit=None)
+    return er.crop_to_horizon(full, NOV26)
+
+
+def test_two_line_date_heading_is_read():
+    assert er._two_line_date("Tue 01", "Dec '26") == date(2026, 12, 1)
+    assert er._two_line_date("Wed 01", "Dec '26") is None  # the weekday does not fit the date
+    heads = er._date_headings(_swg3_text(), NOV26)
+    assert any(h.day == date(2026, 12, 1) and h.text == "Tue 01\nDec '26" for h in heads)
+
+
+def test_swg3_entry_under_a_two_line_heading_is_kept():
+    kept, rej = er.validate_extraction(json.dumps({"entries": [RAMPANTS]}), _swg3_text(), NOV26)
+    assert rej == [] and [(r.title, r.on_date, r.times) for r in kept] == [("The Rampants", date(2026, 12, 1), ["19:00"])]
+
+
+def test_swg3_entry_with_the_wrong_weekday_in_its_heading_is_rejected():
+    wrong = {**RAMPANTS, "date_quote": "Wed 01\nDec '26"}  # only date_quote changed
+    kept, rej = er.validate_extraction(json.dumps({"entries": [wrong]}), _swg3_text(), NOV26)
+    assert kept == [] and len(rej) == 1
+
+
+def test_swg3_entry_paired_with_another_days_heading_is_rejected():
+    other = {**RAMPANTS, "date_quote": "Sun 29\nNov '26", "date": "2026-11-29"}  # a real heading, but not the one above the line
+    kept, rej = er.validate_extraction(json.dumps({"entries": [other]}), _swg3_text(), NOV26)
+    assert kept == [] and "directly above" in rej[0].why
