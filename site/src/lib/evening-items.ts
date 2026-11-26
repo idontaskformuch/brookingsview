@@ -16,6 +16,7 @@ import { itemTitle, itemUrl, itemVenue } from './events';
 import { linkTarget } from './ai-text';
 import { distanceLabel, IN_TOWN_THRESHOLD_MILES, type TicketmasterFeedItem } from './ticketmaster';
 import { ticketmasterHref } from './whats-on';
+import { categorize } from './event-category';
 import { hasEnded, DEFAULT_EVENT_MS, localDayNumber, localHourOf, localInstantIso } from './local-day';
 import type { EveningItem } from './evening-threshold';
 
@@ -44,6 +45,8 @@ export interface EveningEntry {
   checked: string;
   /** Later start times the same night for the same title (a film with several screenings); register rows only. */
   laterStarts?: string[];
+  /** The source says it repeats (a weekly register rule, an own recurring series): never an evening's featured card. */
+  recurring?: boolean;
   /** Neighbourhood ("Merchant City") from OpenStreetMap place data, see lib/areas.ts; null/absent when unknown. */
   area?: string | null;
   lat?: number | null;
@@ -111,36 +114,68 @@ const CLUB_RE = /\b(club night|dj set|\bdj\b|rave|disco|late night)\b/i;
 const MUSIC_RE = /\b(live music|live band|concert|gig|open mic|open-mic|jam session|karaoke|choir|orchestra|symphony|folk night|jazz|acoustic)\b/i;
 const SPORT_RE = /\b(match|game day|tournament|league|derby|fixture|race night|vs\.?|v\.)\b/i;
 
-/** Own events: a keyword rule on the title only (the description is too long and too chatty to read a group out of).
- *  Order matters: "Comedy quiz" is a quiz night, "DJ set + live band" a club night. */
-export function groupForTitle(title: string): EveningGroup | null {
+const CLUB_GENRE_RE = /\b(dance|electronic|club|house|techno)\b/i;
+const FAMILY_SOURCE_RE = /\b(family|children|kids)\b/i;
+const FILM_RE = /\b(films?|movies?|screenings?|cinema)\b/i;
+const THEATRE_RE = /\b(theatre|theater|plays?|musicals?|panto|pantomime|ballet|opera)\b/i;
+const SHOW_RE = /\b(cabaret|variety show|magic|comedy|musical)\b/i;
+
+export interface GroupInput {
+  /** The source's own labels, in order (Ticketmaster: segment, then genre; a calendar: its category). */
+  source?: (string | null | undefined)[];
+  title: string;
+  venue?: string | null;
+}
+
+/** THE evening group (owner 2026-11-26 (10): the evening layer's groups go through categorize). The event's category comes from
+ *  lib/event-category.ts categorize (the source's own label, then the title, the venue last), as on every other page; the group only
+ *  splits a category where an evening needs it: music into Live music and Clubs & late, nightlife into Quiz & pub nights, Clubs & late,
+ *  Live music (karaoke, open mic) and Comedy & shows, arts into Film, Theatre and Comedy & shows. A category with no evening group
+ *  (food, civic, an exhibition) gives none. Only when nothing names a category at all do the old title words decide. */
+export function eveningGroup({ source = [], title, venue = null }: GroupInput): EveningGroup | null {
+  const src = source.filter((s): s is string => !!s).join(' · ');
+  if (FAMILY_SOURCE_RE.test(src)) return 'Family';
+  switch (categorize({ source, title, venue })) {
+    case 'music': return CLUB_RE.test(title) || CLUB_GENRE_RE.test(src) ? 'Clubs & late' : 'Live music';
+    case 'nightlife':
+      if (QUIZ_RE.test(title)) return 'Quiz & pub nights';
+      if (CLUB_RE.test(title)) return 'Clubs & late';
+      return /\b(karaoke|open[- ]?mic)\b/i.test(title) ? 'Live music' : 'Comedy & shows';
+    case 'arts': {
+      // The segment's own name ("Arts & Theatre") says nothing about theatre: the genre after it does ("Theatre", "Comedy").
+      const genre = src.replace(/arts & theatre/ig, '');
+      if (/\bcomedy\b/i.test(genre)) return 'Comedy & shows';
+      if (FILM_RE.test(genre) || FILM_RE.test(title)) return 'Film';
+      if (THEATRE_RE.test(genre) || THEATRE_RE.test(title)) return 'Theatre';
+      if (/arts & theatre/i.test(src) || SHOW_RE.test(title)) return 'Comedy & shows';
+      return null;
+    }
+    case 'sports': return 'Sport';
+    case 'family': return 'Family';
+    case 'food': case 'civic': return null;
+    default: break;
+  }
+  // Nothing names a category: the evening's own title words, as before.
   if (QUIZ_RE.test(title)) return 'Quiz & pub nights';
   if (CLUB_RE.test(title)) return 'Clubs & late';
   if (COMEDY_RE.test(title)) return 'Comedy & shows';
   if (MUSIC_RE.test(title)) return 'Live music';
   if (SPORT_RE.test(title)) return 'Sport';
+  if (/\b(fairs?|festivals?|expo|community|civic|hobby)\b/i.test(src)) return 'Festivals & fairs';
+  if (/\b(cabaret|panto|pantomime|musical|variety show)\b/i.test(title)) return 'Comedy & shows';
+  if (/\b(presents?|live|band|concert|tour|gig|orchestra|choir|tribute)\b/i.test(title) && /^(|undefined)$/i.test(source[0]?.trim() ?? '')) return 'Live music';
   return null;
 }
 
-/** Ticketmaster: its own classification first (segment and genre), the title only for events Ticketmaster leaves unclassified
- *  (segment "Undefined": mostly gigs promoted as "<promoter> presents ..."). Sport reaches here only for towns with
- *  eveningLayer.includeTicketmasterSports. */
+/** An evening group from the title alone (a register row, an own event without a source label): eveningGroup with no source. */
+export function groupForTitle(title: string): EveningGroup | null {
+  return eveningGroup({ title });
+}
+
+/** A Ticketmaster listing's evening group: eveningGroup with its segment and genre as the source. Sport reaches here only for towns
+ *  with eveningLayer.includeTicketmasterSports. */
 export function groupForTicketmaster(segment: string | null | undefined, genre: string | null | undefined, title = ''): EveningGroup | null {
-  const seg = (segment ?? '').toLowerCase();
-  const gen = (genre ?? '').toLowerCase();
-  if (/\b(family|children|kids)\b/.test(gen)) return 'Family';
-  if (seg === 'music') return /dance|electronic|club|house|techno/.test(gen) ? 'Clubs & late' : 'Live music';
-  if (seg === 'arts & theatre') return gen === 'theatre' ? 'Theatre' : 'Comedy & shows';
-  if (seg === 'sports') return 'Sport';
-  if (seg === 'film') return 'Film';
-  if (seg === 'miscellaneous') return /fair|festival|expo|community|civic|hobby/.test(gen) ? 'Festivals & fairs' : null;
-  if (seg === '' || seg === 'undefined') {
-    const byTitle = groupForTitle(title);
-    if (byTitle) return byTitle;
-    if (/\b(cabaret|panto|pantomime|musical|variety show)\b/i.test(title)) return 'Comedy & shows';
-    if (/\b(presents?|live|band|concert|tour|gig|orchestra|choir|tribute)\b/i.test(title)) return 'Live music';
-  }
-  return null;
+  return eveningGroup({ source: [segment, genre], title });
 }
 
 const ADULTS_RE = /(^|[^\d])(18\+|18 ?plus|over[- ]18s?|18 and over|adults only|21\+|over[- ]21s?)/i;
@@ -226,12 +261,16 @@ function ownEntry(item: FeedItem, o: EveningEntryOptions): EveningEntry | null {
     title,
     start: new Date(item.occurs_at).toISOString(),
     end: endIso(story?.ends_at),
-    group: settleGroup(groupForTitle(title), title, new Date(item.occurs_at).toISOString(), o.timezone),
+    // The source's own label and the venue too (eveningGroup -> categorize: source, title, venue), as on /events/.
+    group: settleGroup(eveningGroup({
+      source: [story?.meta?.category ?? (item.sourceKind === 'arts' ? item.event.primary_category : null)], title, venue: itemVenue(item),
+    }), title, new Date(item.occurs_at).toISOString(), o.timezone),
     labels,
     venue: venueOf(itemVenue(item), o),
     venueCity: cleanCity(o.venueCity?.(item)),
     href: (story ? linkTarget(story) : null) ?? itemUrl(item),
     source: 'own',
+    ...(story?.is_recurring_series ? { recurring: true } : {}),
     distanceMiles: null,
     driveMinutes: null,
     checked: o.checked,
@@ -295,9 +334,10 @@ export function registerEntries(rows: RegisterRow[], o: EveningEntryOptions): Ev
       out.push({
         id: `reg:${r.venueName}|${r.title}|${iso}`, title: displayTitle(r.title), start: starts[0],
         end: starts.length > 1 ? new Date(new Date(starts[starts.length - 1]).getTime() + DEFAULT_EVENT_MS).toISOString() : null,
-        group: settleGroup(groupForTitle(r.title) ?? fallback, r.title, starts[0], o.timezone), labels, venue: venueOf(r.venueName, o),
+        group: settleGroup(eveningGroup({ title: r.title, venue: r.venueName }) ?? fallback, r.title, starts[0], o.timezone), labels, venue: venueOf(r.venueName, o),
         href: r.sourceUrl, source: 'register', distanceMiles: miles, driveMinutes: miles != null && distanceLabel(miles, o.cityName) !== `In ${o.cityName}` ? driveMinutes(miles) : null, checked: confirmed,
         ...(starts.length > 1 ? { laterStarts: starts.slice(1) } : {}),
+        ...(r.kind === 'recurring' ? { recurring: true } : {}),
       });
     }
   }

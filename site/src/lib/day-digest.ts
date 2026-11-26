@@ -2,7 +2,8 @@
  *  The pattern from the Christmas page (.claude/standards.md "Mönster för helg- och dagsidor"): each day opens with a digest line
  *  ("6 events · 2 music · 3 free"), then ONE featured event as a larger card, then compact rows, at most MAX_COMPACT before "N more".
  *  Pure: rows in, words out; every word comes from the rows' own data (count, category, a stated "Free"). */
-import { CATEGORY_LABEL, type EventRowData } from './event-row';
+import { CATEGORY_LABEL } from './category-label';
+import type { EventRowData } from './event-row';
 import type { Category } from './ui/ui-helpers';
 
 /** Compact rows under the featured card before the rest folds behind "N more" (principle 4: about five alike in a row). */
@@ -43,7 +44,14 @@ export const NEARBY_HEADING_TOWNS = 3;
 /** The day's Nearby block: own events in other towns before ticket listings (each in time order), the first NEARBY_PER_DAY shown; the
  *  rest split into own events (a fold on the page: they are not on What's On) and ticket listings (counted; "More nearby shows →" goes
  *  to What's On). `heading`: "Nearby · Denver, Boulder, Arvada…" from the shown and hidden rows' towns, in order of first appearance. */
-export function splitNearby<T extends Pick<EventRowData, 'nearby'>>(rows: T[]): { heading: string; shown: T[]; moreOwn: T[]; moreTickets: number } {
+/** A place line inside the Nearby block says the town only once (owner 2026-11-26 (10)): "Farm House Collective · Nearby, Riverside" ->
+ *  "Farm House Collective · Riverside", "Nearby · Riverside" -> "Riverside". The block's heading already says "Nearby". */
+export function withoutNearbyWord(place: string): string {
+  return place.replace(/^Nearby\s*[·,]\s*/i, '').replace(/\s*·\s*Nearby\s*[·,]\s*/gi, ' · ').trim();
+}
+
+export function splitNearby<T extends { nearby?: EventRowData['nearby'] | null; place?: string[] }>(input: T[]): { heading: string; shown: T[]; moreOwn: T[]; moreTickets: number } {
+  const rows = input.map((r) => (r.place ? { ...r, place: r.place.map(withoutNearbyWord).filter(Boolean) } : r));
   const ordered = [...rows.filter((r) => !r.nearby?.ticket), ...rows.filter((r) => r.nearby?.ticket)];
   const shown = ordered.slice(0, NEARBY_PER_DAY);
   const rest = ordered.slice(NEARBY_PER_DAY);

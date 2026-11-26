@@ -58,7 +58,7 @@ describe('one category function for every page (owner 2026-11-26 (8))', () => {
     expect(categorize({ title: 'Riverside Christmas Market', venue: 'Riverside Museum' })).toBe('food'); // no label: the title
     expect(categorize({ title: 'Discover! Weekend Sessions', venue: 'Riverside Museum' })).toBe('arts'); // nothing else: the venue
     expect(categorize({ source: ['Undefined', 'Miscellaneous'], title: 'Holiday Lights' })).toBeNull();
-    expect(categorize({ source: ['Rock', 'Music'], title: 'Fat Dog' })).toBe('music'); // Ticketmaster: genre, then segment
+    expect(categorize({ source: ['Music', 'Dance/Electronic'], title: 'Fat Dog' })).toBe('music'); // Ticketmaster: segment, then genre ("dance" alone would read as arts)
   });
 
   it('Riverside Christmas Market is Arts on /events/, on /this-week/ (row and theme) alike; it was Food on /events/', () => {

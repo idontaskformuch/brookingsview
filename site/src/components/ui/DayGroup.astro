@@ -32,5 +32,10 @@ const H = `h${level}` as 'h2' | 'h3' | 'h4';
   .day-group__rows { list-style: none; margin: 0; padding: 0; border-bottom: 1px solid var(--rule); }
   .day-group__rows > li { margin: 0; }
   .day-group__sub { margin: 0.75rem 0 0.125rem; font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 600; color: var(--ink-soft); }
+  /* The day's Nearby block (owner 2026-11-26 (9)): last in a day, its own box. Global: /events/, /this-week/, /tonight/ and /today/ draw it. */
+  .nearby-block { margin: 0.75rem 0 0; padding: 0.5rem 0.75rem 0.25rem; border-radius: var(--ui-radius); background: var(--ui-surface-2); }
+  .nearby-block__h { margin: 0 0 0.25rem; font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-soft); }
+  .nearby-block .day-group__rows { border-bottom: 0; }
+  .nearby-block__more { margin: 0.25rem 0; font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 600; }
   .day-group__count, .day-group__more { margin: 0.375rem 0 0; font-family: var(--font-ui); font-size: 0.8125rem; color: var(--ink-soft); }
 </style>

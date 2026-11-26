@@ -23,11 +23,9 @@ import { buildEveningEntries, toThresholdItems, type EveningSource } from '../li
 import { indexingForTown } from '../lib/evening-verdict';
 import { withSeasonEntries } from '../lib/holiday-page-build';
 import { buildEveningSections, eveningEntries } from '../lib/evening-page';
-import PopEventList from '../components/pop/PopEventList.astro';
-import { eveningPopDays } from '../lib/pop-days';
 import TonightRows from '../components/tonight/TonightRows.astro';
 import TonightStyles from '../components/tonight/TonightStyles.astro';
-import { chipPlan, countByRegion, cityScope, dayView, heroFor, pairNights, regionOf, scopeLine, unmappedAreas, isBigShow, eventCityLabel, bigShowsLine, partitionBig, SOON_MAX_CARDS, type CardTown } from '../lib/tonight-cards';
+import { chipPlan, countByRegion, cityScope, dayView, heroFor, pairNights, regionOf, scopeLine, unmappedAreas, isBigShow, bigShowsLine, partitionBig, type CardTown } from '../lib/tonight-cards';
 import { OPEN_LATE_MAX_ROWS } from '../lib/osm-open-late';
 import TonightChips from '../components/tonight/TonightChips.astro';
 import HeroStat from '../components/ui/HeroStat.astro';
@@ -91,7 +89,8 @@ const tonight = sections[0];
 const cards = layer.cards;
 const eveningOf = new Map(sections.map((s) => [s.day, eveningEntries(entries, s.day, tz)]));
 const tonightEvents = [...(eveningOf.get(tonight.day) ?? [])].sort((a, b) => a.start.localeCompare(b.start));
-const upNext = tonightEvents.filter((e) => new Date(e.start).getTime() > now.getTime() - 3 * 3_600_000).slice(0, SOON_MAX_CARDS);
+// "Up next" (the first evening's rows again, above it) is gone: the evening's own block opens with its digest and featured event
+// (design lift rollout b, owner 2026-11-26 (10)); the hero's "Next up in 26 min" line stays.
 const regions = cards?.regions ?? {};
 const town: CardTown = { country: siteConfig.country, homeCity: siteConfig.cityName, center: siteConfig.townCenter, hidePrice: !!cards?.hidePrice, cityLabels: !!cards?.cityLabels, bigShows: !!siteConfig.bigShows?.enabled };
 // Big shows (Ticketmaster where bigShows is on) are shown but never counted in the hero, the scope line or "Next up"; their own line says how many
@@ -157,12 +156,6 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
         <InsightLine class="tc-next" attrs={{ 'data-tc-next': '', hidden: true }} />
       </section>
 
-      {upNext.length > 0 && (
-        <section class="tc-soon" data-tc-soon-box aria-labelledby="tc-soon-h">
-          <h2 id="tc-soon-h" data-tc-soon-h>Up next</h2>
-          <PopEventList days={eveningPopDays(upNext, tz, siteConfig.country, undefined, town.cityLabels ? (e) => eventCityLabel(e, town) : undefined)} tile="time" idPrefix="tn-soon" listAttrs={{ 'data-tc-soon': '' }} />
-        </section>
-      )}
 
       {(forecast || alertCount > 0) && (
         <p class="ev-weather">
@@ -201,7 +194,8 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
                 </ul>
               </section>
             )}
-            <TonightRows id={`tn-${s.kind}`} entries={eveningOf.get(s.day) ?? []} late={lateBySection.get(s.day)!} tz={tz} regions={regions} town={town} osmChecked={osmChecked} tonight={s.kind === 'tonight'} />
+            <TonightRows id={`tn-${s.kind}`} entries={eveningOf.get(s.day) ?? []} late={lateBySection.get(s.day)!} tz={tz} regions={regions} town={town} osmChecked={osmChecked} tonight={s.kind === 'tonight'}
+              moreNearbyHref={siteConfig.hasWhatsOn ? '/whats-on/' : null} />
           </section>
         ))}
       </div>

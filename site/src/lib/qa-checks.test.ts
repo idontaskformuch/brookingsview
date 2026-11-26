@@ -297,7 +297,8 @@ describe('event tile probe aims at the date-tile list (2026-11-09)', () => {
   it('every place that prints event rows uses the date-tile list, and Pass E loads them (/tonight, /this-weekend, this week, the digest)', () => {
     expect(read('../components/evening/EveningDay.astro')).toMatch(/<PopEventList/);
     expect(read('../components/tonight/TonightRows.astro')).toMatch(/<PopEventList/);
-    expect(read('../pages/tonight.astro')).toMatch(/<PopEventList/);
+    // /tonight's rows are all in TonightRows since "Up next" went (design lift rollout b, owner 2026-11-26 (10)).
+    expect(read('../pages/tonight.astro')).toMatch(/<TonightRows /);
     expect(read('../components/WeekGroupList.astro')).toMatch(/<PopEventList/);
     // /this-week/ moved to the day blocks of /events/ (design lift rollout a, owner 2026-11-26 (7)): EventDays, not the tile list.
     expect(read('../components/ThisWeekView.astro')).toMatch(/<EventDays /);

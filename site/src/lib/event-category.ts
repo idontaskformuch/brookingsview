@@ -1,5 +1,5 @@
 /** THE category of an event (owner 2026-11-26 (8): one category function for every page). One of the library's categories (colour + icon),
- *  or null. Order: the source's own category (a calendar's label, Ticketmaster's genre and segment, SDSU's category), then the title, and
+ *  or null. Order: the source's own category (a calendar's label, Ticketmaster's segment and genre, SDSU's category), then the title, and
  *  the venue's name only as a last resort. Riverside Christmas Market (Glasgow Life, "Museums & exhibitions") is Arts on every page; before,
  *  /events/ said Food & drink (title and label read as one string) and /this-week/ Arts (title, venue and label, other rules).
  *  Rule-based and deliberately conservative: a miss shows a neutral row, a wrong guess would colour a row with a meaning it does not have
@@ -34,7 +34,7 @@ export function categoryOfText(text: string | null | undefined): Category | null
 }
 
 export interface CategoryInput {
-  /** The source's own labels, most specific first (Ticketmaster: genre, then segment; a calendar: its category). */
+  /** The source's own labels, in order (Ticketmaster: segment, then genre -- "Dance/Electronic" under Music is music; a calendar: its category). */
   source?: (string | null | undefined)[];
   title: string;
   /** The venue's name: read only when neither the source nor the title says anything. */

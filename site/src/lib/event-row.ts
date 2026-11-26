@@ -63,9 +63,7 @@ export function rowEnvFor(c: { timezone: string; cityName: string; country?: Cou
   };
 }
 
-export const CATEGORY_LABEL: Record<Category, string> = {
-  civic: 'Civic', music: 'Music', family: 'Family', sports: 'Sports', food: 'Food & drink', arts: 'Arts', nightlife: 'Nightlife',
-};
+export { CATEGORY_LABEL } from './category-label';
 
 const iso = (v: string | Date | null | undefined): string | null => (v == null ? null : new Date(v).toISOString());
 

@@ -45,7 +45,9 @@ describe('city label on the /tonight event rows', () => {
     expect(row).not.toContain('pl__city');
     expect(row).toMatch(/15 mi/);
   });
-  it('the Up next list on the page passes the label too', () => {
-    expect(readFileSync(new URL('../pages/tonight.astro', import.meta.url), 'utf8')).toMatch(/eveningPopDays\(upNext.*eventCityLabel/);
+  // "Up next" (the first evening's rows again) is gone since the design lift (owner 2026-11-26 (10)); the evening's rows carry the label.
+  it('the evening rows pass the label (Up next is gone)', () => {
+    expect(readFileSync(new URL('../pages/tonight.astro', import.meta.url), 'utf8')).not.toMatch(/upNext|data-tc-soon/);
+    expect(readFileSync(new URL('../components/tonight/TonightRows.astro', import.meta.url), 'utf8')).toMatch(/eveningPopDays\(list, tz, town\.country, attrsOf, labelOf\)/);
   });
 });

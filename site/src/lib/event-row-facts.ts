@@ -21,12 +21,12 @@ export function makeRowFacts(ctx: FactsContext): (item: FeedItem) => RowFacts {
   const venueIndex = buildVenueIndex(ctx.facilities);
   return (item) => {
     if (item.sourceKind === 'ticketmaster') {
-      // Ticketmaster (owner 2026-11-26): its venue, its own genre and segment for the category (categorize: source, title, venue).
+      // Ticketmaster (owner 2026-11-26): its venue, its own segment and genre for the category (categorize: source, title, venue).
       const e = item.ticketmasterEvent;
       const venue = e.venueName || null;
       return {
         title: recase(e.title), venue, area: null, free: false, kids: isKidsEvent(item), teens: false,
-        cat: categorize({ source: [e.genre, e.segment], title: e.title, venue }),
+        cat: categorize({ source: [e.segment, e.genre], title: e.title, venue }),
       };
     }
     if (item.sourceKind === 'arts') {

@@ -34,9 +34,9 @@ export interface BigShow {
 const METERS_PER_MILE = 1609.344;
 export const BIG_SHOWS_HORIZON_DAYS = 60;
 
-/** Library category of a Ticketmaster show: lib/event-category.ts categorize (genre, then segment, then the title); null = drawn neutral. */
+/** Library category of a Ticketmaster show: lib/event-category.ts categorize (segment, then genre, then the title); null = drawn neutral. */
 export function bigShowCategory(segment: string | null | undefined, genre?: string | null, title = ''): Category | null {
-  return categorize({ source: [genre, segment], title });
+  return categorize({ source: [segment, genre], title });
 }
 
 /** "Denver · 13 mi": the venue's own city and straight-line miles. Without a stated city only the miles. */

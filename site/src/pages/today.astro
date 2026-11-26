@@ -37,7 +37,6 @@ import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-json
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../lib/clusters';
 import { resolvePageMeta } from '../lib/page-meta';
 import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
-import { selectTodayShows } from '../lib/today-shows';
 import { forecastLine } from '../lib/weather-format';
 import { enabledSections } from '../lib/nav-sections';
 import OpenTonight from '../components/OpenTonight.astro';
@@ -68,17 +67,21 @@ const today = todayUtcMidnight(siteConfig.timezone);
 // The week's events as entries (one per real event, recurring series included; Designsystem Fas 2, lib/events-town-view.ts
 // buildTownEntries -- the same pipeline as the ticker and /events/). The browser buckets today / tonight / tomorrow from each entry's
 // first unfinished time and, when those are empty, lists the nearest as "Coming up".
-const townEntries = buildTownEntries(upcomingEvents, artsEvents, facilities, now);
-const candidates = [...townEntries.here, ...townEntries.nearby]
+// Ticketmaster in the same pipeline as /events/ (owner 2026-11-26 (10)): in town they are the town's rows, in another town the bucket's
+// Nearby block; never in a count. (Was: Glasgow only, at most 3 shows in the city, lib/today-shows.ts.)
+const ticketmaster = siteConfig.hasWhatsOn ? await getTicketmasterEventsForTown(siteConfig, { includeSports: true }) : [];
+const townEntries = buildTownEntries(upcomingEvents, artsEvents, facilities, now, ticketmaster);
+const nearbySet = new Set(townEntries.nearby);
+const pick = (list: typeof townEntries.here, maxDay: number, max: number) => list
   .map((e) => ({ e, o: shownOccurrence(e, now, siteConfig.timezone) }))
-  .filter(({ o }) => { const d = dayIndex(o.start, today, siteConfig.timezone); return d >= 0 && d <= 6; })
+  .filter(({ o }) => { const d = dayIndex(o.start, today, siteConfig.timezone); return d >= 0 && d <= maxDay; })
   .sort((a, b) => Date.parse(a.o.start) - Date.parse(b.o.start))
-  .slice(0, 40)
+  .slice(0, max)
   .map(({ e }) => e);
-// Glasgow: up to 3 Ticketmaster shows in the city itself join Tonight/Tomorrow (owner 2026-10-28).
-const todayShows3 = siteConfig.country === 'gb' && siteConfig.hasWhatsOn
-  ? selectTodayShows(await getTicketmasterEventsForTown(siteConfig), new Date(), siteConfig.timezone, siteConfig.townId, siteConfig.cityName)
-  : [];
+// The town's own and its in-town shows for the week (Coming up spans it); nearby only for today, tonight and tomorrow, and capped, so a
+// city's 60 shows never push the town's own events out of the template.
+const candidates = [...pick(townEntries.here, 6, 40), ...pick(townEntries.nearby, 2, 30)]
+  .sort((a, b) => Date.parse(shownOccurrence(a, now, siteConfig.timezone).start) - Date.parse(shownOccurrence(b, now, siteConfig.timezone).start));
 
 // Nothing in the next seven days (and no Ticketmaster show for Glasgow): the page has no events to offer, so it is not indexed (owner 2026-11-07).
 // Open tonight / cafes open now: from the weekly OpenStreetMap snapshot (no snapshot or an old one = no section). Places, not events: they never change the noindex rule below.
@@ -91,7 +94,8 @@ const openTonight = openTonightSection(decorateOpenLate(openTonightRows(osm, osm
 // Cafes open now are the rail's list (owner 2026-11-20: one list, up to 8 there), not a second one here.
 const osmChecked = osmSnapshot ? osmSnapshot.fetchedAt.slice(0, 10) : '';
 
-const noEventsThisWeek = candidates.length === 0 && todayShows3.length === 0;
+// The same rule as before: own events, or (Glasgow had this through lib/today-shows.ts) a show in the town itself; never a nearby show.
+const noEventsThisWeek = candidates.filter((e) => !nearbySet.has(e)).length === 0;
 
 // SiteConfig.todayPage (Broomfield, owner 2026-11-12): today's date, forecast, meetings and hours are written into the page, and the page
 // is indexable only with enough of them filled (lib/today-page.ts). Other towns keep the rule above.
@@ -117,7 +121,8 @@ const inTodayOrTonight = (start: string | null | undefined, end: string | null |
   return b === 'today' || b === 'tonight';
 };
 const todayCount = countEventsToday(countableEntries(townEntries), now, siteConfig.timezone);
-const eventsToday = todayCount.town + todayCount.nearby > 0 || todayShows3.some((s) => inTodayOrTonight(s.start, s.end));
+const eventsToday = todayCount.town + todayCount.nearby > 0
+  || candidates.some((e) => !nearbySet.has(e) && e.item.sourceKind === 'ticketmaster' && inTodayOrTonight(e.occ[0]?.start, e.occ[0]?.end));
 const verdict = todayCfg ? todayIndexVerdict(todayCfg, {
   weather: weatherLines.length > 0,
   meetings: meetingsToday.some((m) => !m.cancelled && !m.postponed),
@@ -168,7 +173,7 @@ const moreLinks = enabledSections(siteConfig).filter((s) => ['cityhall', 'facili
     cityHallFacility={cityHallFacility}
     facilities={facilities}
     candidates={candidates}
-    tmShows={todayShows3}
+    nearby={nearbySet}
     forecastText={siteConfig.country === 'gb' ? forecastLine(periods, siteConfig.timezone, new Date()) : undefined}
     headingLevel="h1"
     headingText={pageMeta.h1}

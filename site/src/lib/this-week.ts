@@ -311,7 +311,7 @@ export function buildWeekDays(
           // A nearby venue says its town on the row, as an own event in another town does (owner 2026-11-26).
           // No comma: the week's shortVenue keeps the text before the first comma. The Nearby block's heading says "Nearby".
           venue: e.venueName ? (zone.zone === 'nearby' && city ? `${e.venueName} · ${city}` : e.venueName) : null,
-          categories: [e.genre, e.segment].filter((v): v is string => !!v && v !== 'Undefined'),
+          categories: [e.segment, e.genre].filter((v): v is string => !!v && v !== 'Undefined'),
           ...(zone.zone === 'nearby' ? { nearby: { city: city || null, ticket: true } } : {}),
         });
         continue;

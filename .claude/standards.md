@@ -73,6 +73,15 @@ Komponenter i site/src/components/holiday/, data som rena funktioner i lib/holid
   staden; en dag utan något i staden har inget. Digest räknar separat: "4 events · +12 nearby". /events/ har ingen egen Nearby-sektion
   längre. Kod: lib/day-digest.ts splitNearby, EventRowData.nearby, DayGroupData.nearby, week-groups weekDayBlocks (karusellen "All week"
   tar bara stadens egna).
+- **Utrullning b (order 26 nov (10)): /today/ och /tonight/** samma dagblock. /today/: varje bucket (Today/Tonight/Tomorrow) planeras av
+  lib/today-buckets.ts planBucket (samma plan på servern och i webbläsaren): digest i DayGroup-raden, utvalt (mall #today-event-features),
+  max 5 stadsrader, Nearby-block; Ticketmaster via buildTownEntries (ersätter Glasgows "max 3 shower", lib/today-shows.ts används inte);
+  "Coming up" bara stadens egna. /tonight/: TonightRows = digest, utvalt (ul/li data-card + live-etikett), PopEventList max 5 + "N more",
+  Nearby-block (lib/evening-rows.ts eveningRow/isNearbyEntry); "Up next"-listan borttagen (dubblerade kvällens rader). Nearby-blockets
+  stil global i DayGroup (.nearby-block). Rader i blocket säger orten en gång (day-digest withoutNearbyWord).
+- **Kvällsgrupperna** (evening-items eveningGroup): categorize först, sedan delas kategorin i kvällsgrupper (music -> Live music/Clubs &
+  late, nightlife -> Quiz/Clubs/Live music/Comedy & shows, arts -> Film/Theatre/Comedy & shows; food/civic/utställning: ingen grupp).
+  Ticketmaster: segment före genre överallt ("Dance/Electronic" under Music = music).
 - **En kategorifunktion** (lib/event-category.ts categorize): källans etikett (TM: genre, sedan segment), sedan titeln, platsen sist.
   Alla sidor (event-row-facts, week-groups themeOf/dagblock, big-shows) går genom den.
 

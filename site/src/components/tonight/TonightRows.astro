@@ -1,10 +1,13 @@
 ---
-/** The events of one evening as the date-tile list with the start time in the tile slot (components/pop/PopEventList.astro, no pictures), time order,
- *  the category as a dot. Each row keeps the hooks the browser script filters and counts by (data-card, data-id, data-area, data-scope, data-big;
- *  lib/tonight-cards-client.ts), inside a [data-tc-rows] list. Then the Open tonight row (open after 18:00, "Open until 23:00" as the big line where the
- *  hours are recent enough, otherwise no time): places, not events, so they stay as swipe cards. */
+/** One evening on /tonight as the shared day block (design lift rollout b, owner 2026-11-26 (10)): a digest line ("6 events · 2 music · +4
+ *  nearby"), ONE featured event from the town (never a repeating one, never a nearby one), the town's other events as the date-tile list
+ *  (components/pop/PopEventList.astro, the time in the tile), at most MAX_COMPACT before the rest folds behind "N more", then the evening's
+ *  Nearby block (at most NEARBY_PER_DAY; the rest of the ticket listings on What's On). Choice and words: lib/day-digest.ts, rows:
+ *  lib/evening-rows.ts. Every event keeps the hooks the browser script filters and counts by (data-card, data-id, data-area, data-scope,
+ *  data-big; lib/tonight-cards-client.ts) inside a [data-tc-rows] list. Then the Open tonight row (places, not events: swipe cards). */
 import OpenTonightList from '../OpenTonightList.astro';
 import PopEventList from '../pop/PopEventList.astro';
+import EventFeature from '../ui/EventFeature.astro';
 import type { EveningEntry } from '../../lib/evening-items';
 import { groupLabel } from '../../lib/evening-items';
 import type { OpenLateRow } from '../../lib/osm-open-late';
@@ -12,9 +15,15 @@ import { OPEN_LATE_MAX_ROWS } from '../../lib/osm-open-late';
 import { eveningPopDays } from '../../lib/pop-days';
 import { seasonGroups } from '../../lib/evening-page';
 import { bucketOf, isBigShow, cityScope, eventCityLabel, regionOf, type CardTown, type Regions } from '../../lib/tonight-cards';
+import { eveningRow, isNearbyEntry } from '../../lib/evening-rows';
+import { eventDigest, featuredIndex, MAX_COMPACT, splitNearby } from '../../lib/day-digest';
 
-interface Props { id: string; entries: EveningEntry[]; late: OpenLateRow[]; tz: string; regions?: Regions; town: CardTown; osmChecked: string; /** The first evening says "Open tonight", the next one "Open tomorrow night". */ tonight?: boolean }
-const { id, entries, late, tz, regions = {}, town, osmChecked, tonight = true } = Astro.props;
+interface Props {
+  id: string; entries: EveningEntry[]; late: OpenLateRow[]; tz: string; regions?: Regions; town: CardTown; osmChecked: string;
+  /** The first evening says "Open tonight", the next one "Open tomorrow night". */ tonight?: boolean;
+  /** Where "More nearby shows →" goes (What's On); none = no link. */ moreNearbyHref?: string | null;
+}
+const { id, entries, late, tz, regions = {}, town, osmChecked, tonight = true, moreNearbyHref = null } = Astro.props;
 const lateRows = late.slice(0, OPEN_LATE_MAX_ROWS);
 const attrsOf = (e: EveningEntry) => ({
   'data-card': '', 'data-id': e.id, 'data-bucket': bucketOf(e.group), 'data-area': regionOf(e.area, regions) ?? undefined,
@@ -23,13 +32,53 @@ const attrsOf = (e: EveningEntry) => ({
 });
 const labelOf = town.cityLabels ? (e: EveningEntry) => eventCityLabel(e, town) : undefined;
 // holiday rows (lib/evening-season.ts) get their own group after the events, headed by the holiday's name and linking to its page
-const main = entries.filter((e) => !e.season);
+const main = [...entries.filter((e) => !e.season)].sort((a, b) => a.start.localeCompare(b.start));
 const seasons = seasonGroups(entries).map((s) => ({ ...s, slug: s.href.replace(/\//g, ''), entries: entries.filter((e) => e.season?.label === s.name) }));
-const days = eveningPopDays(main, tz, town.country, attrsOf, labelOf);
+// The town first, the evening's nearby events last in their own block (owner 2026-11-26 (9), (10)).
+const townEntries = main.filter((e) => !isNearbyEntry(e, town.homeCity));
+const nearEntries = main.filter((e) => isNearbyEntry(e, town.homeCity));
+const townRows = townEntries.map((e) => eveningRow(e, town.homeCity, tz));
+const fi = featuredIndex(townRows);
+const featured = fi < 0 ? null : townEntries[fi];
+const rest = townEntries.filter((_, i) => i !== fi);
+const shown = rest.slice(0, MAX_COMPACT);
+const more = rest.slice(MAX_COMPACT);
+const digest = eventDigest(townRows, nearEntries.length);
+const nearRows = nearEntries.map((e) => eveningRow(e, town.homeCity, tz));
+const near = splitNearby(nearRows.map((r, i) => ({ ...r, entry: nearEntries[i] })));
+const pop = (list: EveningEntry[]) => eveningPopDays(list, tz, town.country, attrsOf, labelOf);
 ---
 {main.length > 0 && (
   <section class="tc-events" aria-label="Events">
-    <PopEventList days={days} tile="time" live idPrefix={id} listAttrs={{ 'data-tc-rows': '', 'data-hide-ended': '' }} />
+    {digest && <p class="day-group__digest tc-digest">{digest}</p>}
+    {featured && (
+      <ul class="tc-feature" data-tc-rows data-hide-ended>
+        <li class="tc-feature__card" {...attrsOf(featured)} data-start={featured.start} data-end={featured.end ?? undefined}>
+          <span class="pl__live tc-feature__live" data-tc-time data-tc-live-only hidden></span>
+          <EventFeature row={townRows[fi]} showCategory level={3} />
+        </li>
+      </ul>
+    )}
+    {shown.length > 0 && <PopEventList days={pop(shown)} tile="time" live idPrefix={id} listAttrs={{ 'data-tc-rows': '', 'data-hide-ended': '' }} />}
+    {more.length > 0 && (
+      <details class="tc-more">
+        <summary>{more.length} more</summary>
+        <PopEventList days={pop(more)} tile="time" live idPrefix={`${id}-more`} listAttrs={{ 'data-tc-rows': '', 'data-hide-ended': '' }} />
+      </details>
+    )}
+    {near.shown.length > 0 && (
+      <div class="nearby-block" data-nearby-block>
+        <p class="nearby-block__h">{near.heading}</p>
+        <PopEventList days={pop(near.shown.map((r) => r.entry))} tile="time" live idPrefix={`${id}-near`} listAttrs={{ 'data-tc-rows': '', 'data-hide-ended': '' }} />
+        {near.moreOwn.length > 0 && (
+          <details class="tc-more">
+            <summary>{near.moreOwn.length} more nearby</summary>
+            <PopEventList days={pop(near.moreOwn.map((r) => r.entry))} tile="time" live idPrefix={`${id}-near-more`} listAttrs={{ 'data-tc-rows': '', 'data-hide-ended': '' }} />
+          </details>
+        )}
+        {near.moreTickets > 0 && moreNearbyHref && <p class="nearby-block__more"><a href={moreNearbyHref}>More nearby shows →</a></p>}
+      </div>
+    )}
   </section>
 )}
 {seasons.map((g) => (
@@ -37,7 +86,7 @@ const days = eveningPopDays(main, tz, town.country, attrsOf, labelOf);
     <header class="tc-cat-head">
       <h3 id={`${id}-${g.slug}`}><a href={g.href}>{g.name}</a> <span class="tc-cat-count" data-tc-cat-count>{g.entries.length}</span></h3>
     </header>
-    <PopEventList days={eveningPopDays(g.entries, tz, town.country, attrsOf, labelOf)} tile="time" live idPrefix={`${id}-${g.slug}`} listAttrs={{ 'data-tc-rows': '', 'data-hide-ended': '' }} />
+    <PopEventList days={pop(g.entries)} tile="time" live idPrefix={`${id}-${g.slug}`} listAttrs={{ 'data-tc-rows': '', 'data-hide-ended': '' }} />
   </section>
 ))}
 {lateRows.length > 0 && (
@@ -51,3 +100,11 @@ const days = eveningPopDays(main, tz, town.country, attrsOf, labelOf);
     <p class="tc-attr">Hours © <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a>, read {osmChecked}.</p>
   </section>
 )}
+<style>
+  .tc-digest { margin: 0 0 0.5rem; }
+  .tc-feature { list-style: none; margin: 0 0 0.75rem; padding: 0; }
+  .tc-feature__card { position: relative; }
+  /* "On now" / "in 26 min" (the browser fills it, lib/tonight-cards-client.ts), top right on the card as on a tile row. */
+  .tc-feature__live { position: absolute; top: 0.875rem; right: 1rem; }
+  .tc-more summary { cursor: pointer; padding: 0.5rem 0; font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 600; color: var(--navy); min-height: 44px; display: flex; align-items: center; }
+</style>
