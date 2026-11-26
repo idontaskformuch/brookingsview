@@ -32,8 +32,8 @@ import { siteConfig } from './site-config';
 import { linkTarget } from './ai-text';
 import { tidyCost } from './text-hygiene';
 import { buildVenueIndex, resolveVenue, isVirtualVenue } from './db';
-import { classifyLocalityByCoords, classifyLocalityByText, haversineMiles, type LocalityResult, type LocalityMethod } from './town-boundary';
-import { otherTownOf } from './place-locality';
+import { classifyLocalityByCoords, classifyLocalityByText, haversineMiles, NEARBY_RADIUS_MILES, type LocalityResult, type LocalityMethod } from './town-boundary';
+import { addressCity } from './place-locality';
 
 export type FeedItem =
   | { sourceKind: 'story'; occurs_at: string | null; story: Story }
@@ -508,16 +508,21 @@ export function classifyEventLocality(
   if (isVirtualVenue(venueText)) return { zone: 'in_town', distanceMiles: null, method: 'default' };
 
   const facility = resolveVenue(buildVenueIndex(facilities), venueText);
-  // A place whose own address names another town (Farm House Collective, Riverside, on the Moreno Valley site) is never in town,
-  // whatever its coordinates say (owner 2026-11-26, lib/place-locality.ts).
-  const elsewhere = facility ? otherTownOf(facility, cityName) : null;
-  if (facility?.lat != null && facility?.lon != null) {
-    const byCoords = classifyLocalityByCoords(townId, facility.lat, facility.lon, townCenter);
-    return elsewhere && byCoords.zone === 'in_town'
-      ? { zone: 'nearby', distanceMiles: haversineMiles(facility.lat, facility.lon, townCenter.lat, townCenter.lon), method: 'coords' }
-      : byCoords;
+  // ONE rule for the town (owner 2026-11-26): the place's own address decides. It names this town -> in town, even when the
+  // coordinates fall just outside the city limits (March Field Park, Prairie Park, the landfill office); it names another town ->
+  // nearby, never in town (Farm House Collective, Riverside), with the distance from the coordinates and the same radius cap as
+  // before (beyond it, or without coordinates: unknown, never an unbounded "nearby"). Only an address without a town falls back to
+  // the coordinates (lib/place-locality.ts).
+  const city = facility ? addressCity(facility.address) : null;
+  if (facility && city) {
+    if (city.toLowerCase() === cityName.trim().toLowerCase()) return { zone: 'in_town', distanceMiles: null, method: 'address' };
+    if (facility.lat == null || facility.lon == null) return { zone: 'unknown', distanceMiles: null, method: 'address' };
+    const miles = haversineMiles(facility.lat, facility.lon, townCenter.lat, townCenter.lon);
+    return { zone: miles <= NEARBY_RADIUS_MILES ? 'nearby' : 'unknown', distanceMiles: miles, method: 'address' };
   }
-  if (elsewhere) return { zone: 'unknown', distanceMiles: null, method: 'text' };
+  if (facility?.lat != null && facility?.lon != null) {
+    return classifyLocalityByCoords(townId, facility.lat, facility.lon, townCenter);
+  }
   if (!venueText) return { zone: 'in_town', distanceMiles: null, method: 'default' };
   return classifyLocalityByText(venueText, cityName);
 }

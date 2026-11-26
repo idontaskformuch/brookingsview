@@ -159,7 +159,7 @@ export type LocalityZone = 'in_town' | 'nearby' | 'unknown';
  *  own per-build `[locality]` count log, added alongside the fix below) so a
  *  human can see how much of "nearby" rests on a real measured distance
  *  versus a guess, per town, per build. */
-export type LocalityMethod = 'coords' | 'text' | 'default';
+export type LocalityMethod = 'coords' | 'text' | 'default' | 'address';  // 'address': the place's own address named the town (owner 2026-11-26)
 
 export interface LocalityResult {
   zone: LocalityZone;

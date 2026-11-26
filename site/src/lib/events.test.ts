@@ -8,6 +8,7 @@ import {
   EVENT_SOURCES, selectBucketCandidates,
   type FeedItem, type EventSourceConfig,
 } from './events';
+import { classifyLocalityByCoords } from './town-boundary';
 import type { Story, SdsuEvent, Facility } from './db';
 
 function story(overrides: Partial<Story>): Story {
@@ -966,5 +967,33 @@ describe('selectBucketCandidates -- recurring series', () => {
     const today = new Date('2026-10-27T00:00:00.000Z');
     const out = selectBucketCandidates([mk('one-off', false), mk('weekly', true)], today, 'Europe/London');
     expect(out.map((i) => (i as { story: { slug: string } }).story.slug)).toEqual(['one-off']);
+  });
+});
+
+// Owner 2026-11-26 (2): one rule for the town -- the place's address decides, coordinates only when the address names no town. Five real
+// places rows whose coordinates lie outside their town's Census boundary but whose address names the town: in town on /events/ too.
+describe('classifyEventLocality: the address decides', () => {
+  const cases: Array<[string, string, { lat: number; lon: number }, Partial<Facility>]> = [
+    ['brookings_sd', 'Brookings', { lat: 44.3114, lon: -96.7984 }, { slug: 'good-roots-farm', name: 'Good Roots Farm and Gardens', category: 'other', address: '3712 Medary Ave, Brookings, SD 57006', lat: 44.349108, lon: -96.787262 }],
+    ['brookings_sd', 'Brookings', { lat: 44.3114, lon: -96.7984 }, { slug: 'landfill-office-collection-shop', name: 'Landfill Office & Collection Shop', category: 'recycling', address: '47532 30th St., Brookings, SD 57006', lat: 44.3406549699994, lon: -96.7549337399984 }],
+    ['brookings_sd', 'Brookings', { lat: 44.3114, lon: -96.7984 }, { slug: 'prairie-park', name: 'Prairie Park', category: 'park', address: 'W 44th St. & 470th Ave, Brookings, SD 57006', lat: 44.251883512831554, lon: -96.8108203206652 }],
+    ['moreno_valley_ca', 'Moreno Valley', { lat: 33.9425, lon: -117.2297 }, { slug: 'march-field-park-and-valley-skate-park', name: 'March Field Park and Valley Skate Park', category: 'park', address: '15415 6th Street, Moreno Valley, CA 92518', lat: 33.8967342501255, lon: -117.246600144246 }],
+    ['moreno_valley_ca', 'Moreno Valley', { lat: 33.9425, lon: -117.2297 }, { slug: 'march-field-park-community-center', name: 'March Field Park Community Center', category: 'community_center', address: '15325 5th Street, Moreno Valley, CA 92518', lat: 33.8973751211765, lon: -117.24764800477 }],
+  ];
+  for (const [townId, cityName, center, row] of cases) {
+    it(`${townId}/${row.slug}: outside the boundary by coordinates, in town by its address`, () => {
+      const f = facility({ ...row, aliases: [row.name!.toLowerCase()] });
+      const item = storyItem(story({ venue_raw: row.name! }));
+      expect(classifyLocalityByCoords(townId, row.lat!, row.lon!, center).zone).not.toBe('in_town');  // why the rule was needed
+      expect(classifyEventLocality(item, [f], townId, cityName, center)).toEqual({ zone: 'in_town', distanceMiles: null, method: 'address' });
+    });
+  }
+
+  it('without a town in the address the coordinates still decide', () => {
+    // brookings_sd/prairie-park with the one changed field: its address has no town
+    const f = facility({ ...cases[2][3], address: 'W 44th St. & 470th Ave', aliases: ['prairie park'] });
+    const r = classifyEventLocality(storyItem(story({ venue_raw: 'Prairie Park' })), [f], 'brookings_sd', 'Brookings', cases[2][2]);
+    expect(r.method).toBe('coords');
+    expect(r.zone).not.toBe('in_town');
   });
 });

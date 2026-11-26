@@ -54,11 +54,11 @@ async function main() {
 
   const nearbyCount = classified.filter((c) => c.zone === 'nearby').length;
   const unknownCount = classified.filter((c) => c.zone === 'unknown').length;
-  const methodCounts = { coords: 0, text: 0, default: 0 };
+  const methodCounts = { address: 0, coords: 0, text: 0, default: 0 };
   for (const c of classified) methodCounts[c.method]++;
   console.log(`\nWeekend hero (in_town only, FULL upcoming list not just the 20-row sample above): Fri ${friCount} · Sat ${satCount} · Sun ${sunCount} (anchor offset ${anchor})`);
   console.log(`Locality totals (full list): in_town ${inTown.length} · nearby ${nearbyCount} · unknown/excluded ${unknownCount}`);
-  console.log(`Method totals (full list): coords ${methodCounts.coords} · text fallback ${methodCounts.text} · default (arts/virtual/no-venue) ${methodCounts.default}\n`);
+  console.log(`Method totals (full list): address ${methodCounts.address} · coords ${methodCounts.coords} · text fallback ${methodCounts.text} · default (arts/virtual/no-venue) ${methodCounts.default}\n`);
 }
 
 main().catch((err) => {
