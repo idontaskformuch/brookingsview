@@ -1310,5 +1310,14 @@
   "title": "Glasgow Gallery of Modern Art (GoMA): Hours & Address (2026)",
   "meta": "Gallery of Modern Art (GoMA), Royal Exchange Square. Free. Open Mon–Thu, Sat 10am–5pm; Fri, Sun 11am–5pm. Includes phone number and accessibility.",
   "fallbacks": []
+ },
+ {
+  "town": "broomfield_co",
+  "slug": "broomfield-recycling-center",
+  "input": {"name":"Broomfield Recycling Center","category":"recycling","hours_structured":{"friday":["00:00","23:59"],"monday":["00:00","23:59"],"sunday":["00:00","23:59"],"tuesday":["00:00","23:59"],"saturday":["00:00","23:59"],"thursday":["00:00","23:59"],"wednesday":["00:00","23:59"]},"street_address":"225 Commerce St","address":"225 Commerce St, Broomfield, CO 80020","phone":"(720) 887-2141","hours_text":"Open 24 hours a day, 7 days a week. Staff can be reached by phone or email Monday to Friday, 7:30am to 4pm.","is_free":true,"services":["recycling_dropoff"],"accessibility_note":null,"description":"Self-serve recycling drop-off, open only to Broomfield residents and closed to commercial and business use. It takes curbside-type recycling such as cardboard, newspaper, plastic containers and aluminum cans.","hoursRows":[{"day_of_week":0,"opens":"00:00:00","closes":"23:59:00"},{"day_of_week":1,"opens":"00:00:00","closes":"23:59:00"},{"day_of_week":2,"opens":"00:00:00","closes":"23:59:00"},{"day_of_week":3,"opens":"00:00:00","closes":"23:59:00"},{"day_of_week":4,"opens":"00:00:00","closes":"23:59:00"},{"day_of_week":5,"opens":"00:00:00","closes":"23:59:00"},{"day_of_week":6,"opens":"00:00:00","closes":"23:59:00"}],"hoursStale":false,"hoursSource":"own","exceptions":[],"upcomingEvents":0},
+  "today": "2026-11-26",
+  "title": "Broomfield Recycling Center: Hours & Address (2026)",
+  "meta": "Broomfield Recycling Center, 225 Commerce St. Free. Open daily 24 hours. Includes phone number and services.",
+  "fallbacks": []
  }
 ]

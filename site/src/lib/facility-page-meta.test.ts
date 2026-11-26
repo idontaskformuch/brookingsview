@@ -123,6 +123,12 @@ describe('the rules behind them', () => {
     expect(run(byslug('broomfield-police-department')).description).not.toContain('Free');
     expect(run(byslug('usps-broomfield')).description).not.toContain('Free');
   });
+  it('a drop-off/recycling place that says is_free gets "Free" (owner 2026-11-26); one whose row does not (landfill) gets none', () => {
+    expect(byslug('broomfield-recycling-center').input.is_free).toBe(true);
+    expect(run(byslug('broomfield-recycling-center')).description).toContain(' Free. ');
+    expect(byslug('landfill-office-collection-shop').input.is_free).toBe(null);
+    expect(run(byslug('landfill-office-collection-shop')).description).not.toContain('Free');
+  });
   it('day groups with semicolons, days in a row merged (16) 3; noon and midnight (D): Chipper\'s Lanes, GoMA', () => {
     expect(run(byslug('chippers-lanes-broomfield')).description).toContain('Open Mon–Thu, Sun 10 AM–11 PM; Fri–Sat 10 AM–midnight.');
     expect(run(byslug('gallery-of-modern-art-goma')).description).toContain('Open Mon–Thu, Sat 10am–5pm; Fri, Sun 11am–5pm.');

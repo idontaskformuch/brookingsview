@@ -9,6 +9,9 @@ export const ADMISSION_CATEGORIES: ReadonlySet<string> = new Set([
   // Pools, gyms, recreation centres (Glasgow Club, Paul Derda, The Bay): an entry price applies.
   'leisure',
   'community_center',
+  // Drop-off and recycling places (owner 2026-11-26): whether a resident pays to drop off is the question. "Free" only where the row
+  // says is_free (Broomfield Recycling Center); a landfill or transfer station that charges has no is_free and never gets it.
+  'recycling',
 ]);
 
 export const admissionRelevant = (category: string | null | undefined): boolean => !!category && ADMISSION_CATEGORIES.has(category);
