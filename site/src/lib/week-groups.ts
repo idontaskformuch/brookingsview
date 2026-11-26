@@ -18,6 +18,7 @@ import type { DayBucket, DayItem } from './this-week';
 import { otherTownOf } from './place-locality';
 import type { DayGroupData, EventRowData } from './event-row';
 import type { Category } from './ui/ui-helpers';
+import { categorize } from './event-category';
 
 export type ThemeId =
   | 'big' | 'city' | 'campus' | 'music' | 'arts' | 'library' | 'family' | 'outdoors' | 'food' | 'sports' | 'community';
@@ -57,9 +58,16 @@ export function isSportItem(item: ThemeInput): boolean {
     || (item.vertical === 'sdsu' && (item.categories ?? []).some((c) => /athletics/i.test(c)) && /\s(vs\.?|at)\s/i.test(item.title));
 }
 
+/** The week's theme. The category part is THE category function (lib/event-category.ts categorize: the source's own label, then the
+ *  title, the venue last; owner 2026-11-26 (8)), so a row has the same category here as on /events/; only the themes that are not a
+ *  category (library, outdoors, campus, around town) use this file's own rules, after it. */
+const THEME_OF_CATEGORY: Partial<Record<Category, ThemeId>> = { civic: 'city', music: 'music', arts: 'arts', family: 'family', food: 'food', sports: 'sports' };
 export function themeOf(item: ThemeInput): ThemeId {
   if (item.vertical === 'city_hall') return 'city';
   if (isSportItem(item)) return 'sports';
+  const cat = categorize({ source: item.categories ?? [], title: item.title, venue: item.venue ?? null });
+  const byCategory = cat ? THEME_OF_CATEGORY[cat] : undefined;
+  if (byCategory) return byCategory;
   const hay = `${item.title} ${item.venue ?? ''} ${(item.categories ?? []).join(' ')}`;
   for (const rule of RULES) if (rule.re.test(hay)) return rule.id;
   return item.vertical === 'sdsu' ? 'campus' : 'community';
@@ -226,8 +234,6 @@ function mergeAcrossDays(rows: FlatRow[]): Merged[] {
  *  (owner 2026-11-26 (7), principle 4: break the rhythm; a daily class is not news on each of its days). */
 export const ALL_WEEK_DAYS = 3;
 
-/** Theme -> the event row's category, so a week's day blocks read like /events/ (digest by category). Themes with no category: none. */
-const THEME_CATEGORY: Partial<Record<ThemeId, Category>> = { city: 'civic', music: 'music', arts: 'arts', family: 'family', sports: 'sports', food: 'food' };
 
 export interface WeekDayBlocks {
   /** Items on ALL_WEEK_DAYS or more days, one row each ("Mon–Fri 9am"): the carousel above the days. */
@@ -269,7 +275,9 @@ export function weekDayBlocks(
       });
       continue;
     }
-    const category = THEME_CATEGORY[themeOf({ ...first.item, title: first.title, venue: first.venue })] ?? null;
+    // THE category (lib/event-category.ts), as on /events/; a city meeting is civic though its title names no body.
+    const category = categorize({ source: first.item.categories ?? [], title: first.title, venue: first.venue })
+      ?? (first.item.vertical === 'city_hall' ? 'civic' : null);
     for (const r of merged.rows) {
       const list = byDay.get(r.dayIndex) ?? [];
       list.push({

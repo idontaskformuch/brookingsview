@@ -295,7 +295,8 @@ export function buildWeekDays(
         startsAt: item.occurs_at,
         endsAt: item.sourceKind === 'story' ? (item.story.ends_at ?? null) : item.event.ends_at,
         venue: item.sourceKind === 'story' ? (item.story.venue_raw ?? null) : item.event.location,
-        categories: item.sourceKind === 'arts' ? item.event.categories : [],
+        // The source's own label, so the category is the one /events/ shows (lib/event-category.ts categorize, owner 2026-11-26).
+        categories: item.sourceKind === 'arts' ? item.event.categories : (item.story.meta?.category ? [item.story.meta.category] : []),
         recurring: item.sourceKind === 'story'
           && (Boolean(item.story.is_recurring_series) || /^(weekly|monthly|daily)$/i.test(item.story.meta?.recurrence ?? '')),
       });

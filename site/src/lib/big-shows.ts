@@ -9,6 +9,7 @@ import { distanceMetres } from './tonight-cards';
 import { hasEnded, localDayNumber } from './local-day';
 import { showDate, showTimeGb } from './whats-on-dates';
 import type { Category } from './ui/ui-helpers';
+import { categorize } from './event-category';
 import type { PopDay } from './pop-days';
 
 export interface BigShowsConfig { enabled: boolean; maxMiles: number; horizonDays?: number }
@@ -33,13 +34,9 @@ export interface BigShow {
 const METERS_PER_MILE = 1609.344;
 export const BIG_SHOWS_HORIZON_DAYS = 60;
 
-/** Library category for Ticketmaster's own segment; null = drawn neutral. */
-export function bigShowCategory(segment: string | null | undefined): Category | null {
-  const s = (segment ?? '').toLowerCase();
-  if (s === 'music') return 'music';
-  if (s === 'sports') return 'sports';
-  if (s === 'arts & theatre') return 'arts';
-  return null;
+/** Library category of a Ticketmaster show: lib/event-category.ts categorize (genre, then segment, then the title); null = drawn neutral. */
+export function bigShowCategory(segment: string | null | undefined, genre?: string | null, title = ''): Category | null {
+  return categorize({ source: [genre, segment], title });
 }
 
 /** "Denver · 13 mi": the venue's own city and straight-line miles. Without a stated city only the miles. */
@@ -88,7 +85,7 @@ export function buildBigShows(
     if (miles == null || miles > o.maxMiles) continue;
     rows.push({
       id: e.id, title: e.title, start: item.occurs_at, dateLabel: dayLabel(start), timeLabel: showTimeGb(item.occurs_at, o.timezone),
-      venue: e.venueName, city: e.venueCity, miles: Math.round(miles), href: e.ticketUrl, cat: bigShowCategory(e.segment), moreDates: 0,
+      venue: e.venueName, city: e.venueCity, miles: Math.round(miles), href: e.ticketUrl, cat: bigShowCategory(e.segment, e.genre, e.title), moreDates: 0,
     });
   }
   rows.sort((a, b) => a.start.localeCompare(b.start) || a.title.localeCompare(b.title));
