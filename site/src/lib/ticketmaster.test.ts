@@ -83,8 +83,21 @@ describe('normalizeTicketmasterEvent', () => {
         attractionNames: [],
         localDate: '2026-10-24',
         localTime: '14:00:00',
+        onSaleFrom: null,
+        promoterName: null,
       },
     });
+  });
+
+  // Owner 2026-11-26: the public on-sale date (Offer validFrom) and the promoter (organizer), as Discovery gives them. Values from the real
+  // Broomfield row rZ7HnEZ1Af8f17 "Chibs" (build 2026-11-26); the fixture's other fields are unchanged.
+  it('reads the public on-sale date and the promoter; an on-sale date marked TBD is none', () => {
+    const r = normalizeTicketmasterEvent(realFixture({
+      sales: { public: { startDateTime: '2026-11-04T22:00:00Z' } }, promoter: { name: 'INSOMNIAC PRESENTS' },
+    })).ticketmasterEvent;
+    expect([r.onSaleFrom, r.promoterName]).toEqual(['2026-11-04T22:00:00Z', 'INSOMNIAC PRESENTS']);
+    const tbd = normalizeTicketmasterEvent(realFixture({ sales: { public: { startDateTime: '2026-11-04T22:00:00Z', startTBD: true } } }));
+    expect(tbd.ticketmasterEvent.onSaleFrom).toBeNull();
   });
 
   it('parses the real primary attraction id (What\'s On Phase 5 follow-up, "Tour-Run Collapsing" -- real captured value: 6 live Disney On Ice tour stops all shared this exact id)', () => {

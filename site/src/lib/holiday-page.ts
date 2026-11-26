@@ -7,6 +7,7 @@
 import { toZonedISOString } from './db';
 import type { SeasonDay } from './holiday-season';
 import { TITLE_OK_MAX, TITLE_SECTION_PRIORITY, TITLE_WARN_MAX } from '../config/holiday-pages/title-rules';
+import { placeDescription } from './event-jsonld-fields';
 
 export type HolidaySection = 'closures' | 'trash' | 'transit' | 'events' | 'help';
 /** Render order of the sections. A section without rows is not rendered. */
@@ -493,6 +494,10 @@ export function buildHolidayEventsJsonLd(
       location: { '@type': 'Place', name: e.venue.name, address },
     };
     if (image) ld.image = [image];
+    // The name and place the page shows (owner 2026-11-26, lib/event-jsonld-fields.ts). No offers (no on-sale date in the data), no
+    // organizer or performer (the data names none).
+    const description = placeDescription(e.name, e.venue.name, e.venue.locality);
+    if (description) ld.description = description;
     if (e.endTime) ld.endDate = localIso(e.endDate ?? e.date, e.endTime, timeZone);
     else if (e.endDate) ld.endDate = e.endDate;
     return [ld];

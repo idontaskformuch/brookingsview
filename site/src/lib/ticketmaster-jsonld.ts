@@ -13,6 +13,7 @@
  */
 import type { TicketmasterFeedItem } from './ticketmaster';
 import { ticketmasterHref } from './whats-on';
+import { offerField, organizerField, placeDescription } from './event-jsonld-fields';
 
 /**
  * Returns the Event JSON-LD object for a Ticketmaster item listed on `pageUrl`, or null when
@@ -54,13 +55,10 @@ export function buildTicketmasterEventJsonLd(
       : {}),
   } : undefined;
 
-  const offers = e.priceMin != null ? {
-    '@type': 'Offer',
-    url: ticketUrl ?? undefined,
-    price: e.priceMin,
-    priceCurrency: e.priceCurrency ?? 'USD',
-    availability: 'https://schema.org/InStock',
-  } : undefined;
+  // Offers only with a price AND Discovery's public on-sale date (validFrom); without that date no offers (owner 2026-11-26).
+  const offers = offerField({ price: e.priceMin, currency: e.priceCurrency ?? (e.priceMin != null ? 'USD' : null), validFrom: e.onSaleFrom, url: ticketUrl });
+  const organizer = organizerField(e.promoterName);
+  const description = placeDescription(e.title, e.venueName, e.venueCity);
 
   // Performer (Search Console, owner 2026-11-18: only from the source's own fields): Discovery's attractions are the acts for music and
   // comedy; for theatre, family shows and sport an attraction is the production or a team, not a performer, so those get none.
@@ -80,9 +78,11 @@ export function buildTicketmasterEventJsonLd(
     eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
     ...(location ? { location } : {}),
     ...(e.imageUrl ? { image: [e.imageUrl] } : {}),
+    ...(description ? { description } : {}),
     ...(offers ? { offers } : {}),
     ...(performer ? { performer: performer.length === 1 ? performer[0] : performer } : {}),
-    // No organizer (owner 2026-11-16): Discovery does not name one, and the venue repeated as organizer is not the organiser.
+    // Organizer only when Discovery names the promoter (owner 2026-11-26); never the venue repeated (owner 2026-11-16).
+    ...(organizer ? { organizer } : {}),
   };
 }
 

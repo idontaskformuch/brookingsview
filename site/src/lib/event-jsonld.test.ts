@@ -185,3 +185,27 @@ describe('buildEventJsonLd -- non-event and recurring-series stories', () => {
     expect(buildEventJsonLd(story, [MAIN_LIBRARY], SITE, CANONICAL_URL, HERO_URL)).toBeNull();
   });
 });
+
+// Owner 2026-11-26 (Search Console, Glasgow: "missing description"): a withheld text gets the facts the page shows, never the source's
+// own text. Real rows: glasgow stories event-333583 "Drawing Inspiration" (generated_by 'template', body repeats title and place, so it
+// is withheld) and places the-burrell-collection.
+describe('description when the text is withheld (Glasgow)', () => {
+  const BURRELL: Facility = {
+    ...MAIN_LIBRARY, id: 900, slug: 'the-burrell-collection', name: 'The Burrell Collection', category: 'museum',
+    address: 'Pollokshaws Road, Pollok Country Park, Glasgow G43 1AT', aliases: [],
+    street_address: 'Pollokshaws Road, Pollok Country Park', postal_code: 'G43 1AT',
+  };
+  const story = {
+    ...baseStory({}), slug: 'event-333583', title: 'Drawing Inspiration', body: 'Drawing Inspiration at The Burrell Collection.',
+    occurs_at: '2026-08-31T23:00:00.000Z', ends_at: null, venue_raw: 'The Burrell Collection', generated_by: 'template',
+    meta: { venue: 'The Burrell Collection' },
+  } as EventJsonLdStory;
+  const GLASGOW = { cityName: 'Glasgow', region: 'Scotland', addressCountry: 'GB', siteName: 'Glasgow Loop', timezone: 'Europe/London', country: 'gb' as const, meetingsHaveTime: true };
+
+  it('is the facts line (title, place, day), and there are no offers or performer', () => {
+    const ld = buildEventJsonLd(story, [BURRELL], GLASGOW, 'https://glasgowloop.com/s/event-333583/', 'https://glasgowloop.com/og/event-333583.png')!;
+    expect(ld.description).toMatch(/^Drawing Inspiration at The Burrell Collection, Tue(sday)? 1 Sep/);
+    expect(ld.offers).toBeUndefined();
+    expect(ld.performer).toBeUndefined();
+  });
+});

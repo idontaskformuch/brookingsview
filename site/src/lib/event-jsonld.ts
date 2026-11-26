@@ -12,6 +12,8 @@
  */
 import { publicBody } from './ai-text';
 import { otherTownOf } from './place-locality';
+import { factsDescription } from './story-description';
+import type { CountryId } from './country-profile';
 import {
   buildVenueIndex, resolveVenue, hasResolvedAddress, isVirtualVenue, toZonedISOString,
   type Facility,
@@ -26,6 +28,8 @@ export interface EventJsonLdStory {
   ends_at?: string | null;
   venue_raw?: string | null;
   is_recurring_series?: boolean;
+  /** The structured facts the page shows (venue, recurrence): the description when the text itself is withheld. */
+  meta?: { venue?: string; recurrence?: string } | null;
 }
 
 export interface EventJsonLdSite {
@@ -37,6 +41,9 @@ export interface EventJsonLdSite {
   addressCountry?: string;
   siteName: string;
   timezone: string;
+  /** For the facts description (lib/story-description.ts); omitted = 'us' / meetings with a time. */
+  country?: CountryId;
+  meetingsHaveTime?: boolean;
 }
 
 /**
@@ -111,7 +118,14 @@ export function buildEventJsonLd(
     eventStatus: 'https://schema.org/EventScheduled',
     eventAttendanceMode,
     location,
-    ...(publicBody(story) ? { description: publicBody(story).slice(0, 300) } : {}), // model-written text is withheld (lib/ai-text.ts)
+    // Model-written text is withheld (lib/ai-text.ts); then the facts the page shows, as its meta description does (owner 2026-11-26:
+    // Search Console "missing description" in Glasgow, where every event text is withheld). Never the source's own text, which the page
+    // does not show.
+    description: (publicBody(story) || factsDescription(story, {
+      timezone: site.timezone, meetingsHaveTime: site.meetingsHaveTime ?? true, country: site.country ?? 'us',
+    })).slice(0, 300),
+    // No offers here: the stored event has no on-sale date (Glasgow Life: 0 of 60 upcoming rows state one), and an offer needs one
+    // (lib/event-jsonld-fields.ts offerField). No performer: the sources name none.
     image: [heroUrl],
     // The resolved venue is the most defensible organizer we can state
     // without inventing a fact (a library/park/city-hall event is

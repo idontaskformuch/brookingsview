@@ -135,7 +135,7 @@ const itemListJsonLd = allDisplayedItems.length > 0 ? {
     const heroUrl = new URL(asStory.image_path ?? `/og/${asStory.slug}.png`, Astro.site ?? siteConfig.siteUrl).href;
     const eventJsonLd = buildEventJsonLd(
       asStory, facilities,
-      { cityName: siteConfig.cityName, stateAbbr: siteConfig.stateAbbr, region: siteConfig.region, addressCountry: countryProfile(siteConfig.country).addressCountry, siteName: siteConfig.siteName, timezone: siteConfig.timezone },
+      { cityName: siteConfig.cityName, stateAbbr: siteConfig.stateAbbr, region: siteConfig.region, addressCountry: countryProfile(siteConfig.country).addressCountry, siteName: siteConfig.siteName, timezone: siteConfig.timezone, country: siteConfig.country, meetingsHaveTime: siteConfig.meetingsHaveTime },
       itemUrl, heroUrl,
     );
     return {

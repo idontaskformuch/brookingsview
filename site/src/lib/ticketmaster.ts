@@ -88,6 +88,10 @@ export interface RawTicketmasterEvent {
   images?: { url: string; width: number; height: number; ratio?: string; fallback?: boolean }[];
   dates?: { start?: { dateTime?: string; localDate?: string; localTime?: string } };
   priceRanges?: { min?: number; max?: number; currency?: string }[];
+  /** When the public sale opens (`sales.public.startDateTime`, UTC ISO): the Offer's validFrom (owner 2026-11-26). */
+  sales?: { public?: { startDateTime?: string; startTBD?: boolean } };
+  /** The promoter Discovery names for the event: the Event's organizer when present (owner 2026-11-26). */
+  promoter?: { id?: string; name?: string };
   _embedded?: {
     venues?: {
       /** Discovery API's own stable venue identifier -- preferred over
@@ -228,6 +232,10 @@ export interface TicketmasterEvent {
    *  show must never move to the next date). null when the listing has none (time TBA). Optional: older fixtures lack them. */
   localDate?: string | null;
   localTime?: string | null;
+  /** Discovery's public on-sale start (UTC ISO); null when the listing has none or says TBD. Optional: older fixtures lack it. */
+  onSaleFrom?: string | null;
+  /** Discovery's promoter name; null when none. Optional: older fixtures lack it. */
+  promoterName?: string | null;
 }
 
 function parseCoordinate(value: string | undefined): number | null {
@@ -389,6 +397,8 @@ export function normalizeTicketmasterEvent(raw: RawTicketmasterEvent): Ticketmas
     attractionNames: (raw._embedded?.attractions ?? []).flatMap((a) => (a.name?.trim() ? [cleanTicketmasterTitle(a.name)] : [])),
     localDate: raw.dates?.start?.localDate ?? null,
     localTime: raw.dates?.start?.localTime ?? null,
+    onSaleFrom: raw.sales?.public?.startTBD ? null : raw.sales?.public?.startDateTime ?? null,
+    promoterName: raw.promoter?.name?.trim() || null,
   };
   return {
     sourceKind: 'ticketmaster',

@@ -93,16 +93,41 @@ describe('buildTicketmasterEventJsonLd', () => {
     expect(result?.image).toBeUndefined();
   });
 
-  it('includes offers when a real price is known', () => {
-    const item = tmItem('2026-12-13T01:30:00Z', { priceMin: 25, priceMax: 75, priceCurrency: 'USD' });
-    const result = buildTicketmasterEventJsonLd(item, CANONICAL);
-    expect(result?.offers).toEqual({
+  // Real row: Broomfield /whats-on/ build 2026-11-26, Ticketmaster rZ7HnEZ1AfPwqd "Joe Torry" at Denver Improv (Discovery
+  // priceRanges min 5 USD, sales.public.startDateTime 2026-06-04T14:00:00Z).
+  const joe = (overrides: Partial<TicketmasterEvent> = {}) => tmItem('2026-11-28T02:30:00Z', {
+    id: 'rZ7HnEZ1AfPwqd', title: 'Joe Torry', venueName: 'Denver Improv', venueCity: 'Denver',
+    ticketUrl: 'https://www.ticketweb.com/event/joe-torry-denver-improv-tickets/14972743',
+    priceMin: 5, priceCurrency: 'USD', onSaleFrom: '2026-06-04T14:00:00Z', ...overrides,
+  });
+
+  it('includes offers with validFrom when the source gives a price and its on-sale date', () => {
+    expect(buildTicketmasterEventJsonLd(joe(), CANONICAL)?.offers).toEqual({
       '@type': 'Offer',
-      url: 'https://ticketmaster.com/event/tm-1',
-      price: 25,
+      url: 'https://www.ticketweb.com/event/joe-torry-denver-improv-tickets/14972743',
+      price: 5,
       priceCurrency: 'USD',
       availability: 'https://schema.org/InStock',
+      validFrom: '2026-06-04T14:00:00Z',
     });
+  });
+
+  it('omits offers when the source gives no on-sale date (Search Console: missing validFrom; owner 2026-11-26)', () => {
+    expect(buildTicketmasterEventJsonLd(joe({ onSaleFrom: null }), CANONICAL)?.offers).toBeUndefined();  // only onSaleFrom changed
+  });
+
+  it('a description made of the facts the page shows', () => {
+    expect(buildTicketmasterEventJsonLd(joe(), CANONICAL)?.description).toBe('Joe Torry at Denver Improv.');
+  });
+
+  // Real row: rZ7HnEZ1Af8f17 "Chibs" at Club Vinyl, Discovery promoter "INSOMNIAC PRESENTS".
+  it('organizer only when Discovery names a promoter, never a placeholder', () => {
+    expect(buildTicketmasterEventJsonLd(joe({ promoterName: 'INSOMNIAC PRESENTS' }), CANONICAL)?.organizer)
+      .toEqual({ '@type': 'Organization', name: 'INSOMNIAC PRESENTS' });
+    // the same build's placeholder values: the venue itself, or nobody
+    for (const p of ['PROMOTED BY VENUE', 'MISCELLANEOUS PROMOTER', null]) {
+      expect(buildTicketmasterEventJsonLd(joe({ promoterName: p }), CANONICAL)?.organizer).toBeUndefined();
+    }
   });
 
   it('omits offers when no price is known -- never fabricates a price', () => {
@@ -170,7 +195,8 @@ describe('buildTicketmasterListJsonLd (SPEC Fas 13a)', () => {
       [2, `${CANONICAL}#tm-rZ7HnEZ1A4Za-N`, 'https://www.ticketweb.com/event/shimmy-shakin-blues-la-rumba-tickets/15009863'],
     ]);
     expect(r.itemListElement[0].item['@context']).toBeUndefined();
-    expect(r.itemListElement[1].item.offers).toMatchObject({ price: 20.03, priceCurrency: 'USD' });
+    // Shimmy has a price but no on-sale date in the row: no offers (owner 2026-11-26)
+    expect(r.itemListElement[1].item.offers).toBeUndefined();
   });
 
   it('covers the next 14 days only (owner 2026-11-16: the full list added 210-290 kB)', () => {

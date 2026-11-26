@@ -454,7 +454,7 @@ const eventJsonLdObject = buildEventJsonLd(
   story, facilities,
   { cityName: siteConfig.cityName, stateAbbr: siteConfig.stateAbbr, region: siteConfig.region,
     addressCountry: countryProfile(siteConfig.country).addressCountry,
-    siteName: siteConfig.siteName, timezone: siteConfig.timezone },
+    siteName: siteConfig.siteName, timezone: siteConfig.timezone, country: siteConfig.country, meetingsHaveTime: siteConfig.meetingsHaveTime },
   canonicalUrl, ogImageUrl,
 );
 // A withheld text (displayBody '') still gets a description: the facts the page shows (QA build.meta-missing, 2026-11-12).

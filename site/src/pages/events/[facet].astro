@@ -109,7 +109,7 @@ function eventJsonLdFor(item: FeedItem): Record<string, unknown> | null {
   const heroUrl = new URL(asStory.image_path ?? `/og/${asStory.slug}.png`, Astro.site ?? siteConfig.siteUrl).href;
   return buildEventJsonLd(
     asStory, facilities,
-    { cityName: siteConfig.cityName, stateAbbr: siteConfig.stateAbbr, region: siteConfig.region, addressCountry: countryProfile(siteConfig.country).addressCountry, siteName: siteConfig.siteName, timezone: siteConfig.timezone },
+    { cityName: siteConfig.cityName, stateAbbr: siteConfig.stateAbbr, region: siteConfig.region, addressCountry: countryProfile(siteConfig.country).addressCountry, siteName: siteConfig.siteName, timezone: siteConfig.timezone, country: siteConfig.country, meetingsHaveTime: siteConfig.meetingsHaveTime },
     itemUrl, heroUrl,
   );
 }
