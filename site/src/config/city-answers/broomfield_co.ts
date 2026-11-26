@@ -39,7 +39,7 @@ export const BROOMFIELD_ANSWERS: AnswerPage[] = [
   // B2 (owner: yes; no pickup day or holiday shift, the source has neither).
   {
     slug: 'trash-recycling',
-    title: 'Trash & Recycling Guide | {Site}',
+    title: 'Broomfield Trash & Recycling Guide',
     h1: 'Broomfield trash and recycling: who picks it up and where hazardous waste goes',
     description: 'Who collects trash and recycling in Broomfield, who is enrolled in the city program, and where to take paint and other household hazardous waste.',
     about: "Who collects Broomfield's trash and recycling and where household hazardous waste goes, from the City and County of Broomfield's Licensed Trash Haulers page. Your pickup day is not on that page; your hauler or HOA has it.",
@@ -108,7 +108,7 @@ export const BROOMFIELD_ANSWERS: AnswerPage[] = [
   // B4 (owner: yes).
   {
     slug: 'snow-plowing',
-    title: 'Snow Plowing Priority | {Site}',
+    title: 'Broomfield Snow Plowing: Street Priority & Timing',
     h1: 'Broomfield snow plowing: which streets first, and when yours is plowed',
     description: "When Broomfield plows your street: the priority order, how much snow before residential streets are plowed, and who clears state highways.",
     about: "How Broomfield plows its streets, trails and sidewalks, from the City and County of Broomfield's Snow and Ice Priority Routes and Snow and Ice Control pages.",
@@ -145,7 +145,7 @@ export const BROOMFIELD_ANSWERS: AnswerPage[] = [
   // B5 (owner: yes).
   {
     slug: 'pay-water-bill',
-    title: 'Pay Your Water Bill | {Site}',
+    title: 'Pay Your Broomfield Water Bill Online',
     h1: 'Pay your Broomfield water and sewer bill online',
     description: "Pay Broomfield's water and sewer bill online through the city's payment portal, with no additional fees.",
     about: "How to pay the water and sewer bill, from the City and County of Broomfield's Pay a Bill Online page.",
@@ -162,7 +162,7 @@ export const BROOMFIELD_ANSWERS: AnswerPage[] = [
   {
     slug: 'christmas-tree-recycling',
     draft: true,
-    title: 'Christmas Tree Recycling 2026–27 | {Site}',
+    title: 'Broomfield Christmas Tree Recycling 2026–27',
     h1: 'Broomfield Christmas tree recycling 2026–27: drop-off sites',
     description: 'Where to recycle a real Christmas tree in Broomfield after the holidays: the city drop-off sites, as the city publishes them for 2026–27.',
     about: "Broomfield's holiday tree drop-off, from the City and County of Broomfield's Holiday Tree Recycling page.",

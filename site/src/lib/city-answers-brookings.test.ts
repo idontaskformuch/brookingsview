@@ -26,8 +26,10 @@ describe('K1: Brookings trash guide, same content before and after the move', ()
     expect(now.text).toBe(FIXTURE.text);
     expect(now.hrefs).toEqual(FIXTURE.hrefs);
   });
-  it('title and description are the same', () => {
-    expect(PAGE.title!.replace('{Site}', 'Brookings View').replace('&', '&amp;')).toBe(FIXTURE.title);
+  it('the description is the one of the page as it was served 2026-11-19; the title is the owner\'s new one (order 2026-11-26 (12))', () => {
+    // The fixture's title is the old live one, "Trash & Recycling Guide | Brookings View": the owner changed it (town first, no suffix).
+    expect(FIXTURE.title).toBe('Trash &amp; Recycling Guide | Brookings View');
+    expect(PAGE.title).toBe('Brookings Trash & Recycling: Pickup Days & Rules');
     expect(PAGE.description).toBe(FIXTURE.description);
   });
 });

@@ -26,7 +26,7 @@ export const YARD_SEASON_END = '2026-11-24';
 export const BROOKINGS_ANSWERS: AnswerPage[] = [
   {
     slug: 'trash-recycling',
-    title: 'Trash & Recycling Guide | {Site}',
+    title: 'Brookings Trash & Recycling: Pickup Days & Rules',
     h1: 'Brookings trash, recycling and yard waste: pickup days and what goes where',
     description: 'Brookings garbage, recycling and yard waste: which day is yours, what goes in each cart, holiday changes, and what to do with big items, branches and paint.',
     sourcesInAbout: false,

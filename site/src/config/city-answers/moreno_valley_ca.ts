@@ -10,7 +10,7 @@ const TREE_SOURCE = { name: 'City of Moreno Valley: Christmas Tree Pickup', url:
 export const MORENO_VALLEY_ANSWERS: AnswerPage[] = [
   {
     slug: 'christmas-tree-pickup',
-    title: 'Christmas Tree Pickup 2026 | {Site}',
+    title: 'Moreno Valley Christmas Tree Pickup 2026',
     h1: 'Moreno Valley Christmas tree pickup: when and how',
     description: 'When Waste Management picks up Christmas trees in Moreno Valley after Christmas 2026, and how to get your tree ready for the curb.',
     about: 'When and how Moreno Valley picks up Christmas trees, from the City of Moreno Valley\'s Solid Waste & Recycling page. The dates apply the city\'s rule (the first two weeks after Christmas); the city\'s page is the authority.',

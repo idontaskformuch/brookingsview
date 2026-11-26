@@ -49,9 +49,16 @@ describe('Broomfield answer pages', () => {
     expect(t).toContain('Wednesdays 1 to 5 p.m.');
     expect(t).toContain('Saturdays 8 a.m. to 5 p.m.');
   });
-  it('other pages keep their hand-written title and meta (with {Site} filled in)', () => {
+  it('the other pages have a hand-written title (town first, no site suffix; owner order 2026-11-26 (12)) and keep their meta as it was', () => {
     const p = page('pay-water-bill');
-    expect(answerMeta(p, { siteName: 'Broomfield View', town: 'Broomfield', today: '2026-11-26' })).toEqual({ title: 'Pay Your Water Bill | Broomfield View', description: p.description });
+    // 104 characters, unchanged by order: "Inget tillägg".
+    expect(answerMeta(p, { siteName: 'Broomfield View', town: 'Broomfield', today: '2026-11-26' })).toEqual({
+      title: 'Pay Your Broomfield Water Bill Online',
+      description: "Pay Broomfield's water and sewer bill online through the city's payment portal, with no additional fees.",
+    });
+    expect(page('trash-recycling').title).toBe('Broomfield Trash & Recycling Guide'); // no "pickup days": the source has no common pickup day
+    expect(page('snow-plowing').title).toBe('Broomfield Snow Plowing: Street Priority & Timing');
+    expect(page('christmas-tree-recycling').title).toBe('Broomfield Christmas Tree Recycling 2026–27'); // still a draft
   });
   it('the facts are the source pages\' own (B3 hours and closures, B4 thresholds, B5 no fee)', () => {
     const branch = evidence('broomfield-org-2995-tree-branch-recycling.html');
