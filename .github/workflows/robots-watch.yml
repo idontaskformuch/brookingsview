@@ -1,0 +1,30 @@
+name: robots-watch
+# Daily: does broomfield.org/robots.txt still block the city calendar feeds (/common/modules/icalendar/)? Reads ONLY robots.txt (one request,
+# ViewMediaBot, scrapers/polite_fetch.py). When the feeds are allowed again: one alert (alert_state: new / daily reminder / resolved) and one
+# GitHub issue (qa/report.py, check ops.robots-unblocked, closes itself after 2 clean runs). Nothing is switched on; the owner decides.
+# See scripts/watch_robots_unblock.py. On GitHub's own schedule (owner order 2026-11-25/26: a daily check).
+
+on:
+  schedule:
+    - cron: "41 7 * * *"   # daily, odd minute
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL:   ${{ secrets.DATABASE_URL }}
+      ALERT_WEBHOOK:  ${{ secrets.ALERT_WEBHOOK }}
+      GITHUB_TOKEN:   ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+      - run: pip install -r requirements.txt
+      - name: Read broomfield.org/robots.txt and check the calendar feeds
+        run: python -m scripts.watch_robots_unblock
