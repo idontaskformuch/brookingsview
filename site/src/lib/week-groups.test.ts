@@ -260,3 +260,22 @@ describe('weekDayBlocks (design lift rollout a, owner 2026-11-26 (7))', () => {
     expect(b.days.map((d) => d.rows[0].extra)).toEqual([['Thu, Sat'], ['Thu, Sat']]);
   });
 });
+
+describe('weekDayBlocks: nearby apart (owner 2026-11-26 (9))', () => {
+  // Real rows: Broomfield /whats-on/ 2026-11-26, Joseph and the Amazing Technicolor Dreamcoat at Arvada Center (Fri-Sun) and
+  // A Christmas Carol at the Denver Center (JSON-LD, ordagrant); `nearby` as the week builder sets it for a Ticketmaster venue.
+  const DEN = 'America/Denver';
+  const bday = (items: DayItem[], i: number): DayBucket => ({ date: { y: 2026, m: 11, d: 23 + i }, weekdayName: NAMES[i], leadVertical: 'events', items });
+  const joseph = (iso: string): DayItem => ({ vertical: 'events', title: 'Joseph and the Amazing Technicolor Dreamcoat', href: 'https://www.ticketmaster.com/event/joseph', external: true, detail: '', startsAt: iso, venue: 'Arvada Center · Arvada', nearby: { city: 'Arvada', ticket: true } });
+  const carol: DayItem = { vertical: 'events', title: 'A Christmas Carol', href: 'https://www.ticketmaster.com/event/Z7r9jZ1AAZyaJ', external: true, detail: '', startsAt: '2026-11-28T02:00:00Z', venue: 'Denver Center for the Performing Arts · Denver', nearby: { city: 'Denver', ticket: true } };
+  it('a nearby row is in the day\'s `nearby`, never in its rows; a nearby run on 3 days is not in the town\'s "All week"', () => {
+    const days = NAMES.map((_, i) => bday(i === 4 ? [joseph('2026-11-27T20:00:00Z'), carol] : i === 5 ? [joseph('2026-11-28T20:00:00Z')] : i === 6 ? [joseph('2026-11-29T20:00:00Z')] : [], i));
+    const b = weekDayBlocks(days, days, DEN, (k) => k, 'Broomfield');
+    expect(b.allWeek).toEqual([]);
+    expect(b.days.map((d) => [d.key, d.rows.length, d.nearby?.map((r) => r.title)])).toEqual([
+      ['2026-11-27', 0, ['Joseph and the Amazing Technicolor Dreamcoat', 'A Christmas Carol']], // 1pm before 7pm
+      ['2026-11-28', 0, ['Joseph and the Amazing Technicolor Dreamcoat']],
+      ['2026-11-29', 0, ['Joseph and the Amazing Technicolor Dreamcoat']],
+    ]);
+  });
+});

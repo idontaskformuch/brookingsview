@@ -265,7 +265,10 @@ export function weekDayBlocks(
   const byDay = new Map<number, { sort: number; row: EventRowData }[]>();
   for (const merged of mergeAcrossDays(mergeSameDay(flat))) {
     const first = merged.rows[0];
-    if (merged.days.length >= ALL_WEEK_DAYS) {
+    // In another town (owner 2026-11-26 (9)): a Ticketmaster venue nearby, or an own event whose address names another town.
+    const elsewhere = first.item.nearby ?? (() => { const c = homeCity ? otherTownOf({ address: first.item.venue ?? null }, homeCity) : null; return c ? { city: c, ticket: false } : undefined; })();
+    // The carousel is the town's own: a nearby run stays in each day's Nearby block.
+    if (merged.days.length >= ALL_WEEK_DAYS && !elsewhere) {
       const last = merged.rows[merged.rows.length - 1];
       allWeek.push({
         when: first.timeLabel ? `${formatDays(merged.days)} ${first.timeLabel}` : formatDays(merged.days),
@@ -287,6 +290,7 @@ export function weekDayBlocks(
           time: r.timeLabel, title: r.title, href: r.item.href, rel: r.item.external ? 'noopener' : null,
           place: r.venue ? [r.venue] : [], extra: merged.days.length > 1 ? [formatDays(merged.days)] : [], category,
           ...(r.item.recurring ? { recurring: true } : {}),
+          ...(elsewhere ? { nearby: elsewhere } : {}),
         },
       });
       byDay.set(r.dayIndex, list);
@@ -296,8 +300,12 @@ export function weekDayBlocks(
     allWeek,
     days: [...byDay.keys()].sort((a, b) => a - b).map((i) => ({
       key: ymd(i), label: label(ymd(i)),
-      // Untimed rows (a meeting) first, as on /events/ ("all day" before the clock); then by time, then title.
-      rows: byDay.get(i)!.sort((a, b) => a.sort - b.sort || a.row.title.localeCompare(b.row.title)).map((x) => x.row),
+      // Untimed rows (a meeting) first, as on /events/ ("all day" before the clock); then by time, then title. The town's rows, then the
+      // day's rows in other towns as `nearby` (owner 2026-11-26 (9)).
+      ...(() => {
+        const sorted = byDay.get(i)!.sort((a, b) => a.sort - b.sort || a.row.title.localeCompare(b.row.title)).map((x) => x.row);
+        return { rows: sorted.filter((r) => !r.nearby), nearby: sorted.filter((r) => r.nearby) };
+      })(),
     })),
   };
 }

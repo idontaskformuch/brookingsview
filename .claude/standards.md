@@ -67,6 +67,12 @@ Komponenter i site/src/components/holiday/, data som rena funktioner i lib/holid
   `eveningLayer.includeTicketmasterSports`. **I listor, aldrig i räknare** (ägaren 26 nov): event-day-view isOwnEvent styr dagsremsan,
   "N things on today", tonight/free, sidhuvudets och startsidans räknare; veckans noindex-räkning (week-count.mjs) läser aldrig
   Ticketmaster. På /events/ visas Ticketmaster bara inom sidans egna 7 dagar (DAY_WINDOW); senare = länk till What's On.
+- **Nearby tar aldrig över en dag (order 26 nov (9)):** per dag stadens egna rader först; Nearby (Ticketmaster och egna evenemang i
+  annan stad) i ett eget avgränsat block sist, rubrik "Nearby · Denver, Boulder, Arvada…", max `NEARBY_PER_DAY` = 3 (egna före
+  biljettlistningar); resten: egna bakom "N more nearby", biljetter bakom "More nearby shows →" till What's On. Utvalt kort bara från
+  staden; en dag utan något i staden har inget. Digest räknar separat: "4 events · +12 nearby". /events/ har ingen egen Nearby-sektion
+  längre. Kod: lib/day-digest.ts splitNearby, EventRowData.nearby, DayGroupData.nearby, week-groups weekDayBlocks (karusellen "All week"
+  tar bara stadens egna).
 - **En kategorifunktion** (lib/event-category.ts categorize): källans etikett (TM: genre, sedan segment), sedan titeln, platsen sist.
   Alla sidor (event-row-facts, week-groups themeOf/dagblock, big-shows) går genom den.
 

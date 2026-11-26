@@ -240,6 +240,8 @@ export interface DayItem {
   categories?: string[];
   /** The source marks it as a repeating series (is_recurring_series, or a weekly/monthly recurrence): never a day's featured card. */
   recurring?: boolean;
+  /** In another town (a Ticketmaster venue within the nearby radius): the day's Nearby block (owner 2026-11-26 (9)). */
+  nearby?: { city: string | null; ticket: boolean };
 }
 
 export interface DayBucket {
@@ -307,9 +309,10 @@ export function buildWeekDays(
           vertical: 'events', title: displayTitle(e.title), href: ticketmasterHref(e), external: true, detail: '',
           startsAt: item.occurs_at, endsAt: null,
           // A nearby venue says its town on the row, as an own event in another town does (owner 2026-11-26).
-          // No comma: the week's shortVenue keeps the text before the first comma.
-          venue: e.venueName ? (zone.zone === 'nearby' && city ? `${e.venueName} · Nearby · ${city}` : e.venueName) : null,
+          // No comma: the week's shortVenue keeps the text before the first comma. The Nearby block's heading says "Nearby".
+          venue: e.venueName ? (zone.zone === 'nearby' && city ? `${e.venueName} · ${city}` : e.venueName) : null,
           categories: [e.genre, e.segment].filter((v): v is string => !!v && v !== 'Undefined'),
+          ...(zone.zone === 'nearby' ? { nearby: { city: city || null, ticket: true } } : {}),
         });
         continue;
       }

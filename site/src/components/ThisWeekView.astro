@@ -51,7 +51,7 @@ const weekBlocks = weekDayBlocks(
 );
 const topPatterns = (siteConfig.topEvents?.patterns ?? []).map((p) => p.toLowerCase());
 const isTop = (r: EventRowData) => topPatterns.some((p) => r.title.toLowerCase().includes(p));
-const showCategory = mixedCategories(weekBlocks.days.flatMap((d) => d.rows));
+const showCategory = mixedCategories(weekBlocks.days.flatMap((d) => [...d.rows, ...(d.nearby ?? [])]));
 // Every row stays in the browser, as before the rollout (WeekGroupList keepOver): past days of the current week are left out at build.
 const keepOver = true;
 
@@ -89,7 +89,8 @@ const itemListJsonLd = hasAnyItems ? {
   <RunCarousel heading="All week" id="wk-all" keepOver={keepOver} tz={siteConfig.timezone}
     items={weekBlocks.allWeek.map((r) => ({ when: r.when, title: r.title, place: r.venue, href: r.href, rel: r.external ? 'noopener' : null, start: r.start, end: r.end }))} />
   <div class="wk-days">
-    <EventDays groups={weekBlocks.days} tz={siteConfig.timezone} idPrefix="wk" isTop={isTop} showCategory={showCategory} keepOver={keepOver} />
+    <EventDays groups={weekBlocks.days} tz={siteConfig.timezone} idPrefix="wk" isTop={isTop} showCategory={showCategory} keepOver={keepOver}
+      moreNearbyHref={siteConfig.hasWhatsOn ? '/whats-on/' : null} />
   </div>
 
   <nav class="cross-links" aria-label="Related sections">

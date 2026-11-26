@@ -37,6 +37,9 @@ export interface EventRowData {
   category: Category | null;
   /** The source marks it as repeating while no extra says so (the /this-week/ rows); read by lib/day-digest.ts isRecurring. */
   recurring?: boolean;
+  /** In another town within the nearby radius (owner 2026-11-26 (9)): listed in the day's own Nearby block, never featured, counted
+   *  apart in the digest. `city`: the venue's town as its source states it; `ticket`: a Ticketmaster listing (its rest goes to What's On). */
+  nearby?: { city: string | null; ticket: boolean };
 }
 
 export interface RowEnv {
@@ -184,7 +187,8 @@ export function mixedCategories(rows: Pick<EventRowData, 'category'>[]): boolean
   return new Set(rows.map((r) => r.category).filter(Boolean)).size > 1;
 }
 
-export interface DayGroupData<T> { key: string; label: string; rows: T[] }
+/** `rows`: the town's own; `nearby`: the day's rows in other towns, shown last in their own block (owner 2026-11-26 (9)). */
+export interface DayGroupData<T> { key: string; label: string; rows: T[]; nearby?: T[] }
 
 /** Rows grouped under one heading per town day, in the order the rows come in (callers sort by date). Rows without a start go in a
  *  last group with an empty key and label (the caller decides how to head it). */

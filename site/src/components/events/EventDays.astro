@@ -12,22 +12,25 @@ import DayGroup from '../ui/DayGroup.astro';
 import EventRow from '../ui/EventRow.astro';
 import EventFeature from '../ui/EventFeature.astro';
 import type { DayGroupData, EventRowData } from '../../lib/event-row';
-import { eventDigest, splitDay } from '../../lib/day-digest';
+import { eventDigest, splitDay, splitNearby } from '../../lib/day-digest';
 
 interface Props {
   groups: DayGroupData<EventRowData>[]; tz: string; idPrefix?: string; level?: 2 | 3; showCategory?: boolean; keepOver?: boolean;
   /** The town's top events (siteConfig.topEvents): such a row is the day's featured card before any other. */
   isTop?: (r: EventRowData) => boolean;
+  /** Where "More nearby shows →" goes (What's On); none = no link. */
+  moreNearbyHref?: string | null;
 }
-const { groups, tz, idPrefix = 'day', level = 2, showCategory = false, keepOver = false, isTop } = Astro.props;
+const { groups, tz, idPrefix = 'day', level = 2, showCategory = false, keepOver = false, isTop, moreNearbyHref = null } = Astro.props;
 const rowLevel = (level + 1) as 3 | 4;
-const blocks = groups.map((g) => ({ g, digest: eventDigest(g.rows), ...splitDay(g.rows, isTop) }));
+// The town's rows decide the featured card and the digest; the day's rows in other towns are their own block, last (owner 2026-11-26 (9)).
+const blocks = groups.map((g) => ({ g, digest: eventDigest(g.rows, g.nearby?.length ?? 0), ...splitDay(g.rows, isTop), near: splitNearby(g.nearby ?? []) }));
 const attrs = (row: EventRowData, key: string) => (keepOver
   ? { 'data-day-key': key }
   : { 'data-pop-row': '', 'data-start': row.start ?? undefined, 'data-end': row.end ?? undefined, 'data-tz': tz, 'data-day-key': key });
 ---
 <div class="ed" data-pop-list={keepOver ? undefined : ''} data-tz={tz}>
-  {blocks.map(({ g, digest, featured, shown, more }) => (
+  {blocks.map(({ g, digest, featured, shown, more, near }) => (
     <div data-pop-group={keepOver ? undefined : ''}>
       <DayGroup label={g.label} datetime={g.key} id={`${idPrefix}-${g.key}`} level={level} digest={digest}>
         {featured && (
@@ -40,18 +43,45 @@ const attrs = (row: EventRowData, key: string) => (keepOver
             <EventRow row={row} showCategory={showCategory} level={rowLevel} />
           </li>
         ))}
-        {more.length > 0 && (
-          <details class="ed__more" slot="after">
-            <summary>{more.length} more on {g.label}</summary>
-            <ul class="day-group__rows">
-              {more.map((row) => (
-                <li {...attrs(row, g.key)}>
-                  <EventRow row={row} showCategory={showCategory} level={rowLevel} />
-                </li>
-              ))}
-            </ul>
-          </details>
-        )}
+        <Fragment slot="after">
+          {more.length > 0 && (
+            <details class="ed__more">
+              <summary>{more.length} more on {g.label}</summary>
+              <ul class="day-group__rows">
+                {more.map((row) => (
+                  <li {...attrs(row, g.key)}>
+                    <EventRow row={row} showCategory={showCategory} level={rowLevel} />
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+          {near.shown.length > 0 && (
+            <div class="ed__nearby" data-nearby-block>
+              <p class="ed__nearby-h">{near.heading}</p>
+              <ul class="day-group__rows">
+                {near.shown.map((row) => (
+                  <li {...attrs(row, g.key)}>
+                    <EventRow row={row} showCategory={showCategory} level={rowLevel} />
+                  </li>
+                ))}
+              </ul>
+              {near.moreOwn.length > 0 && (
+                <details class="ed__more">
+                  <summary>{near.moreOwn.length} more nearby</summary>
+                  <ul class="day-group__rows">
+                    {near.moreOwn.map((row) => (
+                      <li {...attrs(row, g.key)}>
+                        <EventRow row={row} showCategory={showCategory} level={rowLevel} />
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+              {near.moreTickets > 0 && moreNearbyHref && <p class="ed__nearby-more"><a href={moreNearbyHref}>More nearby shows →</a></p>}
+            </div>
+          )}
+        </Fragment>
       </DayGroup>
     </div>
   ))}
@@ -68,6 +98,12 @@ const attrs = (row: EventRowData, key: string) => (keepOver
   .ed :global(.day-group) { scroll-margin-top: var(--ui-5); }
   .ed__feature { list-style: none; }
   .ed__feature + li :global(.ev-row) { border-top: 0; }
+  /* A day with nothing in town: no empty list line above its Nearby block. */
+  .ed :global(.day-group__rows:not(:has(li))) { display: none; }
+  .ed__nearby { margin: var(--ui-3) 0 0; padding: var(--ui-2) var(--ui-3) var(--ui-1); border-radius: var(--ui-radius); background: var(--ui-surface-2); }
+  .ed__nearby-h { margin: 0 0 var(--ui-1); font-family: var(--font-ui); font-size: var(--ui-meta); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-soft); }
+  .ed__nearby :global(.day-group__rows) { border-bottom: 0; }
+  .ed__nearby-more { margin: var(--ui-1) 0 var(--ui-1); font-family: var(--font-ui); font-size: var(--ui-meta); font-weight: 600; }
   .ed__more summary { cursor: pointer; padding: var(--ui-2) 0; font-family: var(--font-ui); font-size: var(--ui-meta); font-weight: 600; color: var(--navy); min-height: 44px; display: flex; align-items: center; }
   [data-pop-group][hidden] { display: none; }
 </style>

@@ -1,7 +1,8 @@
 /** Day blocks for /events/ and /this-week/ (owner 2026-11-26 (7), rollout a). Rows: Glasgow /events/ as built 2026-11-26 (battery
  *  build, dist/events/index.html), Thu 26 and Sat 28 Nov, ordagrant: title, time, href, category, place and extras. */
 import { describe, expect, it } from 'vitest';
-import { eventDigest, featuredIndex, isRecurring, isRun, MAX_COMPACT, splitDay } from './day-digest';
+import { readFileSync } from 'node:fs';
+import { eventDigest, featuredIndex, isRecurring, isRun, MAX_COMPACT, NEARBY_PER_DAY, splitDay, splitNearby } from './day-digest';
 import type { EventRowData } from './event-row';
 
 const row = (o: Partial<EventRowData> & Pick<EventRowData, 'title' | 'start'>): EventRowData => ({
@@ -77,5 +78,49 @@ describe('fold', () => {
     expect(shown).toHaveLength(MAX_COMPACT);
     expect(more.map((r) => r.title)).toEqual(['Fat Dog', 'Hanna Tuulikki - Deer Dancer']);
     expect([featured, ...shown, ...more]).toHaveLength(SAT.length);
+  });
+});
+
+describe('Nearby never takes over a day (owner 2026-11-26 (9))', () => {
+  // Real rows: Broomfield /whats-on/ as built 2026-11-26 (JSON-LD), Fri 27 Nov, all in Denver: title, venue, link ordagrant.
+  const tm = (title: string, venue: string, url: string, start: string) =>
+    row({ title, start, href: url, place: [venue], nearby: { city: 'Denver', ticket: true } });
+  const FRI = [
+    tm('E.M.E.', 'Marquis', 'https://www.ticketmaster.com/eme-denver-colorado-11-27-2026/event/1E006514C611FAB2', '2026-11-28T02:00:00Z'),
+    tm('Kinfolktales', 'Studio Loft at Ellie Caulkins Opera House', 'https://www.ticketmaster.com/event/Z7r9jZ1AA7J-P', '2026-11-28T02:00:00Z'),
+    tm('Ladies Night & Noche Sonidera', 'La Rumba', 'https://www.ticketweb.com/event/ladies-night-noche-sonidera-la-rumba-tickets/14036334', '2026-11-28T02:00:00Z'),
+    tm('Sam Tallent', 'Comedy Works', 'https://www.ticketmaster.com/event/Z7r9jZ1A70z4a', '2026-11-28T02:00:00Z'),
+    tm('Eric Prydz (16+ Event)', 'Mission Ballroom', 'https://www.ticketmaster.com/event/Z7r9jZ1AAZyOs', '2026-11-28T04:00:00Z'),
+  ];
+  it('the digest counts the town and nearby apart: "+5 nearby" alone, or after the town\'s own count', () => {
+    expect(eventDigest([], FRI.length)).toBe('+5 nearby');
+    expect(eventDigest(THU, 12)).toBe('5 events · 1 arts · 1 music · 1 free · +12 nearby');
+    expect(eventDigest([THU[1]], 2)).toBe('1 event · +2 nearby');
+  });
+  it('a day with nothing in town has no featured card', () => {
+    expect(splitDay([]).featured).toBeNull();
+  });
+  it(`the block: at most ${NEARBY_PER_DAY}, own events before tickets, the rest of the tickets counted for "More nearby shows"`, () => {
+    // Changed field: a sixth row, E.M.E. as an own event (ticket: false) in Westminster -- an own nearby event comes first.
+    const own = { ...FRI[0], title: 'E.M.E.', nearby: { city: 'Westminster', ticket: false } };
+    const b = splitNearby([...FRI, own]);
+    expect(b.shown.map((r) => r.title)).toEqual(['E.M.E.', 'E.M.E.', 'Kinfolktales']);
+    expect(b.shown[0].nearby).toEqual({ city: 'Westminster', ticket: false });
+    expect([b.moreOwn.length, b.moreTickets]).toEqual([0, 3]);
+    expect(b.heading).toBe('Nearby · Westminster, Denver');
+  });
+  it('more than three towns end in "…"', () => {
+    const towns = ['Denver', 'Boulder', 'Arvada', 'Englewood'].map((c, i) => ({ ...FRI[i], nearby: { city: c, ticket: true } }));
+    expect(splitNearby(towns).heading).toBe('Nearby · Denver, Boulder, Arvada…');
+  });
+});
+
+describe('EventDays (the shared day block on /events/ and /this-week/)', () => {
+  const src = readFileSync(new URL('../components/events/EventDays.astro', import.meta.url), 'utf8');
+  it('picks the featured card and the digest count from the town\'s rows; the nearby rows are their own block, after the rest', () => {
+    expect(src).toMatch(/eventDigest\(g\.rows, g\.nearby\?\.length \?\? 0\)/);
+    expect(src).toMatch(/splitDay\(g\.rows, isTop\)/);
+    expect(src).toMatch(/near: splitNearby\(g\.nearby \?\? \[\]\)/);
+    expect(src.indexOf('data-nearby-block')).toBeGreaterThan(src.indexOf('more on {g.label}'));
   });
 });
