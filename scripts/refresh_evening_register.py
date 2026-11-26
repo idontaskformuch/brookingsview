@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from datetime import datetime, timedelta, timezone
@@ -37,6 +38,8 @@ MODEL = "claude-haiku-4-5-20251001"
 # Oran Mor 2026-11-24: on a long what's-on page Haiku writes 6-7 000 characters (one object per show, most with null quotes) and stopped at the
 # old 2 500-token limit in the middle of the JSON -> "response is not the expected JSON", 0 rules, three times in a row. A reply is only
 # ever cut off by this limit, never by the page, so it is well above what the longest page needs.
+# SWG3 2026-11-25 was cut off at 8000 too: owner 2026-11-26, never raise it again. Long pages are cropped to the horizon and sent in parts
+# instead (scrapers/evening_register.py crop_to_horizon, split_for_model); tests pin 8000.
 MAX_TOKENS = 8000
 
 
@@ -76,13 +79,24 @@ def make_extractor(town_id: str, log_usage: bool):
     return extract
 
 
+def cut_off_issue_link(town_id: str, venue_id: str) -> str:
+    """Where the cut-off's issue is: scripts/check_freshness.py ops.evening-register-cutoff opens it (title "[QA] ops.evening-register-cutoff —
+    <town> evening-register-cutoff/<venue> ..."); the evening-register workflow runs that check right after this script, so the issue exists
+    when the alert is read. Before 2026-11-26 the annotation showed only ".github#28" (GitHub's location for a ::warning:: without a file)."""
+    from urllib.parse import quote_plus
+    repo = os.environ.get("GITHUB_REPOSITORY") or "idontaskformuch/brookingsview"
+    q = f'is:issue in:title "ops.evening-register-cutoff" "{town_id} evening-register-cutoff/{venue_id}"'
+    return f"https://github.com/{repo}/issues?q={quote_plus(q)}"
+
+
 def report(town_id: str, venue: dict, res: VenueResult, show: bool) -> None:
     mark = {"ok": "ok     ", "flagged": "FLAGGED", "skipped": "skipped"}[res.status]
     print(f"  [{mark}] {town_id}/{venue['venue_id']}: {res.reason}")
     if res.status == "flagged":
         print(f"::warning::evening register: {town_id}/{venue['venue_id']} flagged for the owner: {res.reason}")
     if res.cut_off:
-        print(f"::warning::evening register: {town_id}/{venue['venue_id']}: cut-off model reply (max_tokens {MAX_TOKENS}): {res.reason}")
+        print(f"::warning file=scripts/refresh_evening_register.py,title=evening register: cut-off reply::{town_id}/{venue['venue_id']}: "
+              f"cut-off model reply (max_tokens {MAX_TOKENS}): {res.reason}. Issue: {cut_off_issue_link(town_id, venue['venue_id'])}")
     for note in res.notes:
         print(f"      note: {note}")
     if show:
@@ -127,9 +141,10 @@ def alert_cut_off(conn, town_id: str, venue_id: str, res: VenueResult) -> None:
     """A cut-off reply (max_tokens) is one problem per venue: one alert, a daily reminder while it lasts, one "resolved" (scrapers/alert_state.py).
     Per venue, and only for a venue checked in THIS run, so a venue the 20-hour guard skipped is never marked resolved by mistake."""
     key = f"register-cutoff|{town_id}|{venue_id}"
-    active = {key: f"{town_id}/{venue_id}: {res.reason}"} if res.cut_off else {}
+    msg = f"{town_id}/{venue_id}: {res.reason}\nIssue: {cut_off_issue_link(town_id, venue_id)}"
+    active = {key: msg} if res.cut_off else {}
     if reconcile(conn, key, active, title=f"[{town_id}] evening register: cut-off reply") is None and res.cut_off:
-        send_alert(f"{town_id}/{venue_id}: {res.reason}", title=f"[{town_id}] evening register: cut-off reply")
+        send_alert(msg, title=f"[{town_id}] evening register: cut-off reply")
 
 
 def main(argv: list[str] | None = None) -> int:

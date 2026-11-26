@@ -12,6 +12,8 @@ issues are independent (qa/report.py `scope_checks`: a run of this script only e
   ops.evening-register-freshness  evening_register_* per town with a register: too few venues with a valid rule, or no venue check for 9 days
                          (owner 2026-11-08: Glasgow < 4, Broomfield < 1; a dated rule counts 8 days, a recurring one 36)
   ops.token-expiry       the cron-dispatcher's GITHUB_TOKEN runs out: an issue opens TOKEN_WARN_DAYS before TOKEN_EXPIRES
+  ops.evening-register-cutoff  a venue whose latest register check had a model reply cut off at max_tokens: issue only (the refresh run
+                         alerts itself and links to this issue; it also runs this check right after itself)
   ops.hours-verified     a place with opening hours whose verified_date is older than HOURS_WARN_DAYS (35), or missing: the site hides
                          hours older than 45 days (placeStaleness.hoursDays), so a missed monthly facility-hours run shows 10 days early
 
@@ -48,7 +50,10 @@ LIMIT_HOURS = {"sport": 26, "weather": 3, "alerts": 2, "safety": 3}
 SPORT_WARNING_DAYS = 3
 CHECK_ID = {"sport": "ops.sport-freshness", "sportwarn": "ops.sport-warning", "weather": "ops.weather-freshness", "alerts": "ops.alerts-freshness",
             "safety": "ops.safety-freshness", "register": "ops.evening-register-freshness", "token": "ops.token-expiry",
-            "hours": "ops.hours-verified"}
+            "hours": "ops.hours-verified", "registercut": "ops.evening-register-cutoff"}
+# Checks that only open/close an issue: the job that finds the problem already sends its own alert (scripts/refresh_evening_register.py
+# alert_cut_off), so notify() would be a second alert for the same problem.
+ISSUE_ONLY_CHECKS = {"ops.evening-register-cutoff"}
 FRESHNESS_CHECKS = set(CHECK_ID.values())
 
 # Which towns the Worker runs each job for. Mirrors cron-dispatcher/src/{alerts,weather,safety}/towns.ts
@@ -118,6 +123,21 @@ def register_findings(town: str, valid: int, last_check: datetime | None, now: d
         out.append({**base, "message": f"last venue check {age_text(last_check, now)} (limit {REGISTER_CHECK_MAX_DAYS} days). The weekly evening-register "
                                        "workflow (Mondays 11:00 UTC, started by the dispatcher) has not written evening_register_venues."})
     return out
+
+
+REGISTER_CUT_PATTERN = "evening-register-cutoff"
+REGISTER_CUT_PREFIX = "cut-off reply"  # scrapers/evening_register.py CUT_OFF, first words of status_reason when a reply was cut off
+
+
+def register_cut_findings(town: str, rows: list[tuple]) -> list[dict]:
+    """One finding per venue whose LATEST check had a model reply cut off at max_tokens (rows: venue_id, status_reason). The issue is what
+    the refresh run's alert and annotation link to (SWG3 2026-11-25: the annotation said only ".github#28", GitHub's own location for a
+    ::warning:: without a file, which is no issue at all). The next weekly check rewrites status_reason, and the issue closes itself."""
+    return [{"check": CHECK_ID["registercut"], "town": town, "pattern": f"{REGISTER_CUT_PATTERN}/{venue}",
+             "path": f"/{town}/{REGISTER_CUT_PATTERN}/{venue}",
+             "message": f"{venue}: the latest evening-register check had a cut-off model reply ({reason}). The page text is cropped to the "
+                        "horizon and sent in parts (scrapers/evening_register.py crop_to_horizon, split_for_model); see the run's log."}
+            for venue, reason in rows if (reason or "").startswith(REGISTER_CUT_PREFIX)]
 
 
 def sport_warning_finding(town: str, source_id: str, last_error: str | None, since: datetime | None, now: datetime) -> dict | None:
@@ -260,6 +280,13 @@ def collect(conn, now: datetime, only: set[str], today: date) -> tuple[list[dict
             lines.append(f"  [freshness] register {town}: {'STALE' if found else 'ok'} -- {valid} venue(s) with a valid rule (min {REGISTER_MIN_VENUES[town]}), "
                          f"last check {age_text(last, now)}")
             findings += found
+    if "registercut" in only:
+        for town in register_towns():
+            rows = conn.execute("SELECT venue_id, status_reason FROM evening_register_venues WHERE town_id = %s ORDER BY venue_id", (town,)).fetchall()
+            cut = register_cut_findings(town, rows)
+            lines.append(f"  [freshness] registercut {town}: {'ISSUE' if cut else 'ok'} -- "
+                         + (", ".join(f["pattern"].split("/")[-1] for f in cut) if cut else "no cut-off reply in the latest checks"))
+            findings += cut
     if "hours" in only:
         rows = conn.execute("SELECT town_id, slug, verified_date, verification_method FROM places p WHERE hours_structured IS NOT NULL "
                             "OR EXISTS (SELECT 1 FROM place_hours ph WHERE ph.place_id = p.id) ORDER BY town_id, slug").fetchall()
@@ -282,8 +309,8 @@ def _alert(msg: str, towns: list[str]) -> None:
 def notify(conn, findings: list[dict], only_checks: set[str]) -> None:
     """One alert when a problem appears, one reminder a day while it lasts, one "resolved" when it is gone (scrapers/alert_state.py), per check.
     Falls back to the old alert on every run if the state cannot be kept, so an alert is never lost."""
-    for check in sorted(only_checks):
-        mine = [f for f in findings if f["check"] == check]
+    for check in sorted(only_checks - ISSUE_ONLY_CHECKS):
+        mine =[f for f in findings if f["check"] == check]
         active = {f"freshness|{check}|{f['town']}|{f['path']}": f"{f['town']}: {f['message']}" for f in mine}
         towns = sorted({f["town"] for f in mine})
         title = f"[{','.join(towns)}] {check}" if towns else check

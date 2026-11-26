@@ -91,6 +91,11 @@
       "born_from": "2026-11-08: the register's dated rules lapsed on 11-05 (first run on a Thursday, the Monday run skipped its venues as checked <6 days ago) and Broomfield's register has valid rules for 1 of 7 venues; nothing watched it. Owner minimums: Glasgow 4, Broomfield 1",
       "what": "a town's evening register has fewer venues with a valid rule than its minimum (dated 8 days, recurring 36), or no venue check for 9 days"
     },
+    "ops.evening-register-cutoff": {
+      "severity": "hard",
+      "born_from": "2026-11-25 run 45701360375: glasgow/swg3's model reply was cut off at max_tokens 8000 (the page lists a year of shows); the annotation pointed only to '.github#28' (GitHub's location for a ::warning:: without a file, no issue) and the alert was never sent (ALERT_WEBHOOK missing in evening-register.yml). Owner 2026-11-26: never raise max_tokens again, crop the page / send it in parts, and let the alert point to an issue that exists. Regression fixtures: tests/fixtures/evening_register/swg3-events-2026-11-26.html (test_swg3_* in tests/test_evening_register.py) and the registercut tests in tests/test_freshness.py.",
+      "what": "a venue whose latest evening-register check had a model reply cut off at max_tokens (one issue per venue; the refresh run's alert links to it)"
+    },
     "ops.hours-verified": {
       "severity": "hard",
       "born_from": "Owner 2026-11-25: Glasgow's 12 places were verified 2026-10-23 and would have lost their hours on the site on 2026-12-07 (45-day limit) with nothing watching; the monthly facility-hours re-verification can be missed. scripts/check_freshness.py (GitHub's own schedule) opens an issue when a place's verified_date is older than 35 days. Regression fixture: tests/test_freshness.py 'hours' tests (brookings_sd/city-hall verified 2026-10-15, glasgow/the-mitchell-library verified 2026-11-25).",

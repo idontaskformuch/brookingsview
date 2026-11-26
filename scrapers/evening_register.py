@@ -108,13 +108,51 @@ class _Page(HTMLParser):
         self.lines.append(data)
 
 
-def parse_page(html: str) -> tuple[_Page, str]:
+def parse_page(html: str, limit: int | None = MAX_PAGE_CHARS) -> tuple[_Page, str]:
     page = _Page()
     page.feed(html)
     text = "\n".join(" ".join(chunk.split()) for chunk in "".join(page.lines).split("\n"))
     text = re.sub(r"\n{2,}", "\n", text).strip()
     page.title = " ".join(page.title.split())
-    return page, text[:MAX_PAGE_CHARS]
+    return page, text if limit is None else text[:limit]
+
+
+_MONTH_NAMES = ("january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december")
+_MONTH_YEAR_RE = re.compile(r"^(?P<mon>[a-z]+)\.?,?\s+(?P<year>20\d\d)$", re.I)  # "February 2027"
+_MONTH_YY_RE = re.compile(r"^(?P<mon>[a-z]{3,9})\.?\s+['’](?P<yy>\d\d)$", re.I)  # "Feb '27" (SWG3's date line)
+
+
+def _month_marker(line: str, next_line: str) -> tuple[int, int] | None:
+    """(year, month) when the line names a month AND its year: "February 2027", "February" + next line "2027", "Feb '27". A month without a
+    year is never a marker: on its own it cannot say whether it lies beyond the horizon."""
+    s = line.strip()
+    m = _MONTH_YEAR_RE.match(s)
+    if m:
+        mon, year = m["mon"].lower(), int(m["year"])
+    elif (m := _MONTH_YY_RE.match(s)):
+        mon, year = m["mon"].lower(), 2000 + int(m["yy"])
+    elif s.lower() in _MONTH_NAMES and re.fullmatch(r"20\d\d", next_line.strip()):
+        mon, year = s.lower(), int(next_line.strip())
+    else:
+        return None
+    for i, name in enumerate(_MONTH_NAMES):
+        if mon == name or (len(mon) >= 3 and name.startswith(mon)):
+            return year, i + 1
+    return None
+
+
+def crop_to_horizon(text: str, today: date) -> str:
+    """Deterministic cut BEFORE the model call (owner 2026-11-26): drop everything from the first month heading whose month begins after
+    today + HORIZON_DAYS. Nothing there can become a rule (_check_entry rejects a date past the horizon), yet the model would still write one
+    JSON object per show: SWG3 2026-11-25 lists a year of shows (to Nov 2027) and the reply was cut off at max_tokens 8000. A page without
+    month+year headings is left as it is."""
+    lines = text.split("\n")
+    end = today + timedelta(days=HORIZON_DAYS)
+    for i, line in enumerate(lines):
+        mk = _month_marker(line, lines[i + 1] if i + 1 < len(lines) else "")
+        if mk and date(mk[0], mk[1], 1) > end:
+            return "\n".join(lines[:i]).rstrip()
+    return text
 
 
 _HIJACK_RE = re.compile(
@@ -271,9 +309,10 @@ class Reply(str):
         return obj
 
 
-def _validated(extract: Callable[[str, str], str], system: str, text: str, today: date) -> tuple[list[Rule], list[Rejected], bool]:
+def _validated(extract: Callable[[str, str], str], system: str, text: str, today: date,
+               page_text: str | None = None) -> tuple[list[Rule], list[Rejected], bool]:
     reply = extract(system, text)
-    rules, rejected = validate_extraction(reply, text, today)
+    rules, rejected = validate_extraction(reply, page_text if page_text is not None else text, today)
     cut = bool(getattr(reply, "truncated", False))
     if cut and not rules:  # say WHY nothing was kept, never a silent "0 rules" (owner 2026-11-24)
         rejected = [Rejected(r.entry, CUT_OFF) if r.why == NOT_JSON else r for r in rejected]
@@ -283,11 +322,79 @@ def _validated(extract: Callable[[str, str], str], system: str, text: str, today
 def extract_validated(extract: Callable[[str, str], str], system: str, text: str, today: date) -> tuple[list[Rule], list[Rejected], bool]:
     """One model reply, validated; returns (rules, rejected, cut_off). A reply that is not the expected JSON at all is asked for ONCE more with
     the same page text (no extra page fetch). Oran Mor 2026-11-23/24: the reply was cut off at max_tokens mid-JSON; the reply length varies from
-    run to run, so the second try often fits. `cut_off` is True when the reply we end up with was cut off: the caller logs and alerts it."""
-    rules, rejected, cut = _validated(extract, system, text, today)
-    if not rules and len(rejected) == 1 and rejected[0].why in (NOT_JSON, CUT_OFF):
-        return _validated(extract, system, text, today)
+    run to run, so the second try often fits. `cut_off` is True when the reply we end up with was cut off: the caller logs and alerts it.
+    A text longer than CHUNK_CHARS goes in several calls (split_for_model), each with its own retry; rules are merged by key."""
+    rules: list[Rule] = []
+    rejected: list[Rejected] = []
+    cut = False
+    seen: set[str] = set()
+    for chunk in split_for_model(text, today):
+        crules, crej, ccut = _validated(extract, system, chunk, today, text)
+        if not crules and len(crej) == 1 and crej[0].why in (NOT_JSON, CUT_OFF):
+            crules, crej, ccut = _validated(extract, system, chunk, today, text)
+        cut = cut or ccut
+        rejected.extend(crej)
+        for r in crules:
+            if r.key not in seen:
+                seen.add(r.key)
+                rules.append(r)
     return rules, rejected, cut
+
+
+# Above this the page text goes to the model in several calls (owner 2026-11-26: never a higher max_tokens again). The reply is one JSON
+# object per show with its quotes, about as long as the text itself: SWG3's 7 000 characters of listings (after crop_to_horizon) are ~90
+# shows, too close to MAX_TOKENS for one reply. Most pages are shorter and keep their single call.
+CHUNK_CHARS = 4000
+CHUNK_OVERLAP = 300  # characters repeated after a cut that is not at a heading (one SWG3 show is ~80)
+
+
+def _is_heading_break(line: str, next_line: str, today: date) -> bool:
+    """A line that opens a block of the programme: a month heading ("January 2027", "January" + "2027") or a date heading ("Friday November
+    13th"). Not SWG3's per-show "Nov '26" line: the show's day number and weekday stand on the lines ABOVE it."""
+    s = line.strip()
+    if _MONTH_YY_RE.match(s):
+        return False
+    return _month_marker(line, next_line) is not None or _heading_date(line, today) is not None
+
+
+def split_for_model(text: str, today: date) -> list[str]:
+    """Split at line boundaries into parts of at most CHUNK_CHARS, preferring a cut just before a month or date heading so a show and its
+    date stay together (a block longer than CHUNK_CHARS is cut at a line boundary). Every part is checked against the WHOLE page text
+    (quotes, date headings), never against the part alone."""
+    if len(text) <= CHUNK_CHARS:
+        return [text]
+    lines = text.split("\n")
+    parts: list[str] = []
+    cur: list[str] = []
+    size = 0
+    last_break = 0  # index in cur of the latest month/date heading
+    for i, line in enumerate(lines):
+        nxt = lines[i + 1] if i + 1 < len(lines) else ""
+        if cur and _is_heading_break(line, nxt, today):
+            last_break = len(cur)
+        if cur and size + len(line) + 1 > CHUNK_CHARS:
+            if last_break > 0:
+                parts.append("\n".join(cur[:last_break]))
+                cur = cur[last_break:]
+            else:
+                # no heading to cut at: cut here, but the next part starts with the last ~CHUNK_OVERLAP characters again, so a show
+                # whose lines straddle the cut is whole in one of the two parts (SWG3: "29 / Tue 29" above "Dec '26"); merged by key
+                parts.append("\n".join(cur))
+                keep: list[str] = []
+                kept = 0
+                for prev in reversed(cur):
+                    if kept + len(prev) + 1 > CHUNK_OVERLAP:
+                        break
+                    keep.insert(0, prev)
+                    kept += len(prev) + 1
+                cur = keep
+            size = sum(len(x) + 1 for x in cur)
+            last_break = 0
+        cur.append(line)
+        size += len(line) + 1
+    if cur:
+        parts.append("\n".join(cur))
+    return parts
 
 
 def validate_extraction(raw: str, page_text: str, today: date) -> tuple[list[Rule], list[Rejected]]:
@@ -605,7 +712,8 @@ def check_venue(venue: dict, fetcher: PoliteFetcher, extract: Callable[[str, str
     ident = identity_check(venue["name"], html, aliases)
     if not ident.ok:
         return VenueResult(vid, "flagged", ident.reason, final_url=final)
-    page, text = parse_page(html)
+    page, full_text = parse_page(html, limit=None)
+    text = crop_to_horizon(full_text, today)[:MAX_PAGE_CHARS]
     if len(text) < 200:
         return VenueResult(vid, "ok", "page has almost no text (script-rendered?): nothing extracted", final_url=final)
     rules, rejected, cut = extract_validated(extract, system_prompt(today), text, today)
@@ -631,7 +739,8 @@ def check_venue(venue: dict, fetcher: PoliteFetcher, extract: Callable[[str, str
         if not dident.ok:
             res.notes.append(f"detail page failed identity ({dident.reason}): {durl}")
             continue
-        _, dtext = parse_page(dhtml)
+        _, dfull = parse_page(dhtml, limit=None)
+        dtext = crop_to_horizon(dfull, today)[:MAX_PAGE_CHARS]
         if len(dtext) < 100:
             continue
         drules, drej, dcut = extract_validated(extract, system_prompt(today), dtext, today)

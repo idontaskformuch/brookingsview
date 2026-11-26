@@ -1,5 +1,6 @@
 """scrapers/evening_register.py: robots rule, identity check, extraction validation, one-venue flow (no network, no model)."""
 import json
+import re
 from datetime import date, datetime, timedelta, timezone
 
 import pytest
@@ -575,3 +576,68 @@ def test_cut_off_alert_falls_back_to_a_plain_alert_without_the_state_table(monke
     monkeypatch.setattr(refresh, "send_alert", lambda m, title=None, **k: sent.append(title) or True)
     refresh.alert_cut_off(FakeConn(fail=True), "glasgow", "oran-mor", er.VenueResult("oran-mor", "ok", er.CUT_OFF, cut_off=True))
     assert sent == ["[glasgow] evening register: cut-off reply"]
+
+
+# --- long pages: crop to the horizon, then several calls (owner 2026-11-26; never a higher max_tokens) -------------------------------
+# The real page: swg3.tv/events/ fetched once 2026-11-26 (PoliteFetcher). It lists shows to Nov 2027; the 2026-11-25 run's reply was cut
+# off at max_tokens 8000.
+SWG3_HTML = (Path(__file__).parent / "fixtures" / "evening_register" / "swg3-events-2026-11-26.html").read_text(encoding="utf-8")
+SWG3_URL = "https://swg3.tv/events/"
+SWG3 = {"venue_id": "swg3", "name": "SWG3", "url": SWG3_URL, "default_group": "Live music"}
+NOV26 = date(2026, 11, 26)
+
+
+def test_max_tokens_stays_at_8000():
+    assert refresh.MAX_TOKENS == 8000
+
+
+def test_swg3_is_cropped_at_the_first_month_past_the_horizon():
+    _, full = er.parse_page(SWG3_HTML, limit=None)
+    cropped = er.crop_to_horizon(full, NOV26)
+    assert "Nov '27" in full and "Feb '27" in full
+    assert "Feb '27" not in cropped and "Nov '27" not in cropped and "February\n2027" not in cropped
+    assert "Dea Matrona\n19:00" in cropped and "Jan '27" in cropped  # Jan 2027 begins before 26 Nov + 60 days
+    assert len(cropped) < len(full) * 0.6
+
+
+def test_a_page_without_month_and_year_headings_is_not_cropped():
+    assert er.crop_to_horizon(PAGE, TODAY) == PAGE
+    assert er.crop_to_horizon("Quiz\nFebruary\nEvery Tuesday 8pm", NOV26) == "Quiz\nFebruary\nEvery Tuesday 8pm"
+
+
+def test_swg3_is_split_into_parts_and_every_show_is_whole_in_one_part():
+    _, full = er.parse_page(SWG3_HTML, limit=None)
+    cropped = er.crop_to_horizon(full, NOV26)
+    parts = er.split_for_model(cropped, NOV26)
+    assert len(parts) >= 2 and all(len(p) <= er.CHUNK_CHARS for p in parts)
+    # one show = "Thu 26 / Nov '26 / Dea Matrona / 19:00 / ..." up to its "Info" line
+    lines = cropped.split("\n")
+    shows = ["\n".join(lines[i - 1:i + 3]) for i, ln in enumerate(lines) if re.fullmatch(r"[A-Z][a-z]{2} '\d\d", ln) and i >= 1]
+    assert len(shows) > 60
+    missing = [s for s in shows if not any(s in p for p in parts)]
+    assert missing == []
+
+
+def test_short_page_keeps_one_call():
+    assert er.split_for_model(PAGE, TODAY) == [PAGE]
+
+
+def test_swg3_flow_is_not_cut_off_when_the_model_runs_out_on_long_input():
+    """A fake model that, like the real one on SWG3, runs out of output on more than CHUNK_CHARS of listings. Before the fix the venue
+    check sent the whole page (14 000 characters) in one call: cut off twice, 0 rules."""
+    calls = []
+    dea = {"kind": "dated", "title": "Dea Matrona", "weekdays": [], "weeks_of_month": [], "date": "2026-11-26", "valid_until": None,
+           "times": ["19:00"], "quote": "Thu 26 Nov '26 Dea Matrona 19:00", "date_quote": None}
+
+    def extract(system, text):
+        calls.append(text)
+        if len(text) > 4000:  # ~4 000 characters of listings fill the reply budget
+            return er.Reply(CUT, truncated=True)
+        return er.Reply(json.dumps({"entries": [dea] if "Dea Matrona" in text else []}))
+
+    sess = FakeSession({"https://swg3.tv/robots.txt": (404, "", None), SWG3_URL: (200, SWG3_HTML, None)})
+    res = er.check_venue(SWG3, fx(sess), extract, NOV26)
+    assert not res.cut_off and res.status == "ok"
+    assert [r.title for r in res.rules] == ["Dea Matrona"] and res.rules[0].on_date == NOV26
+    assert len(calls) >= 2 and all(len(c) <= er.CHUNK_CHARS for c in calls)
+    assert not any("Feb '27" in c for c in calls)

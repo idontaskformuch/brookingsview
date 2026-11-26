@@ -12,12 +12,18 @@ on:
         type: boolean
         default: false
 
+permissions:
+  contents: read
+  issues: write  # check_freshness --only registercut opens/closes the cut-off issue the alert links to
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      ALERT_WEBHOOK: ${{ secrets.ALERT_WEBHOOK }}  # the cut-off alert (alert_cut_off); missing until 2026-11-26, so it was never sent
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -26,3 +32,6 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Refresh venue register
         run: python -m scripts.refresh_evening_register --apply ${{ inputs.force && '--force' || '' }}
+      - name: Open or close the cut-off issue (ops.evening-register-cutoff)
+        if: ${{ !cancelled() }}
+        run: python -m scripts.check_freshness --only registercut

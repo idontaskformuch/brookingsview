@@ -320,3 +320,51 @@ def test_hours_hidden_as_unconfirmed_are_not_a_finding():
     auditorium = ("broomfield_co", "broomfield-auditorium", date(2026, 9, 13), "manual")
     assert len(cf.hours_findings([auditorium], date(2026, 11, 25))) == 1
     assert cf.hours_findings([auditorium], date(2026, 11, 25), cf.unconfirmed_hours()) == []
+
+
+# ---------------------------------------------------------------- ops.evening-register-cutoff: one issue per cut-off venue, linked from the alert
+# Real status_reason rows: glasgow/swg3 after run 45701360375 (2026-11-25), glasgow/oran-mor's ordinary reason (21 rules kept ...).
+SWG3_CUT = ("swg3", "cut-off reply (the model stopped at max_tokens); 0 rules kept, 1 rejected, 0 detail pages read")
+ORAN_OK = ("oran-mor", "21 rules kept, 22 rejected, 10 detail pages read")
+
+
+def test_a_cut_off_venue_opens_its_own_issue_and_an_ordinary_one_does_not():
+    found = cf.register_cut_findings("glasgow", [ORAN_OK, SWG3_CUT, ("gft", None)])
+    assert len(found) == 1 and found[0]["check"] == "ops.evening-register-cutoff" == cf.CHECK_ID["registercut"]
+    assert found[0]["pattern"] == "evening-register-cutoff/swg3" and "swg3" in found[0]["message"]
+    assert "ops.evening-register-cutoff" in REGISTRY
+    two = cf.register_cut_findings("glasgow", [SWG3_CUT, ("oran-mor", SWG3_CUT[1])])
+    assert len(group(two)) == 2  # one issue per venue
+
+
+def test_the_alerts_link_finds_the_issue_the_check_opens():
+    """2026-11-25: the annotation pointed to '.github#28', which is no issue. The link's title search must match the issue's real title."""
+    from urllib.parse import parse_qs, urlparse
+    from scripts.refresh_evening_register import cut_off_issue_link
+    f = cf.register_cut_findings("glasgow", [SWG3_CUT])[0]
+    title, _ = render_issue(fingerprint(f), group([f])[fingerprint(f)])
+    q = parse_qs(urlparse(cut_off_issue_link("glasgow", "swg3")).query)["q"][0]
+    assert ".github" not in q
+    for phrase in re.findall(r'"([^"]+)"', q):
+        assert phrase in title, (phrase, title)
+
+
+def test_the_cut_off_check_only_opens_issues_and_sends_no_second_alert(monkeypatch):
+    sent = []
+    monkeypatch.setattr(cf, "reconcile", lambda *a, **k: sent.append(a) or [])
+    monkeypatch.setattr(cf, "_alert", lambda *a, **k: sent.append(a))
+    cf.notify(None, cf.register_cut_findings("glasgow", [SWG3_CUT]), {cf.CHECK_ID["registercut"]})
+    assert sent == []
+
+
+def test_the_cut_off_issue_closes_when_the_next_check_is_clean():
+    f = cf.register_cut_findings("glasgow", [SWG3_CUT])[0]
+    stale = issue_for(f, comments=[CLEAN_MARK])
+    assert [a["op"] for a in plan_actions([], [stale], clean_to_close=2, scope_towns=ALL_TOWNS_SCOPE,
+                                          scope_checks=lambda c: c == cf.CHECK_ID["registercut"])] == ["close"]
+
+
+def test_the_register_workflow_runs_the_cut_off_check_and_has_the_alert_webhook():
+    wf = (Path(__file__).resolve().parent.parent / ".github" / "workflows" / "evening-register.yml").read_text(encoding="utf-8")
+    assert "python -m scripts.check_freshness --only registercut" in wf
+    assert "ALERT_WEBHOOK: ${{ secrets.ALERT_WEBHOOK }}" in wf and "issues: write" in wf
