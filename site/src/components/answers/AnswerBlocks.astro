@@ -10,6 +10,9 @@ import BrookingsTrashHolidays from './BrookingsTrashHolidays.astro';
 interface Props { blocks: AnswerBlock[]; today: string; facility?: AnswerFacility }
 const { blocks, today, facility } = Astro.props;
 const COMPONENTS = { 'brookings-trash-picker': BrookingsTrashPicker, 'brookings-trash-holidays': BrookingsTrashHolidays } as const;
+// Notes on the template below (a JS comment inside an Astro template can drop all CSS from a build; scripts/verify_astro_template_comments.mjs):
+// [at: if (b.kind === 'facility-facts' && facility)] The page's `facility` as rows, and (facility-closed) as dated closed days: the same fields
+//   as its <title> and meta description (lib/answer-facility.ts), so the page and its meta cannot differ (owner order 2026-11-26 (11)).
 ---
 {blocks.map((b) => {
   if (b.kind === 'p') return <p class:list={[{ 'ans-note': b.note }]} set:html={inlineHtml(b.text)} />;
@@ -29,7 +32,6 @@ const COMPONENTS = { 'brookings-trash-picker': BrookingsTrashPicker, 'brookings-
       ? <>{b.intro && <p set:html={inlineHtml(b.intro)} />}<ul>{left.map((i) => <li set:html={inlineHtml(i.text)} />)}</ul></>
       : <p set:html={inlineHtml(b.none)} />;
   }
-  // The page's `facility` as rows and as dated closed days: the same fields as its title and meta (lib/answer-facility.ts).
   if (b.kind === 'facility-facts' && facility) return <dl class="ans-dl">{facilityRows(facility).map((r) => <><dt set:html={inlineHtml(r.label)} /><dd set:html={inlineHtml(r.value)} /></>)}</dl>;
   if (b.kind === 'facility-closed' && facility) {
     const left = upcomingDated(facility.closed ?? [], today);
