@@ -1,0 +1,1314 @@
+[
+ {
+  "town": "broomfield_co",
+  "slug": "the-old-man-bar",
+  "input": {
+   "name": "The Old Man Bar",
+   "category": "bar_brewery",
+   "hours_structured": {
+    "friday": [
+     "11:00",
+     "02:00"
+    ],
+    "monday": [
+     "11:00",
+     "02:00"
+    ],
+    "sunday": [
+     "11:00",
+     "02:00"
+    ],
+    "tuesday": [
+     "11:00",
+     "02:00"
+    ],
+    "saturday": [
+     "11:00",
+     "02:00"
+    ],
+    "thursday": [
+     "11:00",
+     "02:00"
+    ],
+    "wednesday": [
+     "11:00",
+     "02:00"
+    ]
+   },
+   "street_address": "4381 West 120th Avenue",
+   "address": "4381 West 120th Avenue, Broomfield, CO 80020",
+   "phone": "(720) 536-4821",
+   "hours_text": "Mon-Sun 11am-2am",
+   "is_free": null,
+   "services": null,
+   "accessibility_note": null,
+   "description": null,
+   "hoursRows": [
+    {
+     "day_of_week": 0,
+     "opens": "11:00:00",
+     "closes": "02:00:00"
+    },
+    {
+     "day_of_week": 1,
+     "opens": "11:00:00",
+     "closes": "02:00:00"
+    },
+    {
+     "day_of_week": 2,
+     "opens": "11:00:00",
+     "closes": "02:00:00"
+    },
+    {
+     "day_of_week": 3,
+     "opens": "11:00:00",
+     "closes": "02:00:00"
+    },
+    {
+     "day_of_week": 4,
+     "opens": "11:00:00",
+     "closes": "02:00:00"
+    },
+    {
+     "day_of_week": 5,
+     "opens": "11:00:00",
+     "closes": "02:00:00"
+    },
+    {
+     "day_of_week": 6,
+     "opens": "11:00:00",
+     "closes": "02:00:00"
+    }
+   ],
+   "hoursStale": false,
+   "hoursSource": "own",
+   "exceptions": [],
+   "upcomingEvents": 0
+  },
+  "today": "2026-11-26",
+  "title": "Broomfield Old Man Bar: Hours & Address (2026)",
+  "meta": "The Old Man Bar, 4381 West 120th Ave. Open daily 11 AM–2 AM. Includes phone number.",
+  "fallbacks": []
+ },
+ {
+  "town": "broomfield_co",
+  "slug": "paul-derda-recreation-center",
+  "input": {
+   "name": "Paul Derda Recreation Center",
+   "category": "community_center",
+   "hours_structured": {
+    "friday": [
+     "05:00",
+     "18:30"
+    ],
+    "monday": [
+     "05:00",
+     "22:00"
+    ],
+    "sunday": [
+     "08:00",
+     "18:00"
+    ],
+    "tuesday": [
+     "05:00",
+     "22:00"
+    ],
+    "saturday": [
+     "07:00",
+     "20:00"
+    ],
+    "thursday": [
+     "05:00",
+     "22:00"
+    ],
+    "wednesday": [
+     "05:00",
+     "22:00"
+    ]
+   },
+   "street_address": "13201 Lowell Blvd",
+   "address": "13201 Lowell Blvd, Broomfield, CO 80020",
+   "phone": "(303) 460-6900",
+   "hours_text": "Mon-Thu 5am-10pm, Fri 5am-6:30pm, Sat 7am-8pm, Sun 8am-6pm",
+   "is_free": false,
+   "services": [
+    "pool",
+    "gym",
+    "fitness_center",
+    "indoor_track",
+    "childcare",
+    "meeting_rooms"
+   ],
+   "accessibility_note": null,
+   "description": "An 85,000-square-foot city-operated indoor recreation facility within Broomfield County Commons Park, with an aquatic park, gymnastics center, gymnasiums, fitness/weight areas, and an indoor track.",
+   "hoursRows": [
+    {
+     "day_of_week": 0,
+     "opens": "08:00:00",
+     "closes": "18:00:00"
+    },
+    {
+     "day_of_week": 1,
+     "opens": "05:00:00",
+     "closes": "22:00:00"
+    },
+    {
+     "day_of_week": 2,
+     "opens": "05:00:00",
+     "closes": "22:00:00"
+    },
+    {
+     "day_of_week": 3,
+     "opens": "05:00:00",
+     "closes": "22:00:00"
+    },
+    {
+     "day_of_week": 4,
+     "opens": "05:00:00",
+     "closes": "22:00:00"
+    },
+    {
+     "day_of_week": 5,
+     "opens": "05:00:00",
+     "closes": "18:30:00"
+    },
+    {
+     "day_of_week": 6,
+     "opens": "07:00:00",
+     "closes": "20:00:00"
+    }
+   ],
+   "hoursStale": false,
+   "hoursSource": "own",
+   "exceptions": [],
+   "upcomingEvents": 0
+  },
+  "today": "2026-11-26",
+  "title": "Broomfield Paul Derda Recreation Center: Hours & Address",
+  "meta": "Paul Derda Recreation Center, 13201 Lowell Blvd. Open Mon–Thu 5 AM–10 PM; Fri 5 AM–6:30 PM; Sat 7 AM–8 PM; Sun 8 AM–6 PM. Includes phone number.",
+  "fallbacks": []
+ },
+ {
+  "town": "broomfield_co",
+  "slug": "the-bay-aquatic-park",
+  "input": {
+   "name": "The Bay Aquatic Park",
+   "category": "community_center",
+   "hours_structured": null,
+   "street_address": null,
+   "address": "250 Spader Way, Broomfield, CO 80020",
+   "phone": "303-464-5520",
+   "hours_text": null,
+   "is_free": false,
+   "services": [
+    "pool",
+    "water_slides",
+    "sprayground",
+    "concessions"
+   ],
+   "accessibility_note": null,
+   "description": null,
+   "hoursRows": [],
+   "hoursStale": true,
+   "hoursSource": null,
+   "exceptions": [],
+   "upcomingEvents": 0
+  },
+  "today": "2026-11-26",
+  "title": "Broomfield Bay Aquatic Park: Address (2026)",
+  "meta": "The Bay Aquatic Park, 250 Spader Way, Broomfield, CO 80020. Includes phone number and services.",
+  "fallbacks": [
+   "street from the page's address line (no street_address)"
+  ]
+ },
+ {
+  "town": "broomfield_co",
+  "slug": "north-metro-fire-station-65",
+  "input": {
+   "name": "North Metro Fire Rescue Station 65",
+   "category": "fire_station",
+   "hours_structured": null,
+   "street_address": "9900 W 120th Ave",
+   "address": "9900 W 120th Ave, Broomfield, CO",
+   "phone": "(303) 452-9910",
+   "hours_text": null,
+   "is_free": null,
+   "services": null,
+   "accessibility_note": null,
+   "description": "Located at Rocky Mountain Metropolitan Airport, with an aircraft rescue and firefighting (ARFF) truck for the airport. One of several North Metro Fire Rescue District stations in Broomfield; the district also serves Northglenn, Thornton and Federal Heights. Use the non-emergency number for routine questions and call 911 in an emergency.",
+   "hoursRows": [],
+   "hoursStale": true,
+   "hoursSource": null,
+   "exceptions": [],
+   "upcomingEvents": 0
+  },
+  "today": "2026-11-26",
+  "title": "Broomfield North Metro Fire Rescue Station 65: Address",
+  "meta": "North Metro Fire Rescue Station 65, 9900 W 120th Ave. Includes phone number.",
+  "fallbacks": []
+ },
+ {
+  "town": "glasgow",
+  "slug": "glasgow-international-arena",
+  "input": {
+   "name": "Glasgow International Arena",
+   "category": "leisure",
+   "hours_structured": {
+    "friday": [
+     "06:00",
+     "22:00"
+    ],
+    "monday": [
+     "06:00",
+     "22:00"
+    ],
+    "sunday": [
+     "08:00",
+     "20:00"
+    ],
+    "tuesday": [
+     "06:00",
+     "22:00"
+    ],
+    "saturday": [
+     "08:00",
+     "18:00"
+    ],
+    "thursday": [
+     "06:00",
+     "22:00"
+    ],
+    "wednesday": [
+     "06:00",
+     "22:00"
+    ]
+   },
+   "street_address": "1000 London Road",
+   "address": "1000 London Road, Glasgow G40 3HG",
+   "phone": "0141 287 7000",
+   "hours_text": "Mon-Fri 6am-10pm, Sat 8am-6pm, Sun 8am-8pm",
+   "is_free": null,
+   "services": [
+    "Gym and fitness studios",
+    "Velodrome",
+    "100m indoor running track",
+    "5-a-side floodlit 3G pitches",
+    "Refresh Spa (bookable)",
+    "Cafe",
+    "Meeting and function rooms"
+   ],
+   "accessibility_note": "Changing Places toilets; guide and assistance dogs welcome.",
+   "description": "A Glasgow Club sports and fitness venue with a velodrome, a 100m indoor running track and a gym.",
+   "hoursRows": [
+    {
+     "day_of_week": 0,
+     "opens": "08:00:00",
+     "closes": "20:00:00"
+    },
+    {
+     "day_of_week": 1,
+     "opens": "06:00:00",
+     "closes": "22:00:00"
+    },
+    {
+     "day_of_week": 2,
+     "opens": "06:00:00",
+     "closes": "22:00:00"
+    },
+    {
+     "day_of_week": 3,
+     "opens": "06:00:00",
+     "closes": "22:00:00"
+    },
+    {
+     "day_of_week": 4,
+     "opens": "06:00:00",
+     "closes": "22:00:00"
+    },
+    {
+     "day_of_week": 5,
+     "opens": "06:00:00",
+     "closes": "22:00:00"
+    },
+    {
+     "day_of_week": 6,
+     "opens": "08:00:00",
+     "closes": "18:00:00"
+    }
+   ],
+   "hoursStale": false,
+   "hoursSource": "own",
+   "exceptions": [],
+   "upcomingEvents": 2
+  },
+  "today": "2026-11-26",
+  "title": "Glasgow International Arena: Hours & Address (2026)",
+  "meta": "Glasgow International Arena, 1000 London Rd. Open Mon–Fri 6am–10pm; Sat 8am–6pm; Sun 8am–8pm. Includes phone number, services and accessibility.",
+  "fallbacks": []
+ },
+ {
+  "town": "brookings_sd",
+  "slug": "hillcrest-aquatic-center",
+  "input": {
+   "name": "Hillcrest Aquatic Center",
+   "category": "leisure",
+   "hours_structured": null,
+   "street_address": "1505 5th Street North",
+   "address": "1505 5th Street North, Brookings, SD 57006",
+   "phone": "(605) 692-2387",
+   "hours_text": "Swim season begins the end of May - Mid August | OPEN SWIM: 1-7 p.m. daily",
+   "is_free": null,
+   "services": null,
+   "accessibility_note": null,
+   "description": null,
+   "hoursRows": [],
+   "hoursStale": false,
+   "hoursSource": null,
+   "exceptions": [],
+   "upcomingEvents": 0
+  },
+  "today": "2026-11-26",
+  "title": "Brookings Hillcrest Aquatic Center: Hours & Address (2026)",
+  "meta": "Hillcrest Aquatic Center, 1505 5th St North. Includes phone number.",
+  "fallbacks": [
+   "hours only as the source's text: no \"Open\" part (title may say \"Hours\")"
+  ]
+ },
+ {
+  "town": "brookings_sd",
+  "slug": "childrens-museum-of-south-dakota",
+  "input": {
+   "name": "Children's Museum of South Dakota",
+   "category": "museum",
+   "hours_structured": null,
+   "street_address": "521 4th Street",
+   "address": "521 4th Street, Brookings, SD 57006",
+   "phone": "(605) 692-6700",
+   "hours_text": null,
+   "is_free": false,
+   "services": [
+    "Interactive, hands-on exhibits (including Mama T. Rex, a life-size animatronic dinosaur)",
+    "KidStreet",
+    "Maker Studio",
+    "Classes and camps (ages 0-12)",
+    "Cafe Coteau",
+    "Gift shop",
+    "Family memberships"
+   ],
+   "accessibility_note": "The museum has an Access for All page and offers sensory-friendly play events and private playtimes for families whose children could benefit from sensory accommodations.",
+   "description": "A hands-on children's museum, operating as \"PrairiePlay,\" one block from the public library.",
+   "hoursRows": [],
+   "hoursStale": false,
+   "hoursSource": null,
+   "exceptions": [],
+   "upcomingEvents": 0
+  },
+  "today": "2026-11-26",
+  "title": "Brookings Children's Museum of South Dakota: Address (2026)",
+  "meta": "Children's Museum of South Dakota, 521 4th St. A hands-on children's museum, operating as \"PrairiePlay,\" one block from the public library.",
+  "fallbacks": [
+   "no hours: no \"Open\" part, title without \"Hours\""
+  ]
+ },
+ {
+  "town": "moreno_valley_ca",
+  "slug": "adrienne-mitchell-memorial-park",
+  "input": {
+   "name": "Adrienne Mitchell Memorial Park",
+   "category": "park",
+   "hours_structured": null,
+   "street_address": "22631 Bay Avenue",
+   "address": "22631 Bay Avenue, Moreno Valley, CA 92553",
+   "phone": null,
+   "hours_text": null,
+   "is_free": null,
+   "services": null,
+   "accessibility_note": null,
+   "description": "A 4.43-acre park in Moreno Valley. Amenities: 4-Lighted Basketball Courts• Barbecues • Picnic Tables• Security Lighting• Playground (ADA Access)• Picnic Shelter #1 - Medium (ADA Access)• Walking Path (ADA Access).",
+   "hoursRows": [
+    {
+     "day_of_week": 0,
+     "opens": "07:00",
+     "closes": "22:00"
+    },
+    {
+     "day_of_week": 1,
+     "opens": "07:00",
+     "closes": "22:00"
+    },
+    {
+     "day_of_week": 2,
+     "opens": "07:00",
+     "closes": "22:00"
+    },
+    {
+     "day_of_week": 3,
+     "opens": "07:00",
+     "closes": "22:00"
+    },
+    {
+     "day_of_week": 4,
+     "opens": "07:00",
+     "closes": "22:00"
+    },
+    {
+     "day_of_week": 5,
+     "opens": "07:00",
+     "closes": "22:00"
+    },
+    {
+     "day_of_week": 6,
+     "opens": "07:00",
+     "closes": "22:00"
+    }
+   ],
+   "hoursStale": true,
+   "hoursSource": "city-park-rule",
+   "exceptions": [],
+   "upcomingEvents": 0
+  },
+  "today": "2026-11-26",
+  "title": "Moreno Valley Adrienne Mitchell Memorial Park: Hours",
+  "meta": "Adrienne Mitchell Memorial Park, 22631 Bay Ave. Open daily 7 AM–10 PM. A 4.43-acre park in Moreno Valley.",
+  "fallbacks": [
+   "hours = the city's park rule (\"City park hours\" on the page)"
+  ]
+ },
+ {
+  "town": "broomfield_co",
+  "slug": "broomfield-police-department",
+  "input": {
+   "name": "Broomfield Police Department",
+   "category": "police",
+   "hours_structured": null,
+   "street_address": "7 DesCombes Drive",
+   "address": "7 DesCombes Drive, Broomfield, CO 80020",
+   "phone": "(303) 438-6400",
+   "hours_text": null,
+   "is_free": true,
+   "services": null,
+   "accessibility_note": null,
+   "description": "Broomfield's police department, serving the consolidated city and county. Non-emergency line above; call 911 for emergencies.",
+   "hoursRows": [
+    {
+     "day_of_week": 1,
+     "opens": "08:00:00",
+     "closes": "17:00:00"
+    },
+    {
+     "day_of_week": 2,
+     "opens": "08:00:00",
+     "closes": "17:00:00"
+    },
+    {
+     "day_of_week": 3,
+     "opens": "08:00:00",
+     "closes": "17:00:00"
+    },
+    {
+     "day_of_week": 4,
+     "opens": "08:00:00",
+     "closes": "17:00:00"
+    },
+    {
+     "day_of_week": 5,
+     "opens": "08:00:00",
+     "closes": "17:00:00"
+    }
+   ],
+   "hoursStale": false,
+   "hoursSource": "own",
+   "exceptions": [],
+   "upcomingEvents": 0
+  },
+  "today": "2026-11-26",
+  "title": "Broomfield Police Department: Hours & Address (2026)",
+  "meta": "Broomfield Police Department, 7 DesCombes Dr. Broomfield's police department, serving the consolidated city and county.",
+  "fallbacks": [
+   "hours state 5 of 7 days: no \"Open\" part (title may say \"Hours\")",
+   "is_free on a police place: no \"Free\" (not an admission type)"
+  ]
+ },
+ {
+  "town": "broomfield_co",
+  "slug": "chippers-lanes-broomfield",
+  "input": {
+   "name": "Chipper's Lanes Broomfield",
+   "category": "music_venue",
+   "hours_structured": {
+    "friday": [
+     "10:00",
+     "00:00"
+    ],
+    "monday": [
+     "10:00",
+     "23:00"
+    ],
+    "sunday": [
+     "10:00",
+     "23:00"
+    ],
+    "tuesday": [
+     "10:00",
+     "23:00"
+    ],
+    "saturday": [
+     "10:00",
+     "00:00"
+    ],
+    "thursday": [
+     "10:00",
+     "23:00"
+    ],
+    "wednesday": [
+     "10:00",
+     "23:00"
+    ]
+   },
+   "street_address": "100 Nickel Street",
+   "address": "100 Nickel Street, Broomfield, CO 80020",
+   "phone": "(970) 305-9704",
+   "hours_text": "Mon-Thu 10am-11pm, Fri-Sat 10am-midnight, Sun 10am-11pm",
+   "is_free": null,
+   "services": null,
+   "accessibility_note": null,
+   "description": null,
+   "hoursRows": [
+    {
+     "day_of_week": 0,
+     "opens": "10:00:00",
+     "closes": "23:00:00"
+    },
+    {
+     "day_of_week": 1,
+     "opens": "10:00:00",
+     "closes": "23:00:00"
+    },
+    {
+     "day_of_week": 2,
+     "opens": "10:00:00",
+     "closes": "23:00:00"
+    },
+    {
+     "day_of_week": 3,
+     "opens": "10:00:00",
+     "closes": "23:00:00"
+    },
+    {
+     "day_of_week": 4,
+     "opens": "10:00:00",
+     "closes": "23:00:00"
+    },
+    {
+     "day_of_week": 5,
+     "opens": "10:00:00",
+     "closes": "00:00:00"
+    },
+    {
+     "day_of_week": 6,
+     "opens": "10:00:00",
+     "closes": "00:00:00"
+    }
+   ],
+   "hoursStale": false,
+   "hoursSource": "own",
+   "exceptions": [],
+   "upcomingEvents": 0
+  },
+  "today": "2026-11-26",
+  "title": "Chipper's Lanes Broomfield: Hours & Address (2026)",
+  "meta": "Chipper's Lanes Broomfield, 100 Nickel St. Open Mon–Thu, Sun 10 AM–11 PM; Fri–Sat 10 AM–midnight. Includes phone number.",
+  "fallbacks": []
+ },
+ {
+  "town": "broomfield_co",
+  "slug": "north-metro-fire-station-68",
+  "input": {
+   "name": "North Metro Fire Rescue Station 68 (temporary)",
+   "category": "fire_station",
+   "hours_structured": null,
+   "street_address": "12400 W 112th Ave",
+   "address": "12400 W 112th Ave, Broomfield, CO",
+   "phone": "(303) 452-9910",
+   "hours_text": null,
+   "is_free": null,
+   "services": null,
+   "accessibility_note": null,
+   "description": "The district lists this station as a temporary structure (2026). One of several North Metro Fire Rescue District stations in Broomfield; the district also serves Northglenn, Thornton and Federal Heights. Use the non-emergency number for routine questions and call 911 in an emergency.",
+   "hoursRows": [],
+   "hoursStale": true,
+   "hoursSource": null,
+   "exceptions": [],
+   "upcomingEvents": 0
+  },
+  "today": "2026-11-26",
+  "title": "Broomfield North Metro Fire Rescue Station 68: Address",
+  "meta": "North Metro Fire Rescue Station 68 (temporary), 12400 W 112th Ave. The district lists this station as a temporary structure (2026).",
+  "fallbacks": []
+ },
+ {
+  "town": "glasgow",
+  "slug": "the-mitchell-library",
+  "input": {
+   "name": "The Mitchell Library",
+   "category": "library",
+   "hours_structured": {
+    "friday": [
+     "09:00",
+     "17:00"
+    ],
+    "monday": [
+     "09:00",
+     "17:00"
+    ],
+    "sunday": null,
+    "tuesday": [
+     "09:00",
+     "20:00"
+    ],
+    "saturday": [
+     "09:00",
+     "17:00"
+    ],
+    "thursday": [
+     "09:00",
+     "20:00"
+    ],
+    "wednesday": [
+     "09:00",
+     "17:00"
+    ]
+   },
+   "street_address": "North Street",
+   "address": "North Street, Glasgow G3 7DN",
+   "phone": "0141 287 2999",
+   "hours_text": "Mon 9am-5pm, Tue 9am-8pm, Wed 9am-5pm, Thu 9am-8pm, Fri 9am-5pm, Sat 9am-5pm, closed Sunday",
+   "is_free": true,
+   "services": [
+    "Public PCs, printing and photocopying",
+    "Study desks on Levels 2, 3 and 4",
+    "Free Wi-Fi",
+    "Glasgow City Archives",
+    "Cafe on the ground floor (Mon-Sat 9am-4.15pm)",
+    "Books in Braille, large print and audio"
+   ],
+   "accessibility_note": "Accessible toilet about 26m from the main entrance; fixed loop hearing system; a wheelchair to borrow; motorised scooters allowed in public areas; guide and assistance dogs welcome.",
+   "description": "A large public library that also houses Glasgow City Archives.",
+   "hoursRows": [
+    {
+     "day_of_week": 0,
+     "opens": null,
+     "closes": null
+    },
+    {
+     "day_of_week": 1,
+     "opens": "09:00:00",
+     "closes": "17:00:00"
+    },
+    {
+     "day_of_week": 2,
+     "opens": "09:00:00",
+     "closes": "20:00:00"
+    },
+    {
+     "day_of_week": 3,
+     "opens": "09:00:00",
+     "closes": "17:00:00"
+    },
+    {
+     "day_of_week": 4,
+     "opens": "09:00:00",
+     "closes": "20:00:00"
+    },
+    {
+     "day_of_week": 5,
+     "opens": "09:00:00",
+     "closes": "17:00:00"
+    },
+    {
+     "day_of_week": 6,
+     "opens": "09:00:00",
+     "closes": "17:00:00"
+    }
+   ],
+   "hoursStale": false,
+   "hoursSource": "own",
+   "exceptions": [],
+   "upcomingEvents": 0
+  },
+  "today": "2026-11-26",
+  "title": "Glasgow Mitchell Library: Hours & Address (2026)",
+  "meta": "The Mitchell Library, North St. Free. Open Mon, Wed, Fri–Sat 9am–5pm; Tue, Thu 9am–8pm. A large public library that also houses Glasgow City Archives.",
+  "fallbacks": []
+ },
+ {
+  "town": "brookings_sd",
+  "slug": "briggs-library",
+  "input": {
+   "name": "Hilton M. Briggs Library",
+   "category": "library",
+   "hours_structured": null,
+   "street_address": "1300 N Campus Dr",
+   "address": "1300 N Campus Dr, Brookings, SD 57007",
+   "phone": "(605) 688-5107",
+   "hours_text": null,
+   "is_free": null,
+   "services": [
+    "Research help (Ask @ Briggs)",
+    "Study rooms (reserved online)",
+    "SDSU Archives and Special Collections",
+    "Wokini Knowledge Circle (materials on Oceti Sakowin culture, history and people)",
+    "Jackrabbit Gallery Art Show"
+   ],
+   "accessibility_note": null,
+   "description": "SDSU's main library, with roughly 680,000 bound volumes, 1 million microforms and over 600,000 government documents, plus electronic journal access. It is separate from the city's public library.",
+   "hoursRows": [
+    {
+     "day_of_week": 4,
+     "opens": null,
+     "closes": null
+    },
+    {
+     "day_of_week": 5,
+     "opens": null,
+     "closes": null
+    },
+    {
+     "day_of_week": 6,
+     "opens": null,
+     "closes": null
+    },
+    {
+     "day_of_week": 0,
+     "opens": "12:00:00",
+     "closes": "00:00:00"
+    },
+    {
+     "day_of_week": 1,
+     "opens": "07:45:00",
+     "closes": "00:00:00"
+    },
+    {
+     "day_of_week": 2,
+     "opens": "07:45:00",
+     "closes": "00:00:00"
+    },
+    {
+     "day_of_week": 3,
+     "opens": "07:45:00",
+     "closes": "00:00:00"
+    }
+   ],
+   "hoursStale": false,
+   "hoursSource": "own",
+   "exceptions": [],
+   "upcomingEvents": 0,
+   "datedRows": [
+    {
+     "valid_from": "2026-12-13",
+     "valid_to": "2026-12-13",
+     "day_of_week": 0,
+     "opens": "12:00:00",
+     "closes": "02:00:00"
+    },
+    {
+     "valid_from": "2026-11-29",
+     "valid_to": "2026-11-29",
+     "day_of_week": 0,
+     "opens": "12:00:00",
+     "closes": "00:00:00"
+    },
+    {
+     "valid_from": "2026-12-06",
+     "valid_to": "2026-12-06",
+     "day_of_week": 0,
+     "opens": "12:00:00",
+     "closes": "00:00:00"
+    },
+    {
+     "valid_from": "2026-12-07",
+     "valid_to": "2026-12-07",
+     "day_of_week": 1,
+     "opens": "07:45:00",
+     "closes": "00:00:00"
+    },
+    {
+     "valid_from": "2026-12-14",
+     "valid_to": "2026-12-14",
+     "day_of_week": 1,
+     "opens": "07:45:00",
+     "closes": "02:00:00"
+    },
+    {
+     "valid_from": "2026-11-30",
+     "valid_to": "2026-11-30",
+     "day_of_week": 1,
+     "opens": "07:45:00",
+     "closes": "00:00:00"
+    },
+    {
+     "valid_from": "2026-12-01",
+     "valid_to": "2026-12-01",
+     "day_of_week": 2,
+     "opens": "07:45:00",
+     "closes": "00:00:00"
+    },
+    {
+     "valid_from": "2026-12-15",
+     "valid_to": "2026-12-15",
+     "day_of_week": 2,
+     "opens": "07:45:00",
+     "closes": "00:00:00"
+    },
+    {
+     "valid_from": "2026-12-08",
+     "valid_to": "2026-12-08",
+     "day_of_week": 2,
+     "opens": "07:45:00",
+     "closes": "00:00:00"
+    },
+    {
+     "valid_from": "2026-12-16",
+     "valid_to": "2026-12-16",
+     "day_of_week": 3,
+     "opens": "07:45:00",
+     "closes": "17:00:00"
+    },
+    {
+     "valid_from": "2026-12-02",
+     "valid_to": "2026-12-02",
+     "day_of_week": 3,
+     "opens": "07:45:00",
+     "closes": "00:00:00"
+    },
+    {
+     "valid_from": "2026-12-09",
+     "valid_to": "2026-12-09",
+     "day_of_week": 3,
+     "opens": "07:45:00",
+     "closes": "00:00:00"
+    },
+    {
+     "valid_from": "2026-11-25",
+     "valid_to": "2026-11-25",
+     "day_of_week": 3,
+     "opens": "08:00:00",
+     "closes": "17:00:00"
+    },
+    {
+     "valid_from": "2026-11-26",
+     "valid_to": "2026-11-26",
+     "day_of_week": 4,
+     "opens": null,
+     "closes": null
+    },
+    {
+     "valid_from": "2026-12-03",
+     "valid_to": "2026-12-03",
+     "day_of_week": 4,
+     "opens": "07:45:00",
+     "closes": "00:00:00"
+    },
+    {
+     "valid_from": "2026-12-10",
+     "valid_to": "2026-12-10",
+     "day_of_week": 4,
+     "opens": "07:45:00",
+     "closes": "02:00:00"
+    },
+    {
+     "valid_from": "2026-12-04",
+     "valid_to": "2026-12-04",
+     "day_of_week": 5,
+     "opens": "07:45:00",
+     "closes": "21:00:00"
+    },
+    {
+     "valid_from": "2026-12-11",
+     "valid_to": "2026-12-11",
+     "day_of_week": 5,
+     "opens": "07:45:00",
+     "closes": "00:00:00"
+    },
+    {
+     "valid_from": "2026-11-27",
+     "valid_to": "2026-11-27",
+     "day_of_week": 5,
+     "opens": null,
+     "closes": null
+    },
+    {
+     "valid_from": "2026-12-12",
+     "valid_to": "2026-12-12",
+     "day_of_week": 6,
+     "opens": "10:00:00",
+     "closes": "00:00:00"
+    },
+    {
+     "valid_from": "2026-12-05",
+     "valid_to": "2026-12-05",
+     "day_of_week": 6,
+     "opens": "10:00:00",
+     "closes": "21:00:00"
+    },
+    {
+     "valid_from": "2026-11-28",
+     "valid_to": "2026-11-28",
+     "day_of_week": 6,
+     "opens": null,
+     "closes": null
+    }
+   ]
+  },
+  "today": "2026-11-26",
+  "title": "Brookings Hilton M. Briggs Library: Hours & Address (2026)",
+  "meta": "Hilton M. Briggs Library, 1300 N Campus Dr. Next closed: Thu Nov 26. Includes phone number and services.",
+  "fallbacks": [
+   "day calendar: no regular week over the next 4 weeks: no \"Open\" part (title may say \"Hours\")"
+  ]
+ },
+ {
+  "town": "brookings_sd",
+  "slug": "city-hall",
+  "input": {
+   "name": "Brookings City Hall (City & County Government Center)",
+   "category": "city_hall",
+   "hours_structured": {
+    "friday": [
+     "08:00",
+     "12:00"
+    ],
+    "monday": [
+     "08:00",
+     "17:00"
+    ],
+    "sunday": null,
+    "tuesday": [
+     "08:00",
+     "17:00"
+    ],
+    "saturday": null,
+    "thursday": [
+     "08:00",
+     "17:00"
+    ],
+    "wednesday": [
+     "08:00",
+     "17:00"
+    ]
+   },
+   "street_address": "520 3rd St",
+   "address": "520 3rd St, Suite 230, Brookings, SD 57006",
+   "phone": "(605) 692-6281",
+   "hours_text": "Mon–Thu 8am–5pm, Fri 8am–noon",
+   "is_free": null,
+   "services": null,
+   "accessibility_note": null,
+   "description": "Houses the City Clerk's Office, City Manager's Office, Community Development, Engineering, Finance, Human Resources, and Parks & Recreation departments. Shares the building with Brookings County offices; City Council and County Commission meetings are held in the third-floor chambers.",
+   "hoursRows": [
+    {
+     "day_of_week": 0,
+     "opens": null,
+     "closes": null
+    },
+    {
+     "day_of_week": 1,
+     "opens": "08:00:00",
+     "closes": "17:00:00"
+    },
+    {
+     "day_of_week": 2,
+     "opens": "08:00:00",
+     "closes": "17:00:00"
+    },
+    {
+     "day_of_week": 3,
+     "opens": "08:00:00",
+     "closes": "17:00:00"
+    },
+    {
+     "day_of_week": 4,
+     "opens": "08:00:00",
+     "closes": "17:00:00"
+    },
+    {
+     "day_of_week": 5,
+     "opens": "08:00:00",
+     "closes": "12:00:00"
+    },
+    {
+     "day_of_week": 6,
+     "opens": null,
+     "closes": null
+    }
+   ],
+   "hoursStale": false,
+   "hoursSource": "own",
+   "exceptions": [],
+   "upcomingEvents": 0
+  },
+  "today": "2026-11-26",
+  "title": "Brookings City Hall: Hours & Address (2026)",
+  "meta": "Brookings City Hall (City & County Government Center), 520 3rd St. Open Mon–Thu 8 AM–5 PM; Fri 8 AM–noon. Includes phone number.",
+  "fallbacks": []
+ },
+ {
+  "town": "brookings_sd",
+  "slug": "landfill-office-collection-shop",
+  "input": {
+   "name": "Landfill Office & Collection Shop",
+   "category": "recycling",
+   "hours_structured": null,
+   "street_address": "47532 30th St.",
+   "address": "47532 30th St., Brookings, SD 57006",
+   "phone": "(605) 693-3667",
+   "hours_text": "7:30 am to 4:30 pm Gates will close at 4:15 pm Monday through Friday Saturday hours 8:00 am to 11:45 am Closed Saturdays in January and February Citizens Campus Open 24/7",
+   "is_free": null,
+   "services": null,
+   "accessibility_note": null,
+   "description": null,
+   "hoursRows": [],
+   "hoursStale": false,
+   "hoursSource": null,
+   "exceptions": [],
+   "upcomingEvents": 0
+  },
+  "today": "2026-11-26",
+  "title": "Brookings Landfill Office & Collection Shop: Hours & Address",
+  "meta": "Landfill Office & Collection Shop, 47532 30th St. Includes phone number.",
+  "fallbacks": [
+   "hours only as the source's text: no \"Open\" part (title may say \"Hours\")"
+  ]
+ },
+ {
+  "town": "brookings_sd",
+  "slug": "downtown-main-avenue",
+  "input": {
+   "name": "Downtown Brookings — Main Avenue",
+   "category": "other",
+   "hours_structured": null,
+   "street_address": "Main Avenue",
+   "address": "Main Avenue, Brookings, SD 57006",
+   "phone": null,
+   "hours_text": null,
+   "is_free": null,
+   "services": null,
+   "accessibility_note": null,
+   "description": "Brookings' downtown commercial district along Main Avenue, home to the recurring \"Downtown at Sundown\" event series and other street-level community events. It has no single street address: events happen at various points along Main Avenue.",
+   "hoursRows": [],
+   "hoursStale": true,
+   "hoursSource": null,
+   "exceptions": [],
+   "upcomingEvents": 0
+  },
+  "today": "2026-11-26",
+  "title": "Downtown Brookings — Main Avenue: Address (2026)",
+  "meta": "Brookings' downtown commercial district along Main Avenue, home to the recurring Downtown at Sundown event series and other street-level community events.",
+  "fallbacks": [
+   "handwritten meta (owner order 2026-11-26 (15))"
+  ]
+ },
+ {
+  "town": "moreno_valley_ca",
+  "slug": "county-of-riverside-department-of-public-social-services",
+  "input": {
+   "name": "County of Riverside Department of Public Social Services",
+   "category": "other",
+   "hours_structured": null,
+   "street_address": "12625 Heacock St",
+   "address": "12625 Heacock St, Moreno Valley, CA 92553",
+   "phone": null,
+   "hours_text": null,
+   "is_free": null,
+   "services": null,
+   "accessibility_note": null,
+   "description": null,
+   "hoursRows": [],
+   "hoursStale": true,
+   "hoursSource": null,
+   "exceptions": [],
+   "upcomingEvents": 0
+  },
+  "today": "2026-11-26",
+  "title": "County of Riverside Department of Public Social Services: Address",
+  "meta": "County of Riverside Department of Public Social Services, 12625 Heacock St.",
+  "fallbacks": []
+ },
+ {
+  "town": "broomfield_co",
+  "slug": "usps-broomfield",
+  "input": {
+   "name": "USPS Post Office - Broomfield",
+   "category": "post_office",
+   "hours_structured": {
+    "friday": [
+     "08:00",
+     "18:00"
+    ],
+    "monday": [
+     "08:00",
+     "18:00"
+    ],
+    "sunday": null,
+    "tuesday": [
+     "08:00",
+     "18:00"
+    ],
+    "saturday": [
+     "09:00",
+     "13:00"
+    ],
+    "thursday": [
+     "08:00",
+     "18:00"
+    ],
+    "wednesday": [
+     "08:00",
+     "18:00"
+    ]
+   },
+   "street_address": "280 E 1st Ave",
+   "address": "280 E 1st Ave, Broomfield, CO 80020",
+   "phone": "(303) 438-0035",
+   "hours_text": "Mon-Fri 8am-6pm, Sat 9am-1pm",
+   "is_free": true,
+   "services": null,
+   "accessibility_note": null,
+   "description": "Broomfield's main USPS Post Office location.",
+   "hoursRows": [
+    {
+     "day_of_week": 1,
+     "opens": "08:00:00",
+     "closes": "18:00:00"
+    },
+    {
+     "day_of_week": 2,
+     "opens": "08:00:00",
+     "closes": "18:00:00"
+    },
+    {
+     "day_of_week": 3,
+     "opens": "08:00:00",
+     "closes": "18:00:00"
+    },
+    {
+     "day_of_week": 4,
+     "opens": "08:00:00",
+     "closes": "18:00:00"
+    },
+    {
+     "day_of_week": 5,
+     "opens": "08:00:00",
+     "closes": "18:00:00"
+    },
+    {
+     "day_of_week": 6,
+     "opens": "09:00:00",
+     "closes": "13:00:00"
+    }
+   ],
+   "hoursStale": false,
+   "hoursSource": "own",
+   "exceptions": [],
+   "upcomingEvents": 0
+  },
+  "today": "2026-11-26",
+  "title": "USPS Post Office - Broomfield: Hours & Address (2026)",
+  "meta": "USPS Post Office - Broomfield, 280 E 1st Ave. Open Mon–Fri 8 AM–6 PM; Sat 9 AM–1 PM. Broomfield's main USPS Post Office location.",
+  "fallbacks": [
+   "a day without a row is closed in the source's own week (hours_structured) and on the page",
+   "is_free on a post_office place: no \"Free\" (not an admission type)"
+  ]
+ },
+ {
+  "town": "glasgow",
+  "slug": "gallery-of-modern-art-goma",
+  "input": {
+   "name": "Gallery of Modern Art (GoMA)",
+   "category": "museum",
+   "hours_structured": {
+    "friday": [
+     "11:00",
+     "17:00"
+    ],
+    "monday": [
+     "10:00",
+     "17:00"
+    ],
+    "sunday": [
+     "11:00",
+     "17:00"
+    ],
+    "tuesday": [
+     "10:00",
+     "17:00"
+    ],
+    "saturday": [
+     "10:00",
+     "17:00"
+    ],
+    "thursday": [
+     "10:00",
+     "17:00"
+    ],
+    "wednesday": [
+     "10:00",
+     "17:00"
+    ]
+   },
+   "street_address": "Royal Exchange Square",
+   "address": "Royal Exchange Square, Glasgow G1 3AH",
+   "phone": "0141 287 3050",
+   "hours_text": "Mon-Thu 10am-5pm, Fri 11am-5pm, Sat 10am-5pm, Sun 11am-5pm",
+   "is_free": true,
+   "services": null,
+   "accessibility_note": "Accessible toilet on the lower ground floor; guide and assistance dogs welcome, water bowls provided.",
+   "description": "Glasgow's gallery of contemporary art, run by Glasgow Life.",
+   "hoursRows": [
+    {
+     "day_of_week": 0,
+     "opens": "11:00:00",
+     "closes": "17:00:00"
+    },
+    {
+     "day_of_week": 1,
+     "opens": "10:00:00",
+     "closes": "17:00:00"
+    },
+    {
+     "day_of_week": 2,
+     "opens": "10:00:00",
+     "closes": "17:00:00"
+    },
+    {
+     "day_of_week": 3,
+     "opens": "10:00:00",
+     "closes": "17:00:00"
+    },
+    {
+     "day_of_week": 4,
+     "opens": "10:00:00",
+     "closes": "17:00:00"
+    },
+    {
+     "day_of_week": 5,
+     "opens": "11:00:00",
+     "closes": "17:00:00"
+    },
+    {
+     "day_of_week": 6,
+     "opens": "10:00:00",
+     "closes": "17:00:00"
+    }
+   ],
+   "hoursStale": false,
+   "hoursSource": "own",
+   "exceptions": [],
+   "upcomingEvents": 0
+  },
+  "today": "2026-11-26",
+  "title": "Glasgow Gallery of Modern Art (GoMA): Hours & Address (2026)",
+  "meta": "Gallery of Modern Art (GoMA), Royal Exchange Square. Free. Open Mon–Thu, Sat 10am–5pm; Fri, Sun 11am–5pm. Includes phone number and accessibility.",
+  "fallbacks": []
+ }
+]

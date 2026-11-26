@@ -22,7 +22,7 @@ describe('hours', () => {
     expect(hoursCompact([{ days: [1, 2, 3, 4, 5], from: '13:00', to: '17:00' }])).toBe('Mon–Fri 1–5 PM');
     expect(hoursLong([{ days: [5, 1, 3], from: '13:00', to: '17:00' }])).toBe('Mondays, Wednesdays and Fridays 1 to 5 p.m.');
     expect(hoursCompact([{ days: [6], from: '08:30', to: '17:00' }])).toBe('Sat 8:30 AM–5 PM');
-    expect(hoursCompact([{ days: [6], from: '08:00', to: '12:00' }])).toBe('Sat 8 AM–12 PM');
+    expect(hoursCompact([{ days: [6], from: '08:00', to: '12:00' }])).toBe('Sat 8 AM–noon'); // "noon", never "12 PM" (order 26 nov (15) D)
   });
 });
 
@@ -57,10 +57,13 @@ describe('title', () => {
   it('"Hours & Address" where the page has no rules part (changed field: rules false)', () => {
     expect(facilityTitle({ ...LEAF, rules: false }, 'Broomfield', 2026)).toBe('Broomfield Leaf & Branch Drop-Off: Hours & Address (2026)');
   });
-  it('over 60 characters: " & Rules" is dropped (changed field: name = "Tree Branch Recycling Facility", 63 -> 55)', () => {
+  it('over 60 characters: the year goes before " & Rules" (order 26 nov (15): parenthesis, year, second fact; changed field: name)', () => {
     const f = { ...LEAF, name: 'Tree Branch Recycling Facility' };
     expect(`Broomfield ${f.name}: Hours & Rules (2026)`.length).toBe(63);
-    expect(facilityTitle(f, 'Broomfield', 2026)).toBe('Broomfield Tree Branch Recycling Facility: Hours (2026)');
+    expect(facilityTitle(f, 'Broomfield', 2026)).toBe('Broomfield Tree Branch Recycling Facility: Hours & Rules'); // 56
+    // Changed field: a longer name, so that only dropping " & Rules" as well fits.
+    const g = { ...LEAF, name: 'Tree and Branch Recycling Facility West' };
+    expect(facilityTitle(g, 'Broomfield', 2026)).toBe('Broomfield Tree and Branch Recycling Facility West: Hours');
   });
   it('year rollover: the year is the town\'s own today (Denver is still 31 Dec at 06:30Z on 1 Jan, and 1 Jan an hour later)', () => {
     const at = (iso: string) => answerMeta(PAGE, { siteName: 'Broomfield View', town: 'Broomfield', today: todayIn('America/Denver', new Date(iso)) }).title;

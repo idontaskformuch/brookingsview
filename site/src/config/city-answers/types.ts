@@ -53,6 +53,16 @@ export interface AnswerFacility {
   rulesLine?: string;
   /** The FAQ sentence's start, before the place, address and hours ("Broomfield residents can drop off leaves, branches and yard waste for free"). */
   faqLead?: string;
+  /** The page shows hours the meta does not repeat (only the source's own text, or a week that does not state all seven days): the title
+   *  may say "Hours", the meta has no "Open" part. */
+  hoursAsText?: boolean;
+  /** Between the day groups of the "Open" part: " & " (default, the answer pages) or ", " (facility pages, owner order 2026-11-26 (15) D). */
+  hoursJoin?: string;
+  /** The page shows a phone number (a title with neither hours nor address says "Phone"). */
+  phone?: boolean;
+  /** More candidates for the meta's last sentence after `rulesLine`, in order; the first that fits is used (a facility page: its own
+   *  description's first sentence, then the list of what is on the page). */
+  tailOptions?: string[];
 }
 
 export interface Answer {
