@@ -4,13 +4,17 @@
  * lib/week-count.mjs uses it to count a week's items for both the sitemap and the page's noindex. Types: event-dedup.d.mts.
  */
 
+// Three kinds since 2026-11-26 (owner order 26 nov (8)): an own story, an SDSU arts event, a Ticketmaster listing.
 export function itemTitle(item) {
+  if (item.sourceKind === 'ticketmaster') return item.ticketmasterEvent.title;
   return item.sourceKind === 'story' ? item.story.title : item.event.title;
 }
 export function itemUrl(item) {
+  if (item.sourceKind === 'ticketmaster') return item.ticketmasterEvent.ticketUrl || null;
   return item.sourceKind === 'story' ? item.story.source_url : item.event.event_url;
 }
 export function itemVenue(item) {
+  if (item.sourceKind === 'ticketmaster') return item.ticketmasterEvent.venueName ?? null;
   return item.sourceKind === 'story' ? (item.story.venue_raw ?? null) : item.event.location;
 }
 
@@ -37,8 +41,7 @@ export function localDateParts(instant, timezone) {
 /** Per-source participation in cross-source dedup matching (see
  *  findCrossSourceMatch() below) -- encoded as data rather than a hardcoded
  *  if/else so a future source is a new map entry, not a new branch.
- *  `ticketmaster` is registered here even though it never reaches
- *  buildEventFeed() yet -- see lib/ticketmaster.ts's own module comment. */
+ *  `ticketmaster` reaches buildEventFeed() since 2026-11-26 (/events/, /this-week/). */
 export const EVENT_SOURCES = {
   story: { crossMatch: true },
   arts: { crossMatch: true },
@@ -149,7 +152,7 @@ function mergeSameStartTitleContainment(items, alsoListedBy) {
   return items.filter((it) => !dropped.has(it));
 }
 
-/** The dedup itself, over already-built feed items ({ sourceKind: 'story' | 'arts', occurs_at, story | event }). */
+/** The dedup itself, over already-built feed items ({ sourceKind: 'story' | 'arts' | 'ticketmaster', occurs_at, story | event | ticketmasterEvent }). */
 export function buildEventFeedCore(rawItems, timezone) {
   const canonicalByKey = new Map();
   const alsoListedBy = new Map();

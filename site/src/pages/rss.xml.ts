@@ -6,7 +6,7 @@ import { placeLabel } from '../lib/country-profile';
 import { loadUpcomingMeetings } from '../lib/meetings-data';
 import { buildMeetingFeedItems } from '../lib/meetings-view';
 import { buildTownEventsView } from '../lib/events-town-view';
-import { itemLink } from '../lib/events';
+import { isOwnFeedItem, itemLink } from '../lib/events';
 import { buildSiteFeed, type FeedEvent } from '../lib/site-feed';
 import { weekInfoForInstant } from '../lib/this-week';
 
@@ -29,6 +29,8 @@ export async function GET(context: APIContext) {
   const horizon = now.getTime() + DAYS_AHEAD * 86_400_000;
   const events: FeedEvent[] = [...town.view.days.flatMap((d) => d.rows), ...town.view.furtherOut]
     .filter((r) => new Date(r.start).getTime() <= horizon)
+    // The feed is the town's own events only (isOwnFeedItem): no ticket-feed listing is passed in here.
+    .flatMap((r) => (isOwnFeedItem(r.item) ? [{ ...r, item: r.item }] : []))
     .map((r) => ({
       id: r.item.sourceKind === 'story' ? r.item.story.slug : `arts-${r.item.event.event_url ?? r.title}-${r.start}`,
       title: r.title, startIso: r.start, dateLabel: r.dateLabel, timeLabel: r.timeLabel || null, venue: r.venue,

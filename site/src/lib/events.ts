@@ -34,10 +34,26 @@ import { tidyCost } from './text-hygiene';
 import { buildVenueIndex, resolveVenue, isVirtualVenue } from './db';
 import { classifyLocalityByCoords, classifyLocalityByText, haversineMiles, NEARBY_RADIUS_MILES, type LocalityResult, type LocalityMethod } from './town-boundary';
 import { addressCity } from './place-locality';
+import type { TicketmasterFeedItem } from './ticketmaster';
+import { ticketmasterHref } from './whats-on';
 
+/** An event in the town's lists. Ticketmaster listings joined the own stories and SDSU's arts events on 2026-11-26 (owner order 26 nov
+ *  (8): Broomfield's /events/ and /this-week/ were empty while What's On had 114 shows): the same dedup (event-dedup.mjs), the same
+ *  in-town / nearby rule (classifyEventLocality) and the same category (lib/event-category.ts categorize). */
 export type FeedItem =
   | { sourceKind: 'story'; occurs_at: string | null; story: Story }
-  | { sourceKind: 'arts'; occurs_at: string | null; event: SdsuEvent };
+  | { sourceKind: 'arts'; occurs_at: string | null; event: SdsuEvent }
+  | TicketmasterFeedItem;
+
+/** A story or an SDSU event: what the pages that never take Ticketmaster (the facets, an event page's "More this weekend", RSS) handle. */
+export type OwnFeedItem = Exclude<FeedItem, TicketmasterFeedItem>;
+export const isOwnFeedItem = (item: FeedItem): item is OwnFeedItem => item.sourceKind !== 'ticketmaster';
+
+/** When an item ends, as its source states it; null when it does not (Ticketmaster gives no end). */
+export function itemEnd(item: FeedItem): string | null {
+  if (item.sourceKind === 'ticketmaster') return null;
+  return (item.sourceKind === 'story' ? item.story.ends_at : item.event.ends_at) ?? null;
+}
 
 /** Category label every event card carries, in every list and every town --
  *  a town/library/city event is "Around Town", an SDSU arts item "Arts &
@@ -52,6 +68,7 @@ export type { EventSourceConfig } from './event-dedup.mjs';
 import { buildEventFeedCore, itemTitle, itemUrl, itemVenue, localDateParts } from './event-dedup.mjs';
 /** Where a list row links: the original source for an arts item, the story's own page when it has text, else its source (lib/ai-text.ts). */
 export function itemLink(item: FeedItem): string | null {
+  if (item.sourceKind === 'ticketmaster') return ticketmasterHref(item.ticketmasterEvent);
   return item.sourceKind === 'arts' ? item.event.event_url : linkTarget(item.story);
 }
 
@@ -340,10 +357,13 @@ export interface EventFeedResult {
   alsoListedBy: Map<FeedItem, string[]>;
 }
 
-export function buildEventFeed(stories: Story[], artsEvents: SdsuEvent[], timezone: string): EventFeedResult {
+/** Own stories first, then SDSU, then Ticketmaster: on a cross-source match the first one listed is kept (a page of our own over a
+ *  ticket link) and the others go into alsoListedBy. */
+export function buildEventFeed(stories: Story[], artsEvents: SdsuEvent[], timezone: string, ticketmaster: TicketmasterFeedItem[] = []): EventFeedResult {
   return buildEventFeedCore<FeedItem>([
     ...stories.map((story): FeedItem => ({ sourceKind: 'story', occurs_at: story.occurs_at, story })),
     ...artsEvents.map((event): FeedItem => ({ sourceKind: 'arts', occurs_at: event.starts_at, event })),
+    ...ticketmaster.filter((t) => t.occurs_at),
   ], timezone);
 }
 
@@ -455,6 +475,7 @@ export function isKidsEvent(item: FeedItem): boolean {
   // never the keyword guess below -- "family" in a title is too often a family history talk.
   if (siteConfig.country === 'gb') return item.sourceKind === 'story' && !!item.story.meta?.tags?.includes('Kids & families');
   const title = itemTitle(item);
+  if (item.sourceKind === 'ticketmaster') return /\b(family|children|kids)\b/i.test(item.ticketmasterEvent.genre ?? '') || KIDS_RE.test(title);
   const body = item.sourceKind === 'story' ? item.story.body : (item.event.teaser ?? '');
   return KIDS_RE.test(title) || KIDS_RE.test(body.slice(0, 200));
 }
@@ -503,6 +524,7 @@ export function classifyEventLocality(
   item: FeedItem, facilities: Facility[], townId: string, cityName: string,
   townCenter: { lat: number; lon: number },
 ): LocalityResult {
+  if (item.sourceKind === 'ticketmaster') return ticketmasterLocality(item, cityName, townId, townCenter);
   if (item.sourceKind !== 'story') return { zone: 'in_town', distanceMiles: null, method: 'default' };
   const venueText = item.story.venue_raw;
   if (isVirtualVenue(venueText)) return { zone: 'in_town', distanceMiles: null, method: 'default' };
@@ -525,6 +547,28 @@ export function classifyEventLocality(
   }
   if (!venueText) return { zone: 'in_town', distanceMiles: null, method: 'default' };
   return classifyLocalityByText(venueText, cityName);
+}
+
+/** The same rule for a Ticketmaster venue (owner 2026-11-26): its own city decides. This town -> in town; another town -> nearby within
+ *  NEARBY_RADIUS_MILES of the town centre (the venue's coordinates, else Ticketmaster's own distance), beyond it 'outside' (left out of the
+ *  town's lists: a Denver arena is on What's On, not on Broomfield's /events/). No city: the coordinates decide, as for an own venue. */
+export function ticketmasterLocality(
+  item: TicketmasterFeedItem, cityName: string, townId: string, townCenter: { lat: number; lon: number },
+): LocalityResult {
+  const e = item.ticketmasterEvent;
+  const city = (e.venueCity ?? '').trim().replace(/\s+[A-Z]{2}$/, '');
+  const miles = e.venueLatitude != null && e.venueLongitude != null
+    ? haversineMiles(e.venueLatitude, e.venueLongitude, townCenter.lat, townCenter.lon)
+    : e.venueDistanceMiles;
+  if (city) {
+    if (city.toLowerCase() === cityName.trim().toLowerCase()) return { zone: 'in_town', distanceMiles: null, method: 'address' };
+    return { zone: miles != null && miles <= NEARBY_RADIUS_MILES ? 'nearby' : 'outside', distanceMiles: miles ?? null, method: 'address' };
+  }
+  if (e.venueLatitude != null && e.venueLongitude != null) {
+    const byCoords = classifyLocalityByCoords(townId, e.venueLatitude, e.venueLongitude, townCenter);
+    return byCoords.zone === 'unknown' ? { ...byCoords, zone: 'outside' } : byCoords;
+  }
+  return { zone: 'outside', distanceMiles: miles ?? null, method: 'default' };
 }
 
 /**

@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildBigShows, bigShowWhere, bigShowCategory, bigShowDays } from './big-shows';
 import type { TicketmasterFeedItem } from './ticketmaster';
+import { ticketmasterLocality } from './events';
+import { buildEventsView, isOwnEvent } from './event-day-view';
 
 const CENTER = { lat: 39.9205, lon: -105.0866 }; // Broomfield
 const NOW = new Date('2026-11-10T18:00:00Z');
@@ -95,16 +97,41 @@ describe('bigShowDays (the date-tile list)', () => {
   });
 });
 
-// Owner 2026-11-06: a big show is never counted with the town's own events. The local pipeline must not know about it.
-describe('big shows stay out of the local event pipeline', () => {
+// Owner 2026-11-06: a big show is never counted with the town's own events. Owner 2026-11-26 (8), answer to the question about this
+// rule: "I listor, inte i räknare" -- Ticketmaster listings are in /events/ and /this-week/ (same dedup, nearby rule, category), never in
+// a count ("N things on today", the day strip, tonight, free, the header and front-page counts, the week's noindex count).
+describe('Ticketmaster: in the lists, never in the counts', () => {
   const read = (f: string) => readFileSync(join(__dirname, f), 'utf8');
-  it('events-town-view, event-day-view and events.ts never import big-shows or Ticketmaster', () => {
-    for (const f of ['events-town-view.ts', 'event-day-view.ts', 'events.ts']) {
-      expect(read(f), f).not.toMatch(/big-shows|from '\.\/ticketmaster'/);
-    }
+  // Real row: Broomfield /whats-on/ as built 2026-11-26 (JSON-LD): title, venue, start, coordinates, link ordagrant. genre: not in the
+  // JSON-LD, left null.
+  const prydz: TicketmasterFeedItem = tm('Z7r9jZ1AAZyOs', 'Eric Prydz (16+ Event)', '2026-11-28T04:00:00Z', {
+    venueName: 'Mission Ballroom', venueCity: 'Denver', venueLatitude: 39.7896, venueLongitude: -104.9422,
+    ticketUrl: 'https://www.ticketmaster.com/event/Z7r9jZ1AAZyOs', localDate: '2026-11-27', localTime: '21:00:00', segment: 'Music', genre: null,
+    venueId: null, priceRangeText: null, priceMin: null, priceMax: null, priceCurrency: null, // not in the row: the helper's defaults cleared
   });
-  it('EventsGlance (the "N things on today" hero) takes no big-show input', () => {
+  it('the nearby rule: the venue city decides; Denver (12 mi) is nearby, beyond 25 mi is outside, Broomfield in town', () => {
+    const near = ticketmasterLocality(prydz, 'Broomfield', 'broomfield_co', CENTER);
+    expect(near.zone).toBe('nearby');
+    expect(Math.round(near.distanceMiles!)).toBe(12);
+    // Changed field: the city (Broomfield) -> in town; the coordinates (Colorado Springs, 39.8 -> 38.8339, -104.8214) -> outside.
+    expect(ticketmasterLocality(tm('a', 'x', prydz.occurs_at, { ...prydz.ticketmasterEvent, venueCity: 'Broomfield' }), 'Broomfield', 'broomfield_co', CENTER).zone).toBe('in_town');
+    expect(ticketmasterLocality(tm('a', 'x', prydz.occurs_at, { ...prydz.ticketmasterEvent, venueCity: 'Colorado Springs', venueLatitude: 38.8339, venueLongitude: -104.8214 }), 'Broomfield', 'broomfield_co', CENTER).zone).toBe('outside');
+  });
+  it('a Ticketmaster row is listed under its day, but the day count, today and tonight count only own events', () => {
+    const view = buildEventsView([prydz], { now: new Date('2026-11-27T18:00:00Z'), timezone: TZ, gb: false, facts: () => ({ title: 'Eric Prydz (16+ Event)', venue: 'Mission Ballroom', area: null, free: false, kids: false }) });
+    expect(view.days[0].rows.map((r) => r.title)).toEqual(['Eric Prydz (16+ Event)']);
+    expect([view.days[0].count, view.todayCount, view.tonightCount, view.total]).toEqual([0, 0, 0, 0]);
+    expect(isOwnEvent(prydz)).toBe(false);
+  });
+  it('the counters filter it: EventsGlance and the shared count (header ticker, /today/, front page) take own events only', () => {
     const glance = readFileSync(join(__dirname, '..', 'components/events/EventsGlance.astro'), 'utf8');
-    expect(glance).not.toMatch(/big-?shows|ticketmaster/i);
+    expect(glance).toMatch(/\.filter\(\(r\) => isOwnEvent\(r\.item\)\)/);
+    expect(read('events-town-view.ts')).toMatch(/t\.here\.filter\(\(e\) => isOwnEvent\(e\.item\)\)/);
+    // The week's noindex count (lib/week-count.mjs, also the sitemap's) never reads Ticketmaster.
+    expect(read('week-count.mjs')).not.toMatch(/ticketmaster/i);
+  });
+  it('/events/ lists a Ticketmaster show only within the page\'s own days (Broomfield was 56,000 px with 60 days of Denver shows)', () => {
+    expect(read('events-town-view.ts')).toMatch(/const inWindow = \(r: DayRow\) => isOwnEvent\(r\.item\) \|\| r\.offset < DAY_WINDOW;/);
+    expect(read('events-town-view.ts')).toMatch(/nearbyView\.furtherOut\]\.filter\(inWindow\)/);
   });
 });

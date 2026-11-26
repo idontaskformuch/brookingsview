@@ -41,7 +41,7 @@ import {
   getUpcomingStories, getUpcomingArtsEvents, getNextMeeting, getNextSdsuMarqueeEvent,
   formatMeetingWhen, isSandboxUrl,
 } from './db';
-import { buildEventFeed, todayUtcMidnight, selectBucketCandidates } from './events';
+import { buildEventFeed, itemEnd, todayUtcMidnight, selectBucketCandidates } from './events';
 import { computeHeatTier } from './heat-advisory';
 import { statusWeatherText } from './weather-format';
 import { siteConfig, type SiteConfig } from './site-config';
@@ -183,8 +183,7 @@ async function resolveEventsToday(): Promise<CityStatusModule | null> {
   const today = todayUtcMidnight(siteConfig.timezone);
   const clientEvents = selectBucketCandidates(items, today, siteConfig.timezone, 200).map((i) => ({
     start: new Date(i.occurs_at as string).toISOString(),
-    end: (i.sourceKind === 'story' ? i.story.ends_at : i.event.ends_at)
-      ? new Date((i.sourceKind === 'story' ? i.story.ends_at : i.event.ends_at) as string).toISOString() : null,
+    end: itemEnd(i) ? new Date(itemEnd(i) as string).toISOString() : null,
   }));
   return {
     id: 'events_today', icon: ICONS.events_today, label: 'Tonight',

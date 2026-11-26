@@ -88,6 +88,12 @@ export function labelOfDay(ymd: string, now: Date, country: CountryId, tz: strin
 /** A feed item (lib/events.ts) as a row. `facts` is lib/event-row-facts.ts makeRowFacts (title without the venue prefix, the venue). */
 export function rowFromFeedItem(item: FeedItem, env: RowEnv, facts: (item: FeedItem) => RowFacts): EventRowData {
   const f = facts(item);
+  if (item.sourceKind === 'ticketmaster') {
+    // Day and clock as Ticketmaster lists them (localDate/localTime, owner 2026-11-20); title, venue and category from the facts. No price:
+    // every town hides prices in its lists (eveningLayer.cards.hidePrice).
+    const tm = rowFromTicketmaster(item, env);
+    return { ...tm, title: f.title, place: f.venue ? [f.venue] : [], extra: [], category: f.cat ?? null };
+  }
   if (item.sourceKind === 'arts') {
     const href = item.event.event_url || null;
     return {
@@ -126,8 +132,10 @@ export function rowFromDayRow(r: DayRow, env: RowEnv, facts: (item: FeedItem) =>
   if (r.free && !extra.some((x) => x && /\bfree\b/i.test(x))) extra.push('Free');
   if (r.kids && !extra.some((x) => x && /\bkids\b/i.test(x))) extra.push('Kids & families');
   if (r.teens && !extra.some((x) => x && /\bteens?\b/i.test(x))) extra.push('Teens');
+  // A Ticketmaster row keeps the clock Ticketmaster lists (never re-derived from the UTC instant), unless the day joins several times.
+  const tm = r.item.sourceKind === 'ticketmaster' && !r.timeLabel.includes('&');
   return {
-    ...base, start: r.start, end: r.end, day: r.dayKey, time: r.timeLabel, title: r.title,
+    ...base, start: r.start, end: r.end, day: tm ? (base.day ?? r.dayKey) : r.dayKey, time: tm ? base.time : r.timeLabel, title: r.title,
     place: [r.venue, place ?? r.area].filter((v): v is string => !!v),
     extra: extra.filter((v): v is string => !!v),
   };

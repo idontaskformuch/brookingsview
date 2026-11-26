@@ -4,7 +4,7 @@ import {
   buildEventsView, recurrenceKind, isFreeByCost, clockLabel, bodyNamesWrongDay, DAYSTRIP_MIN_EVENTS,
   type RowFacts,
 } from './event-day-view';
-import type { FeedItem } from './events';
+import { itemTitle, type FeedItem } from './events';
 import type { Story } from './db';
 
 function story(overrides: Partial<Story>): Story {
@@ -154,7 +154,7 @@ describe('dedupe: same title, same place, same local day is one row with every t
     sourceKind: 'arts', occurs_at: startIso,
     event: { external_event_id: id, title, teaser: null, location: 'The Oscar Larson Performing Arts Center', starts_at: startIso, ends_at: null, categories: [], primary_category: null, event_url: `/events/${id}` } as any,
   });
-  const f = (i: FeedItem): RowFacts => ({ title: i.sourceKind === 'arts' ? i.event.title : i.story.title, venue: null, area: null, free: false, kids: false });
+  const f = (i: FeedItem): RowFacts => ({ title: itemTitle(i), venue: null, area: null, free: false, kids: false });
   const run = (items: FeedItem[]) => buildEventsView(items, { now: NOW_B, timezone: CHI, gb: false, facts: f });
 
   it('the real pair: 19:00 and 19:30 on Nov 6 Central (both Nov 7 in UTC) become one row on Fri Nov 6', () => {

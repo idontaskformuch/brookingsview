@@ -61,6 +61,14 @@ Komponenter i site/src/components/holiday/, data som rena funktioner i lib/holid
   /this-week/ (lib/week-groups.ts weekDayBlocks): samma dagblock; det som går >= `ALL_WEEK_DAYS` = 3 dagar blir ett kort var i
   karusellen "All week" (ui/RunCarousel.astro) i stället för en rad per dag. Temagrupperna (groupWeekItems) används bara av
   universitetsdigesten. Tester: lib/day-digest.test.ts, week-groups.test.ts (riktiga Glasgow-rader 2026-11-26).
+- **Ticketmaster i evenemangsflödet (order 26 nov (8)):** FeedItem har tre sorter (story, arts, ticketmaster). /events/ och /this-week/
+  tar Ticketmaster-raderna genom samma dedupe (event-dedup.mjs, egen sida vinner), samma Nearby-regel (events.ts ticketmasterLocality:
+  platsens stad avgör; annan stad inom 25 mi = nearby; längre bort = 'outside', aldrig med) och samma kategori. Sport bara där
+  `eveningLayer.includeTicketmasterSports`. **I listor, aldrig i räknare** (ägaren 26 nov): event-day-view isOwnEvent styr dagsremsan,
+  "N things on today", tonight/free, sidhuvudets och startsidans räknare; veckans noindex-räkning (week-count.mjs) läser aldrig
+  Ticketmaster. På /events/ visas Ticketmaster bara inom sidans egna 7 dagar (DAY_WINDOW); senare = länk till What's On.
+- **En kategorifunktion** (lib/event-category.ts categorize): källans etikett (TM: genre, sedan segment), sedan titeln, platsen sist.
+  Alla sidor (event-row-facts, week-groups themeOf/dagblock, big-shows) går genom den.
 
 Regel: ingen sida skriver egen CSS för något biblioteket redan har. Städer får inte ha kodvägar i layouten (`townId ===`, stadsnamn, `country ===`); skillnader ligger i config. Test: lib/ui/standard-layout.test.ts.
 

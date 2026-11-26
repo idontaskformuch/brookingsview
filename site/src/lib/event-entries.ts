@@ -11,7 +11,7 @@
  *  Hall, Strathclyde Suite" / "..., New Auditorium") are two places (event-dedup.mjs venueRoom); a room named on one side only is not.
  *  Pure: no database, no site config. The entry's `occ` is what lib/local-day.ts countEventsToday() counts. */
 import { itemTitle, itemVenue, localDateParts, roomsDiffer, venueKey } from './event-dedup.mjs';
-import type { FeedItem } from './events';
+import { itemEnd, type FeedItem } from './events';
 import { hasEnded, type TimedEvent } from './local-day';
 
 export const SAME_EVENT_MINUTES = 15;
@@ -50,7 +50,7 @@ export function titlesOverlap(a: string, b: string): boolean {
 }
 
 const iso = (v: string | Date) => new Date(v).toISOString();
-const endOf = (item: FeedItem): string | Date | null => (item.sourceKind === 'story' ? item.story.ends_at : item.event.ends_at) ?? null;
+const endOf = (item: FeedItem): string | Date | null => itemEnd(item);
 const occOf = (item: FeedItem): TimedEvent => {
   const end = endOf(item);
   return { start: iso(item.occurs_at!), end: end ? iso(end) : null };

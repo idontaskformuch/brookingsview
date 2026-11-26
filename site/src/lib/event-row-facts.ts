@@ -5,7 +5,7 @@ import { isFreeEvent, isKidsEvent, type FeedItem } from './events';
 import { isFreeByCost, type RowFacts } from './event-day-view';
 import { buildNameAliasIndex, splitEventTitleAndVenue } from './images';
 import { buildVenueIndex, resolveVenue, type Facility } from './db';
-import { categoryOfEvent } from './event-category';
+import { categorize, categoryOfEvent } from './event-category';
 import { displayTitle as recase } from './evening-names';
 import { nearestArea, normVenue, type AreaData } from './areas';
 import { otherTownOf } from './place-locality';
@@ -20,6 +20,15 @@ export function makeRowFacts(ctx: FactsContext): (item: FeedItem) => RowFacts {
   const aliasIndex = buildNameAliasIndex(ctx.facilities);
   const venueIndex = buildVenueIndex(ctx.facilities);
   return (item) => {
+    if (item.sourceKind === 'ticketmaster') {
+      // Ticketmaster (owner 2026-11-26): its venue, its own genre and segment for the category (categorize: source, title, venue).
+      const e = item.ticketmasterEvent;
+      const venue = e.venueName || null;
+      return {
+        title: recase(e.title), venue, area: null, free: false, kids: isKidsEvent(item), teens: false,
+        cat: categorize({ source: [e.genre, e.segment], title: e.title, venue }),
+      };
+    }
     if (item.sourceKind === 'arts') {
       const venue = item.event.location || null;
       return { title: recase(item.event.title), venue, area: null, free: false, kids: isKidsEvent(item), teens: false, cat: categoryOfEvent(item.event.title, item.event.primary_category, venue) };

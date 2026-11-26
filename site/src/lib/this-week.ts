@@ -36,7 +36,10 @@
 import type { Story, Game, RegionalGame, SdsuEvent, ProjectUpdate } from './db';
 import { calendarDateParts } from './db';
 import { meetingDayParts } from './meeting-day.mjs';
-import { localDateParts, utcMidnight, todayUtcMidnight, buildEventFeed, itemTitle, itemUrl } from './events';
+import { localDateParts, utcMidnight, todayUtcMidnight, buildEventFeed, itemTitle, itemUrl, ticketmasterLocality } from './events';
+import type { TicketmasterFeedItem } from './ticketmaster';
+import { ticketmasterHref } from './whats-on';
+import { displayTitle } from './evening-names';
 import { selectWorthKnowing } from './homepage-curation';
 import { linkTarget, ownPageHref, publicBody } from './ai-text';
 
@@ -275,9 +278,19 @@ export function buildWeekDays(
     meetingsHaveTime: boolean;
     /** Where a game row links: the town's sports page (lib/sections.ts sportsHref); none where the town builds none. */
     sportsHref?: string | null;
+    /** Ticketmaster listings (owner 2026-11-26): already filtered to the town's sport rule (events-town-view ticketmasterForTown).
+     *  In town or nearby (lib/events.ts ticketmasterLocality) they are rows; 'outside' ones are not. Never in the week's count. */
+    ticketmaster?: TicketmasterFeedItem[];
+    town?: { cityName: string; townId: string; townCenter: { lat: number; lon: number } };
   },
 ): DayBucket[] {
-  const { items: feedItems } = buildEventFeed(data.eventStories, data.artsEvents, timezone);
+  const tm = data.town
+    ? (data.ticketmaster ?? []).filter((t) => {
+      const zone = ticketmasterLocality(t, data.town!.cityName, data.town!.townId, data.town!.townCenter).zone;
+      return zone === 'in_town' || zone === 'nearby';
+    })
+    : [];
+  const { items: feedItems } = buildEventFeed(data.eventStories, data.artsEvents, timezone, tm);
 
   const days = weekDays(week);
   return days.map((date, i) => {
@@ -286,6 +299,20 @@ export function buildWeekDays(
     for (const item of feedItems) {
       if (!item.occurs_at) continue;
       if (!sameDate(localDateParts(new Date(item.occurs_at), timezone), date)) continue;
+      if (item.sourceKind === 'ticketmaster') {
+        const e = item.ticketmasterEvent;
+        const zone = ticketmasterLocality(item, data.town!.cityName, data.town!.townId, data.town!.townCenter);
+        const city = (e.venueCity ?? '').trim().replace(/\s+[A-Z]{2}$/, '');
+        items.push({
+          vertical: 'events', title: displayTitle(e.title), href: ticketmasterHref(e), external: true, detail: '',
+          startsAt: item.occurs_at, endsAt: null,
+          // A nearby venue says its town on the row, as an own event in another town does (owner 2026-11-26).
+          // No comma: the week's shortVenue keeps the text before the first comma.
+          venue: e.venueName ? (zone.zone === 'nearby' && city ? `${e.venueName} · Nearby · ${city}` : e.venueName) : null,
+          categories: [e.genre, e.segment].filter((v): v is string => !!v && v !== 'Undefined'),
+        });
+        continue;
+      }
       items.push({
         vertical: item.sourceKind === 'arts' ? 'sdsu' : 'events',
         title: itemTitle(item),

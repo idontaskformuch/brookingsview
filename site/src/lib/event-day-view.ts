@@ -151,6 +151,10 @@ function dayLabelFor(offset: number, day: Date, country: 'us' | 'gb'): string {
 
 const isEntry = (x: FeedItem | EventEntry): x is EventEntry => 'occ' in x;
 
+/** Counted in the page's numbers ("N things on today", the day strip, tonight, free). Owner 2026-11-26: Ticketmaster listings are in the
+ *  lists, not in the counts (the 2026-11-06 rule "a big show is never counted with the town's own events" kept for every counter). */
+export const isOwnEvent = (item: FeedItem): boolean => item.sourceKind !== 'ticketmaster';
+
 /** `items` are feed items (deduplicated here, lib/event-entries.ts buildEntries) or entries already built by the caller. */
 export function buildEventsView(input: FeedItem[] | EventEntry[], { now, timezone, gb, facts }: Options): EventsView {
   const entries: EventEntry[] = input.length > 0 && isEntry(input[0]) ? (input as EventEntry[]) : buildEntries(input as FeedItem[], timezone);
@@ -200,16 +204,16 @@ export function buildEventsView(input: FeedItem[] | EventEntry[], { now, timezon
     };
     if (offset >= DAY_WINDOW) { furtherOut.push(row); continue; }
     days[offset].rows.push(row);
-    days[offset].count++;
+    if (isOwnEvent(item)) days[offset].count++;
   }
 
-  const todayRows = days[0].rows;
+  const todayRows = days[0].rows.filter((r) => isOwnEvent(r.item));
   return {
     days,
     furtherOut,
-    total: days.reduce((n, d) => n + d.count, 0) + furtherOut.length,
+    total: days.reduce((n, d) => n + d.count, 0) + furtherOut.filter((r) => isOwnEvent(r.item)).length,
     // THE count (lib/local-day.ts countEventsToday); the caller passes one zone at a time, so every entry here counts as `town`.
-    todayCount: countEventsToday(entries.map((e) => countable(e)), now, timezone).town,
+    todayCount: countEventsToday(entries.filter((e) => isOwnEvent(e.item)).map((e) => countable(e)), now, timezone).town,
     tonightCount: todayRows.filter((r) => r.tonight).length,
     freeToday: todayRows.filter((r) => r.free).length,
     nextDay: days.slice(1).find((d) => d.count > 0) ?? null,

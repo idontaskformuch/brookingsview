@@ -22,7 +22,7 @@ import {
 } from '../../lib/meeting-decisions';
 import { buildEventJsonLd } from '../../lib/event-jsonld';
 import {
-  eventPriceAgeLine, buildEventFeed, eventsAtVenue, selectWeekendNearby, artsEventAsStory,
+  eventPriceAgeLine, buildEventFeed, eventsAtVenue, selectWeekendNearby, artsEventAsStory, isOwnFeedItem,
   type FeedItem,
 } from '../../lib/events';
 import { buildArticleJsonLd, buildDatasetJsonLd, buildRecipeJsonLd, buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
@@ -265,7 +265,7 @@ const weekendNearby = isEvent
   ? selectWeekendNearby(
       upcomingEventItems, facilities, siteConfig.townId, siteConfig.cityName, siteConfig.townCenter,
       siteConfig.timezone, story.slug, 5,
-    )
+    ).flatMap((w) => (isOwnFeedItem(w.item) ? [{ ...w, item: w.item }] : []))
   : [];
 // This page's own real URL -- used for breadcrumbs, JSON-LD, and share
 // buttons below, which all describe THIS page regardless of SEO

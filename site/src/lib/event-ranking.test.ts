@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { rankEvents } from './event-ranking';
-import type { FeedItem, EventFeedResult } from './events';
+import { itemTitle, type FeedItem, type EventFeedResult } from './events';
 import type { Story, SdsuEvent } from './db';
 
 function story(overrides: Partial<Story>): Story {
@@ -115,5 +115,5 @@ describe('rankEvents', () => {
 });
 
 function itemTitleOf(r: { item: FeedItem }): string {
-  return r.item.sourceKind === 'story' ? r.item.story.title : r.item.event.title;
+  return itemTitle(r.item);
 }

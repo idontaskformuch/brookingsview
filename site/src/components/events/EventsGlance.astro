@@ -4,7 +4,7 @@
  *  Fas 3 (owner spec 2026-11-20): the counts and the pointer change during the day, so the browser writes them (lib/client/events-glance.ts) from
  *  the entries carried in data-evg-entries; without JavaScript that part is not shown, only the day strip (counts per date). */
 import DayStrip from '../ui/DayStrip.astro';
-import type { EventsView } from '../../lib/event-day-view';
+import { isOwnEvent, type EventsView } from '../../lib/event-day-view';
 import type { GlanceEntry } from '../../lib/client/events-glance';
 import { eventsStrings } from '../../lib/events-strings';
 import { hasEnded } from '../../lib/local-day';
@@ -17,7 +17,8 @@ const strings = eventsStrings(siteConfig.country);
 const link = (d: { dayKey: string }) => `${base}#${idPrefix}-${d.dayKey}`;
 // Each listed entry once, with the occurrences still to come at build (at most 8: enough for the window the page lists).
 const now = new Date();
-const entries: GlanceEntry[] = view.days.flatMap((d) => d.rows).map((r) => ({
+// Own events only: listings from the ticket feed are in the day lists, never in these counts (isOwnEvent, owner 2026-11-26).
+const entries: GlanceEntry[] = view.days.flatMap((d) => d.rows).filter((r) => isOwnEvent(r.item)).map((r) => ({
   occ: r.occ.filter((o) => !hasEnded(o, now, siteConfig.timezone)).slice(0, 8).map((o) => ({ start: o.start, end: o.end ?? null })),
   ...(r.free ? { free: true } : {}),
 })).filter((e) => e.occ.length > 0);

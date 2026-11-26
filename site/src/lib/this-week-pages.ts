@@ -13,6 +13,8 @@ import { siteConfig } from './site-config';
 import { sportTerms } from './sport-strings';
 import { countWeekItems, isThinWeek } from './week-count.mjs';
 import { sportsHref } from './sections';
+import { getTicketmasterEventsForTown } from './ticketmaster';
+import { ticketmasterForTown } from './events-town-view';
 
 export interface ThisWeekProps {
   week: WeekInfo; days: DayBucket[]; lead: Story | null;
@@ -35,7 +37,7 @@ export async function getCurrentThisWeekPage(): Promise<ThisWeekProps> {
 
 async function loadThisWeekPages(): Promise<ThisWeekProps[]> {
   const isBrookings = siteConfig.townId === 'brookings_sd';
-  const [weeklyStories, eventStories, meetingStories, artsEvents, projectUpdates, games, regionalGames] =
+  const [weeklyStories, eventStories, meetingStories, artsEvents, projectUpdates, games, regionalGames, ticketmasterAll] =
     await Promise.all([
       getAllWeeklyStories(),
       getStoriesForWeekly(['event']),
@@ -44,7 +46,11 @@ async function loadThisWeekPages(): Promise<ThisWeekProps[]> {
       getAllProjectUpdatesForWeekly(),
       isBrookings ? getSeasonGames() : Promise.resolve([]),
       isBrookings ? Promise.resolve([]) : getRegionalSports(),
+      // The same listings as What's On (one fetch per build, cached), sport included; the town's rule filters below (owner 2026-11-26).
+      getTicketmasterEventsForTown(siteConfig, { includeSports: true }),
     ]);
+  const ticketmaster = ticketmasterForTown(ticketmasterAll, new Date());
+  const town = { cityName: siteConfig.cityName, townId: siteConfig.townId, townCenter: siteConfig.townCenter };
 
   const weekInfos = new Map<string, WeekInfo>();
   const weeklyBySlug = new Map<string, Story>();
@@ -66,7 +72,7 @@ async function loadThisWeekPages(): Promise<ThisWeekProps[]> {
   return Promise.all([...weekInfos.values()].map(async (week) => {
     const days = buildWeekDays(week, siteConfig.timezone, {
       eventStories, meetingStories, artsEvents, projectUpdates, games, regionalGames, exhibitionLabel: sportTerms(siteConfig.country).exhibition,
-      meetingsHaveTime: siteConfig.meetingsHaveTime, sportsHref: sportsHref(siteConfig),
+      meetingsHaveTime: siteConfig.meetingsHaveTime, sportsHref: sportsHref(siteConfig), ticketmaster, town,
     });
     const leadCandidates = await getWorthKnowingCandidatesInRange(week.start, week.end);
     const prev = previousWeekInfo(week, siteConfig.timezone);

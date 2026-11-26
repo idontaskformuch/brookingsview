@@ -3,13 +3,14 @@ export interface EventSourceConfig {
 }
 
 export interface DedupItem {
-  sourceKind: 'story' | 'arts';
+  sourceKind: 'story' | 'arts' | 'ticketmaster';
   occurs_at: string | null;
 }
 
 type TitledItem =
   | { sourceKind: 'story'; story: { title: string; source_url?: string | null; venue_raw?: string | null } }
-  | { sourceKind: 'arts'; event: { title: string; event_url: string | null; location: string | null } };
+  | { sourceKind: 'arts'; event: { title: string; event_url: string | null; location: string | null } }
+  | { sourceKind: 'ticketmaster'; ticketmasterEvent: { title: string; ticketUrl: string; venueName: string | null } };
 
 export function itemTitle(item: TitledItem): string;
 export function itemUrl(item: TitledItem): string | null;

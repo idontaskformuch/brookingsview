@@ -21,7 +21,7 @@ import StoryCard from '../../components/StoryCard.astro';
 import ShareButton from '../../components/ShareButton.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import { FACILITY_CATEGORY_LABELS, type Facility } from '../../lib/db';
-import { artsEventAsStory, withAttribution, FREE_VENUE_CATEGORIES, ARTS_EVENT_KICKER, type FeedItem } from '../../lib/events';
+import { artsEventAsStory, withAttribution, FREE_VENUE_CATEGORIES, ARTS_EVENT_KICKER, isOwnFeedItem, type FeedItem, type OwnFeedItem } from '../../lib/events';
 import { getFacetData, liveFacetSlugs, townFacets } from '../../lib/event-facets-live';
 import { buildEventJsonLd } from '../../lib/event-jsonld';
 import { type EventFacet } from '../../lib/event-facets';
@@ -49,13 +49,15 @@ export async function getStaticPaths() {
   }));
 }
 
-const { facet, items, alsoListedBy, facilities, live } = Astro.props as {
+const { facet, items: facetItems, alsoListedBy, facilities, live } = Astro.props as {
   facet: EventFacet;
   items: FeedItem[];
   alsoListedBy: Map<FeedItem, string[]>;
   facilities: Facility[];
   live: string[];
 };
+// The facets are built from own stories and SDSU only (getFacetData); never Ticketmaster.
+const items: OwnFeedItem[] = facetItems.filter(isOwnFeedItem);
 
 const title = facet.titleTemplate(siteConfig.cityName, siteConfig.siteName);
 const description = facet.descriptionTemplate(siteConfig.cityName);
@@ -103,7 +105,7 @@ const facilitiesItemListJsonLd = freeFacilities.length > 0 ? {
   })),
 } : null;
 
-function eventJsonLdFor(item: FeedItem): Record<string, unknown> | null {
+function eventJsonLdFor(item: OwnFeedItem): Record<string, unknown> | null {
   const asStory = item.sourceKind === 'arts' ? artsEventAsStory(item.event) : item.story;
   const itemUrl = item.sourceKind === 'arts' ? item.event.event_url : new URL(linkTarget(item.story) ?? '/events/', Astro.site ?? siteConfig.siteUrl).href;
   const heroUrl = new URL(asStory.image_path ?? `/og/${asStory.slug}.png`, Astro.site ?? siteConfig.siteUrl).href;
@@ -114,7 +116,7 @@ function eventJsonLdFor(item: FeedItem): Record<string, unknown> | null {
   );
 }
 
-function listItemUrl(item: FeedItem): string {
+function listItemUrl(item: OwnFeedItem): string {
   return item.sourceKind === 'arts' ? item.event.event_url : new URL(linkTarget(item.story) ?? '/events/', Astro.site ?? siteConfig.siteUrl).href;
 }
 

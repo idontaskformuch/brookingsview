@@ -8,7 +8,8 @@ import { showTimeGb } from './whats-on-dates';
 
 export const MAX_TODAY_SHOWS = 3;
 /** A Ticketmaster listing has a start and no end; it counts as on for this long (the same 3 h rule as other events without an end). */
-const SHOW_LENGTH_MS = 3 * 3_600_000;
+export const TM_ASSUMED_HOURS = 3;
+const SHOW_LENGTH_MS = TM_ASSUMED_HOURS * 3_600_000;
 
 export interface TodayShow {
   title: string;

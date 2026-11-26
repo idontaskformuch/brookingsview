@@ -153,7 +153,9 @@ export function distanceToBoundaryMiles(lat: number, lon: number, geometry: Boun
  *  already accepted for other ICS sources). */
 export const NEARBY_RADIUS_MILES = 25;
 
-export type LocalityZone = 'in_town' | 'nearby' | 'unknown';
+/** 'outside': known to be beyond the nearby radius (a Ticketmaster venue in Denver for Broomfield): left out of the town's lists, never
+ *  folded in as 'unknown' is (lib/events.ts ticketmasterLocality, owner 2026-11-26). */
+export type LocalityZone = 'in_town' | 'nearby' | 'unknown' | 'outside';
 
 /** How a LocalityResult was reached -- purely diagnostic (see events.astro's
  *  own per-build `[locality]` count log, added alongside the fix below) so a
