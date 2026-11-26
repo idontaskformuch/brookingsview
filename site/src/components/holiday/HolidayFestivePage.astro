@@ -1,0 +1,300 @@
+---
+/** The festive holiday page, every town's Christmas (owner 2026-11-26, .claude/specs/design-lift-holiday-2026-11-26.md). One component
+ *  for all towns; the data decides what shows (lib/holiday-festive.ts). Order: photo band with the H1 -> the lead -> days -> the season's
+ *  runs as one carousel -> other weeks -> support, check-before-you-go, links -> "Checked" small at the bottom.
+ *  Two variants until the owner picks one (HOLIDAY_VARIANT, dev and review only):
+ *    A  calendar first: the advent strip is the lead, then the matrix; days stacked (featured above the rows); rail beside.
+ *    B  closures first: the matrix is the lead, the strip a sticky day bar above the days; days split (featured | rows); full width.
+ *  Season colours: config/holiday-themes.ts, only on lines, date tiles and the heading ornament.
+ *
+ *  Resident question: what is on, and what is open or closed, on each day from Christmas Eve to New Year in <town>? */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import RailLayout from '../RailLayout.astro';
+import RailModules from '../rail/RailModules.astro';
+import HolidayRail from '../HolidayRail.astro';
+import CityPhoto from '../CityPhoto.astro';
+import Card from '../ui/Card.astro';
+import AboutThisPage from '../ui/AboutThisPage.astro';
+import AdventStrip from './AdventStrip.astro';
+import HolidayMatrix from './HolidayMatrix.astro';
+import FestiveDay from './FestiveDay.astro';
+import { siteConfig } from '../../lib/site-config';
+import { countryProfile } from '../../lib/country-profile';
+import {
+  buildHolidayMeta, buildHolidayEventsJsonLd, checkedSpan, checkTitleLength, formatCheckedSpan, formatIsoDate, localToday,
+  type ConfirmedEvent, type ConfirmedFact, type HolidayPageData,
+} from '../../lib/holiday-page';
+import { closureGrid, groupSources, holidayInsights, regularHoursRows, seasonClosureGrid } from '../../lib/holiday-view';
+import { adventStrip, dayBlocks, holidayMatrix, runDates, seasonRuns, timeText, weekGroups } from '../../lib/holiday-festive';
+import { HOLIDAY_THEMES, themeStyle } from '../../config/holiday-themes';
+import { BANK_HOLIDAYS_SOURCE } from '../../config/holiday-pages/gb/bank-holidays';
+import type { HolidayPageDef } from '../../config/holiday-pages/calendar';
+import { resolveThisWeekImage } from '../../lib/db';
+import { weekInfoForInstant } from '../../lib/this-week';
+import { seasonForMonth } from '../../lib/this-week-images';
+import { thisWeekImagesFor } from '../../config/this-week-images';
+import { holidayBandImage, responsiveSrc, CITY_PHOTO_SIZES } from '../../lib/city-face';
+import { TICKET_LINK_REL } from '../../lib/whats-on';
+import { driveLabel, driveMinutes } from '../../lib/evening-items';
+
+interface Props { page: HolidayPageData; def: HolidayPageDef; evergreen?: boolean; note?: string | null }
+const { page, def, evergreen = false, note = null } = Astro.props;
+const variant = (import.meta.env.HOLIDAY_VARIANT ?? process.env.HOLIDAY_VARIANT ?? 'A') === 'B' ? 'B' : 'A';
+const tz = siteConfig.timezone;
+const today = localToday(Date.now(), tz);
+const meta = buildHolidayMeta(page, def.label, siteConfig.cityName, evergreen);
+checkTitleLength(meta.title);
+const span = checkedSpan(page);
+const rowsChecked = [...new Set([...page.facts, ...page.events].map((r) => `${r.checkedOn}${'feed' in r && r.feed ? ':feed' : ''}`))].sort().join(' ');
+const pageUrl = new URL(Astro.url.pathname, Astro.site ?? siteConfig.siteUrl).href;
+const webPage = { '@context': 'https://schema.org', '@type': 'WebPage', name: meta.title, url: pageUrl, dateModified: page.dataUpdatedOn };
+
+const events = page.events.filter((e): e is ConfirmedEvent => e.status === 'confirmed');
+const grid = page.season ? seasonClosureGrid(page) : closureGrid(page);
+const matrix = holidayMatrix(page, grid);
+const blocks = dayBlocks(page, events, grid, today);
+const strip = adventStrip(page, events, grid, new Set(blocks.map((b) => b.iso)));
+const runs = seasonRuns(events, today);
+const weeks = weekGroups(page, events, today);
+const insights = holidayInsights(page, false);
+const help = page.facts.filter((f): f is ConfirmedFact => f.status === 'confirmed' && f.section === 'help' && !f.days && !f.on);
+const pending = [...page.facts.filter((f) => f.status === 'unconfirmed'), ...page.events.filter((e) => e.status === 'unconfirmed')];
+const hours = regularHoursRows(page);
+const foodHelp = page.facts.flatMap((f) => (f.status === 'confirmed' && f.section === 'help' && f.clarify ? [{ name: f.label, contact: f.clarify }] : []));
+const linkGroups = [...new Set(page.linkOnly.flatMap((l) => (l.group ? [l.group] : [])))];
+const ungrouped = page.linkOnly.filter((l) => !l.group);
+const sources = [...groupSources(page), ...(page.season ? [{ name: BANK_HOLIDAYS_SOURCE.name.split(':')[0], href: BANK_HOLIDAYS_SOURCE.url }] : [])];
+const theme = themeStyle(HOLIDAY_THEMES[def.holidayId]);
+const rel = (e: ConfirmedEvent) => (e.fromCalendar?.startsWith('tm:') ? TICKET_LINK_REL : 'noopener');
+const placeOf = (e: ConfirmedEvent) => [e.venue.name, e.nearby ? (e.nearby.miles != null ? driveLabel(driveMinutes(e.nearby.miles)) : 'Nearby') : null].filter(Boolean).join(' · ');
+const ROWS = 5;
+
+const photoWeek = weekInfoForInstant(new Date(), tz);
+const photoPool = thisWeekImagesFor(siteConfig.townId);
+const frontPhoto = siteConfig.noindexSite && photoPool.length === 0
+  ? null
+  : await resolveThisWeekImage(photoWeek.slug, seasonForMonth(photoWeek.monday.m), photoPool, photoWeek.monday, photoWeek.sunday);
+const [ty, tm, td] = today.split('-').map(Number);
+const band = holidayBandImage(siteConfig.townId, def.holidayId, { y: ty, m: tm, d: td }, photoWeek.slug, frontPhoto?.id ?? null);
+const bandSrc = band ? responsiveSrc(band.path) : null;
+const jsonLd = buildHolidayEventsJsonLd(page, tz, countryProfile(siteConfig.country).addressCountry, today,
+  bandSrc ? new URL(bandSrc.src, Astro.site ?? siteConfig.siteUrl).href : undefined);
+---
+<BaseLayout title={meta.title} description={meta.description} wide modified={page.dataUpdatedOn}>
+  <script type="application/ld+json" is:inline slot="head" set:html={JSON.stringify(webPage)} />
+  {jsonLd.map((ld) => <script type="application/ld+json" is:inline slot="head" set:html={JSON.stringify(ld)} />)}
+  {bandSrc && <link slot="head" rel="preload" as="image" href={bandSrc.src} imagesrcset={bandSrc.srcset} imagesizes={bandSrc.srcset ? CITY_PHOTO_SIZES.band : undefined} fetchpriority="high" />}
+
+  <div class={`hol hol--${variant}`} style={theme} data-holiday-theme={def.holidayId} data-holiday-season={page.holiday} data-hp-rows-checked={rowsChecked} data-variant={variant}>
+    <header class="hol__title">
+      {band ? <CityPhoto image={band} variant="band" priority><h1 class="hol__h1--photo">{meta.h1}</h1></CityPhoto> : <h1>{meta.h1}</h1>}
+      {note && <p class="hol__note">{note}</p>}
+    </header>
+
+    {variant === 'A' ? (
+      <RailLayout>
+        <AdventStrip days={strip} size="hero" />
+        {insights.length > 0 && <ul class="hol__insights">{insights.map((l) => <li>{l}</li>)}</ul>}
+        {matrix && <HolidayMatrix matrix={matrix} />}
+        {blocks.map((b) => <FestiveDay day={b} locale={page.locale} layout="stack" />)}
+        {runs.length > 0 && (
+          <section class="hol__runs" aria-labelledby="hol-runs-h">
+            <h2 class="hol-h" id="hol-runs-h">All season</h2>
+            <ul class="hol__carousel">
+              {runs.map((e) => (
+                <li data-hp-item data-source={e.source.url} data-hp-venue={e.venue.name}>
+                  <a class="hol__run" href={e.url} rel={rel(e)}>
+                    <span class="hol__run-dates">{runDates(e, page.locale)}</span>
+                    <span class="hol__run-title">{e.name}</span>
+                    <span class="hol__run-venue">{placeOf(e)}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {weeks.map((w) => (
+          <section class="hol__week" aria-label={w.heading}>
+            <h2 class="hol-h hol-h--sm">{w.heading}<span class="hol__wdigest"> · {w.digest}</span></h2>
+            <ul class="hol__wrows">
+              {w.rows.slice(0, ROWS).map(({ e, day }) => (
+                <li data-hp-item data-source={e.source.url} data-hp-venue={e.venue.name}>
+                  <span class="hol__wday">{day}</span><span class="hol__wtime">{timeText(e, page.locale)}</span>
+                  <a href={e.url} rel={rel(e)}>{e.name}</a><span class="hol__wvenue">{placeOf(e)}</span>
+                </li>
+              ))}
+            </ul>
+            {w.rows.length > ROWS && (
+              <details class="hol__wmore"><summary>{w.rows.length - ROWS} more this week</summary>
+                <ul class="hol__wrows">
+                  {w.rows.slice(ROWS).map(({ e, day }) => (
+                    <li data-hp-item data-source={e.source.url} data-hp-venue={e.venue.name}>
+                      <span class="hol__wday">{day}</span><span class="hol__wtime">{timeText(e, page.locale)}</span>
+                      <a href={e.url} rel={rel(e)}>{e.name}</a><span class="hol__wvenue">{placeOf(e)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </section>
+        ))}
+        <RailModules slot="rail" now={new Date()} page="holiday" excludeHolidaySlugs={new Set([def.slug])} frontImageId={frontPhoto?.id ?? null} />
+        {(hours.length > 0 || foodHelp.length > 0) && <HolidayRail slot="rail" hours={hours} foodHelp={foodHelp} />}
+      </RailLayout>
+    ) : (
+      <div class="hol__wide">
+        {matrix && <HolidayMatrix matrix={matrix} lead />}
+        {insights.length > 0 && <ul class="hol__insights">{insights.map((l) => <li>{l}</li>)}</ul>}
+        <AdventStrip days={strip} size="nav" />
+        {blocks.map((b) => <FestiveDay day={b} locale={page.locale} layout="split" />)}
+        {runs.length > 0 && (
+          <section class="hol__runs" aria-labelledby="hol-runs-h">
+            <h2 class="hol-h" id="hol-runs-h">All season</h2>
+            <ul class="hol__carousel">
+              {runs.map((e) => (
+                <li data-hp-item data-source={e.source.url} data-hp-venue={e.venue.name}>
+                  <a class="hol__run" href={e.url} rel={rel(e)}>
+                    <span class="hol__run-dates">{runDates(e, page.locale)}</span>
+                    <span class="hol__run-title">{e.name}</span>
+                    <span class="hol__run-venue">{placeOf(e)}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        <div class="hol__weeks">
+          {weeks.map((w) => (
+            <section class="hol__week" aria-label={w.heading}>
+              <h2 class="hol-h hol-h--sm">{w.heading}<span class="hol__wdigest"> · {w.digest}</span></h2>
+              <ul class="hol__wrows">
+                {w.rows.slice(0, ROWS).map(({ e, day }) => (
+                  <li data-hp-item data-source={e.source.url} data-hp-venue={e.venue.name}>
+                    <span class="hol__wday">{day}</span><span class="hol__wtime">{timeText(e, page.locale)}</span>
+                    <a href={e.url} rel={rel(e)}>{e.name}</a><span class="hol__wvenue">{placeOf(e)}</span>
+                  </li>
+                ))}
+              </ul>
+              {w.rows.length > ROWS && (
+                <details class="hol__wmore"><summary>{w.rows.length - ROWS} more this week</summary>
+                  <ul class="hol__wrows">
+                    {w.rows.slice(ROWS).map(({ e, day }) => (
+                      <li data-hp-item data-source={e.source.url} data-hp-venue={e.venue.name}>
+                        <span class="hol__wday">{day}</span><span class="hol__wtime">{timeText(e, page.locale)}</span>
+                        <a href={e.url} rel={rel(e)}>{e.name}</a><span class="hol__wvenue">{placeOf(e)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </section>
+          ))}
+        </div>
+        {(hours.length > 0 || foodHelp.length > 0) && <div class="hol__railbelow"><HolidayRail hours={hours} foodHelp={foodHelp} /></div>}
+      </div>
+    )}
+
+    {help.length > 0 && (
+      <section class="hol__group" aria-labelledby="hol-help-h">
+        <h2 class="hol-h" id="hol-help-h">Support</h2>
+        <ul class="hol__cards">
+          {help.map((f) => <li data-hp-item data-source={f.source.url}><Card href={f.source.url}><span class="tc-title">{f.label}</span><span class="tc-meta">{f.value}</span></Card></li>)}
+        </ul>
+      </section>
+    )}
+
+    {pending.length > 0 && (
+      <section class="hol__group" aria-labelledby="hol-pending-h">
+        <h2 class="hol-h" id="hol-pending-h">Check before you go</h2>
+        <ul class="hol__chips">
+          {pending.map((r) => {
+            const name = 'label' in r ? r.label : r.name;
+            const href = r.status === 'unconfirmed' ? r.checkAt?.url ?? r.source.url : r.source.url;
+            return <li data-hp-item data-source={href}><a href={href} rel="noopener">{name}</a></li>;
+          })}
+        </ul>
+      </section>
+    )}
+
+    {(page.linkOnly.length > 0 || page.related.length > 0) && (
+      <section class="hol__group" aria-labelledby="hol-more-h">
+        <h2 class="hol-h" id="hol-more-h">More</h2>
+        {linkGroups.map((g) => (
+          <>
+            <h3 class="hol__h3">{g}</h3>
+            <ul class="hol__links">{page.linkOnly.filter((l) => l.group === g).map((l) => <li>{l.label}: <a href={l.url} rel="noopener">{l.linkText}</a></li>)}</ul>
+          </>
+        ))}
+        <ul class="hol__links">
+          {ungrouped.map((l) => <li>{l.label}: see the <a href={l.url} rel="noopener">{l.linkText}</a></li>)}
+          {page.related.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
+        </ul>
+      </section>
+    )}
+
+    <p class="hol__checked">
+      {span.first === span.last
+        ? <>Last checked <time datetime={span.last}>{formatIsoDate(span.last, true, page.locale)}</time></>
+        : <>Checked <time datetime={span.first}>{formatCheckedSpan(span, true, page.locale).split(' – ')[0]}</time> – <time datetime={span.last}>{formatIsoDate(span.last, true, page.locale)}</time></>}
+    </p>
+  </div>
+
+  <AboutThisPage slot="about" sources={sources} />
+</BaseLayout>
+
+<script is:inline define:vars={{ tz }}>
+  // A day that has passed since the build is hidden (the next build leaves it out).
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  document.querySelectorAll('[data-hp-day]').forEach((el) => { if (el.getAttribute('data-hp-day') < today) el.hidden = true; });
+</script>
+
+<style>
+  .hol { --hol-ink: var(--hol-ink-l); --hol-on: var(--hol-on-l); --hol-warm: var(--hol-warm-l); }
+  @media (prefers-color-scheme: dark) { :global(:root:not([data-theme="light"])) .hol { --hol-ink: var(--hol-ink-d); --hol-on: var(--hol-on-d); --hol-warm: var(--hol-warm-d); } }
+  :global(:root[data-theme="dark"]) .hol { --hol-ink: var(--hol-ink-d); --hol-on: var(--hol-on-d); --hol-warm: var(--hol-warm-d); }
+  .hol__title :global(.city-photo--band) { margin-bottom: var(--ui-2); border-bottom: 3px solid var(--hol-ink, var(--accent)); }
+  .hol__title h1 { margin-bottom: 0.25rem; }
+  .hol__h1--photo { margin: 0; color: #fff; font-size: clamp(1.5rem, 4vw, 2.5rem); line-height: 1.1; }
+  .hol__note { margin: 0; font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); }
+  .hol :global(.hol-h) { margin: 0 0 var(--ui-3); font-size: 1.375rem; display: flex; align-items: center; gap: 0.55rem; }
+  .hol :global(.hol-h)::before { content: ''; flex: none; width: 0.5rem; height: 0.5rem; transform: rotate(45deg); background: var(--hol-warm, var(--accent)); }
+  .hol-h--sm { font-size: 1.125rem; }
+  .hol__wdigest { font-family: var(--font-ui); font-size: 0.9375rem; font-weight: 500; color: var(--ink-soft); }
+  .hol__insights { list-style: none; margin: 0 0 var(--ui-3); padding: 0; font-family: var(--font-ui); color: var(--ink); }
+  .hol__runs { margin: var(--ui-group-gap) 0 0; }
+  .hol__carousel { list-style: none; margin: 0; padding: 0 0 var(--ui-2); display: grid; grid-auto-flow: column; grid-auto-columns: minmax(14rem, 18rem); gap: var(--ui-3); overflow-x: auto; scroll-snap-type: x proximity; }
+  .hol__carousel > li { scroll-snap-align: start; display: flex; }
+  .hol__run { flex: 1; display: grid; align-content: start; gap: 0.2rem; padding: var(--ui-3); border-radius: var(--ui-radius); background: var(--ui-surface-2); color: var(--ink); text-decoration: none; border-left: 3px solid var(--hol-ink, var(--accent)); }
+  .hol__run:hover .hol__run-title { text-decoration: underline; }
+  .hol__run-dates { font-family: var(--font-ui); font-size: var(--ui-meta); font-weight: 600; color: var(--hol-ink, var(--accent)); font-variant-numeric: tabular-nums; }
+  .hol__run-title { font-weight: 600; line-height: 1.25; }
+  .hol__run-venue { font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); }
+  .hol__week { margin: var(--ui-group-gap) 0 0; }
+  .hol__wrows { list-style: none; margin: 0; padding: 0; font-family: var(--font-ui); font-variant-numeric: tabular-nums; }
+  .hol__wrows li { display: grid; grid-template-columns: 3.5rem 9.5rem minmax(0, 1fr); column-gap: var(--ui-2); padding: var(--ui-2) 0; border-bottom: 1px solid var(--rule); }
+  .hol__wrows a { color: var(--ink); font-weight: 600; }
+  .hol__wday { font-weight: 600; color: var(--hol-ink, var(--accent)); grid-row: span 2; }
+  .hol__wtime { grid-row: span 2; color: var(--ink); white-space: nowrap; }
+  .hol__wvenue { grid-column: 3; font-size: var(--ui-meta); color: var(--ink-soft); }
+  @media (max-width: 30rem) {
+    .hol__wrows li { grid-template-columns: 3.25rem minmax(0, 1fr); }
+    .hol__wtime { grid-row: auto; grid-column: 2; font-size: var(--ui-meta); font-weight: 600; }
+    .hol__wday { grid-row: span 3; }
+    .hol__wrows a, .hol__wvenue { grid-column: 2; }
+  }
+  .hol__wmore summary { cursor: pointer; padding: var(--ui-2) 0; font-family: var(--font-ui); font-weight: 600; color: var(--hol-ink, var(--accent)); min-height: 2.75rem; display: flex; align-items: center; }
+  .hol__group { margin: var(--ui-group-gap) 0 0; }
+  .hol__cards { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ui-3); grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
+  .hol__cards > li { display: flex; }
+  .hol__chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--ui-2); font-family: var(--font-ui); }
+  .hol__chips a { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0.4rem 0.9rem; border-radius: 999px; background: var(--ui-surface-2); color: var(--ink); text-decoration: none; }
+  .hol__chips a:hover { text-decoration: underline; }
+  .hol__h3 { margin: var(--ui-3) 0 var(--ui-1); font-size: 1rem; }
+  .hol__links { padding-left: 1.1rem; font-family: var(--font-ui); }
+  .hol__links li { margin: 0.35rem 0; }
+  .hol__checked { margin: var(--ui-6) 0 0; font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .hol__wide { max-width: 74rem; }
+  .hol--B .hol__weeks { display: grid; gap: 0 var(--ui-5); }
+  @media (min-width: 62rem) { .hol--B .hol__weeks { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .hol__railbelow { margin: var(--ui-group-gap) 0 0; max-width: 32rem; }
+</style>

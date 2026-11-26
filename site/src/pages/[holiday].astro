@@ -10,10 +10,12 @@
  *  rendered by HolidaySeasonPage while its window is open (Glasgow's Christmas and New Year, owner 2026-11-14). */
 import HolidayPage from '../components/HolidayPage.astro';
 import HolidaySeasonPage from '../components/HolidaySeasonPage.astro';
+import HolidayFestivePage from '../components/holiday/HolidayFestivePage.astro';
 import { siteConfig } from '../lib/site-config';
 import { HOLIDAY_PAGE_DEFS } from '../config/holiday-pages/calendar';
 import { holidayPageFor } from '../config/holiday-pages/registry';
-import { resolvePageState } from '../lib/holiday-calendar';
+import { evergreenLines, resolvePageState } from '../lib/holiday-calendar';
+import { isTimeless } from '../lib/holiday-view';
 import { holidayPageWithRows } from '../lib/holiday-page-build';
 
 export function getStaticPaths() {
@@ -27,7 +29,14 @@ const state = resolvePageState(entry.def, entry.page.year, Date.now(), siteConfi
 // Calendar, venue-register and Ticketmaster rows (lib/holiday-page-build.ts, the same rows the evening layer's holiday group reads).
 const page = await holidayPageWithRows(entry, Date.now(), true);
 const season = !!page.season && state.kind === 'active';
+// The festive layout (owner 2026-11-26) shows this season's facts: inside the window, or before it with the coming season's data. A page
+// whose facts are an earlier season's (timeless) keeps the standard template, where nothing reads as if it is about to happen.
+const evergreen = state.kind === 'evergreen';
+const festive = entry.def.layout === 'festive' && (state.kind === 'active' || (evergreen && !isTimeless(page, state.nextYear)));
+const festiveNote = festive && state.kind === 'evergreen' ? evergreenLines(entry.def, page.year, state, page.locale).note : null;
 ---
-{season
+{festive
+  ? <HolidayFestivePage page={page} def={entry.def} evergreen={evergreen} note={festiveNote} />
+  : season
   ? <HolidaySeasonPage page={page} def={entry.def} />
   : <HolidayPage page={page} def={entry.def} state={state} hasClosures={!!siteConfig.hasClosureWatch} />}

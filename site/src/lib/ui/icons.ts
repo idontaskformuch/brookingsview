@@ -31,5 +31,8 @@ export const ICONS = {
   check: '<path d="M4 12.5l5 5L20 6.5"/>',
   repeat: '<path d="M17 2l3 3-3 3M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 0 1-4 4H4"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
+  // holiday strip and matrix (owner 2026-11-26): a place closed, no trains
+  closed: '<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>',
+  'no-train': '<rect x="6" y="3" width="12" height="13" rx="3"/><path d="M6 10h12M9 20l-2 2M15 20l2 2M9.5 13h.01M14.5 13h.01M3 3l18 18"/>',
 } as const;
 export type IconName = keyof typeof ICONS;

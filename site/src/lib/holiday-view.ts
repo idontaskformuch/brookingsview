@@ -202,7 +202,7 @@ export type GridCellKind = 'closed' | 'hours' | 'usual';
 export interface GridCell { kind: GridCellKind; text: string; short?: string }
 /** `href`: the page the row was read from (season pages, where every place links to its source). `summary`: the phone card of a
  *  grid with more than GRID_COMPACT_AFTER days, only the days that differ from usual (owner 2026-11-21). */
-export interface GridRow { name: string; note?: string; href?: string; cells: GridCell[]; summary: string; short?: string }
+export interface GridRow { name: string; note?: string; href?: string; cells: GridCell[]; summary: string; short?: string; /** section 'transit' in the data */ transit?: boolean }
 export interface ClosureGridView {
   days: { iso: string; label: string }[];
   groups: { heading: string | null; rows: GridRow[] }[];
@@ -303,7 +303,7 @@ function gridFromRows(page: HolidayPageData, src: GridSourceRow[]): ClosureGridV
   const row = ({ fact: f, href, cells: byDay }: GridSourceRow): GridRow => {
     const note = [f.dayNote, f.clarify].filter(Boolean).join(' ');
     const cells = isos.map((iso): GridCell => byDay[iso] ?? { ...(f.section === 'transit' ? REGULAR_CELL : USUAL_CELL) });
-    return { name: f.label, ...(note ? { note } : {}), ...(href ? { href } : {}), cells, summary: gridSummary(cells, isos, page.locale), ...(f.dayShort ? { short: f.dayShort } : {}) };
+    return { name: f.label, ...(note ? { note } : {}), ...(href ? { href } : {}), cells, summary: gridSummary(cells, isos, page.locale), ...(f.dayShort ? { short: f.dayShort } : {}), ...(f.section === 'transit' ? { transit: true } : {}) };
   };
   const area = (f: ConfirmedFact): GridArea => f.area ?? (f.section === 'help' ? 'help' : 'city');
   const groups = src.length > GRID_GROUP_AFTER

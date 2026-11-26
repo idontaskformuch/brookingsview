@@ -1,0 +1,76 @@
+---
+/** Advent strip (owner 2026-11-26): one tile per day from 20 Dec to 2 Jan. A dot per day with events (up to three), an icon when a
+ *  place is closed or there are no trains; a tile with a day block on the page links to it. Scrolls sideways on a phone. Data:
+ *  lib/holiday-festive.ts adventStrip. `size`: 'hero' (the page's lead, variant A) or 'nav' (a compact day bar, variant B). */
+import Icon from '../ui/Icon.astro';
+import type { StripDay } from '../../lib/holiday-festive';
+
+interface Props { days: StripDay[]; size?: 'hero' | 'nav' }
+const { days, size = 'hero' } = Astro.props;
+const label = (d: StripDay) => [
+  `${d.weekday} ${d.day}${d.month ? ` ${d.month}` : ''}`,
+  d.name,
+  d.events ? `${d.events} ${d.events === 1 ? 'event' : 'events'}` : null,
+  d.closed ? 'closures' : null,
+  d.noTransit ? 'no trains' : null,
+].filter(Boolean).join(', ');
+---
+<nav class={`adv adv--${size}`} aria-label="Days from 20 December to 2 January">
+  <ol class="adv__list">
+    {days.map((d) => {
+      const Tag = d.href ? 'a' : 'span';
+      return (
+        <li class="adv__item" data-hp-day={d.iso}>
+          <Tag class:list={['adv__tile', d.name && 'adv__tile--named', !d.href && 'adv__tile--quiet']} href={d.href ?? undefined} aria-label={label(d)} title={d.name ?? undefined}>
+            <span class="adv__wd">{d.weekday}</span>
+            <span class="adv__day">{d.day}</span>
+            <span class="adv__mon">{d.month ?? ' '}</span>
+            <span class="adv__marks" aria-hidden="true">
+              {Array.from({ length: Math.min(d.events, 3) }).map(() => <span class="adv__dot" />)}
+              {d.closed && <span class="adv__icon adv__icon--closed"><Icon name="closed" size={14} /></span>}
+              {d.noTransit && <span class="adv__icon adv__icon--closed"><Icon name="no-train" size={14} /></span>}
+            </span>
+          </Tag>
+        </li>
+      );
+    })}
+  </ol>
+  <p class="adv__key" aria-hidden="true">
+    <span><span class="adv__dot" /> events</span>
+    <span><Icon name="closed" size={14} /> closures</span>
+    {days.some((d) => d.noTransit) && <span><Icon name="no-train" size={14} /> no trains</span>}
+  </p>
+</nav>
+
+<style>
+  .adv { margin: var(--ui-4) 0 var(--ui-5); }
+  .adv__list {
+    list-style: none; margin: 0; padding: 0 0 var(--ui-2); display: grid; grid-auto-flow: column;
+    grid-auto-columns: minmax(2.85rem, 1fr); gap: 0.2rem; overflow-x: auto; scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+  .adv__item { scroll-snap-align: start; display: flex; }
+  .adv__tile {
+    flex: 1; display: grid; justify-items: center; gap: 0.1rem; padding: var(--ui-2) 0.15rem; border-radius: var(--ui-radius);
+    background: var(--ui-surface-2); color: var(--ink); text-decoration: none; font-family: var(--font-ui); font-variant-numeric: tabular-nums;
+    border-top: 3px solid transparent; min-height: 2.75rem;
+  }
+  a.adv__tile:hover { background: color-mix(in srgb, var(--hol-ink, var(--accent)) 12%, var(--paper)); }
+  a.adv__tile:focus-visible { outline: 2px solid var(--hol-ink, var(--accent)); outline-offset: 2px; }
+  .adv__tile--named { border-top-color: var(--hol-warm, var(--accent)); }
+  .adv__tile--quiet { color: var(--ink-soft); }
+  .adv__wd, .adv__mon { font-size: var(--ui-meta); color: var(--ink-soft); line-height: 1.1; }
+  .adv__day { font-size: 1.25rem; font-weight: 700; line-height: 1.1; }
+  .adv__marks { display: flex; align-items: center; gap: 0.15rem; min-height: 14px; color: var(--hol-warm, var(--accent)); }
+  .adv__dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--hol-ink, var(--accent)); }
+  .adv__icon { display: inline-flex; }
+  .adv__key { display: flex; flex-wrap: wrap; gap: var(--ui-3); margin: var(--ui-1) 0 0; font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); }
+  .adv__key > span { display: inline-flex; align-items: center; gap: 0.3rem; }
+  .adv__key :global(.ui-icon) { color: var(--hol-warm, var(--accent)); }
+  /* the compact day bar (variant B): smaller tiles, no key */
+  .adv--nav { margin: var(--ui-3) 0; position: sticky; top: 0; z-index: 2; background: var(--paper); padding-top: var(--ui-2); }
+  .adv--nav .adv__day { font-size: 1rem; }
+  .adv--nav .adv__tile { padding: 0.3rem 0.1rem; }
+  .adv--nav .adv__key { display: none; }
+  .adv__item[hidden] { display: none; }
+</style>

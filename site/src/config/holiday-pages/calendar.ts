@@ -30,6 +30,9 @@ export interface HolidayPageDef {
   /** The page window in US towns when it differs (owner 2026-11-18, B1: US Christmas Nov 28 – Jan 3, Glasgow keeps its own).
    *  `extendTo` (GOV.UK Scotland) does not apply there. See defForCountry. */
   usWindow?: { daysBefore: number; daysAfter: number };
+  /** 'festive' = components/holiday/HolidayFestivePage.astro in every town (owner 2026-11-26, design lift pilot): advent strip,
+   *  holiday matrix, day blocks. Absent = the standard holiday template. */
+  layout?: 'festive';
 }
 
 const HOURS_NOTE = (season: number, nextYear: number) =>
@@ -54,6 +57,7 @@ export const HOLIDAY_PAGE_DEFS: HolidayPageDef[] = [
     extendTo: (year) => lastSeasonBankHoliday(SCOTLAND_BANK_HOLIDAYS, year),
     // US: from the day after the Thanksgiving window (Nov 28 = 27 days before) to Jan 3 (owner 2026-11-18, B1).
     usWindow: { daysBefore: 27, daysAfter: 9 },
+    layout: 'festive',
   },
 ];
 

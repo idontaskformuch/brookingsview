@@ -1,0 +1,107 @@
+---
+/** One day of a festive holiday page (owner 2026-11-26): a date tile, the day's name, a digest line ("3 events · St Enoch closed ·
+ *  No trains"), ONE featured event as a larger card, then the rest as dense rows (at most MAX_ROWS, the others behind "N more").
+ *  `layout`: 'stack' (featured above the rows) or 'split' (featured left, rows right from 62rem). Data: lib/holiday-festive.ts dayBlocks. */
+import type { DayBlock } from '../../lib/holiday-festive';
+import { timeText } from '../../lib/holiday-festive';
+import type { ConfirmedEvent, HolidayLocale } from '../../lib/holiday-page';
+import { TICKET_LINK_REL } from '../../lib/whats-on';
+
+interface Props { day: DayBlock; locale: HolidayLocale; layout?: 'stack' | 'split' }
+const { day, locale, layout = 'stack' } = Astro.props;
+const MAX_ROWS = 5;
+const shown = day.rows.slice(0, MAX_ROWS);
+const more = day.rows.slice(MAX_ROWS);
+const rel = (e: ConfirmedEvent) => (e.fromCalendar?.startsWith('tm:') ? TICKET_LINK_REL : 'noopener');
+const note = (e: ConfirmedEvent) => [...(e.details ?? []), ...(e.clarify ? [e.clarify] : [])].join(' ');
+const attrs = (e: ConfirmedEvent) => ({ 'data-hp-item': '', 'data-source': e.source.url, 'data-hp-venue': e.venue.name });
+---
+<section class:list={['fd', `fd--${layout}`]} id={day.anchor} data-hp-day={day.iso} aria-labelledby={`${day.anchor}-h`}>
+  <header class="fd__head">
+    <span class="fd__tile" aria-hidden="true"><span class="fd__tile-wd">{day.weekday}</span><span class="fd__tile-d">{day.day}</span><span class="fd__tile-m">{day.month}</span></span>
+    <div class="fd__titles">
+      {day.name
+        ? <><h2 class="fd__h" id={`${day.anchor}-h`}>{day.name}<span class="sr-only">, {day.weekday} {day.day} {day.month}</span></h2>{day.digest && <p class="fd__digest">{day.digest}</p>}</>
+        : <h2 class="fd__h fd__h--digest" id={`${day.anchor}-h`}><span class="sr-only">{day.weekday} {day.day} {day.month}: </span>{day.digest}</h2>}
+    </div>
+  </header>
+  {(day.featured || shown.length > 0) && (
+    <div class="fd__body">
+      {day.featured && (
+        <a class="fd__feat" href={day.featured.url} rel={rel(day.featured)} {...attrs(day.featured)}>
+          {timeText(day.featured, locale) && <span class="fd__feat-time">{timeText(day.featured, locale)}</span>}
+          <span class="fd__feat-title">{day.featured.name}</span>
+          <span class="fd__feat-venue">{day.featured.venue.name}</span>
+          {note(day.featured) && <span class="fd__feat-note">{note(day.featured)}</span>}
+        </a>
+      )}
+      {shown.length > 0 && (
+        <ul class="fd__rows">
+          {shown.map((e) => (
+            <li class="fd__row" {...attrs(e)}>
+              <span class="fd__time">{timeText(e, locale)}</span>
+              <a class="fd__title" href={e.url} rel={rel(e)}>{e.name}</a>
+              <span class="fd__venue">{e.venue.name}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {more.length > 0 && (
+        <details class="fd__more">
+          <summary>{more.length} more on this day</summary>
+          <ul class="fd__rows">
+            {more.map((e) => (
+              <li class="fd__row" {...attrs(e)}>
+                <span class="fd__time">{timeText(e, locale)}</span>
+                <a class="fd__title" href={e.url} rel={rel(e)}>{e.name}</a>
+                <span class="fd__venue">{e.venue.name}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  )}
+</section>
+
+<style>
+  .fd { margin: var(--ui-5) 0 0; scroll-margin-top: 5rem; }
+  .fd__head { display: flex; align-items: center; gap: var(--ui-3); }
+  .fd__tile {
+    flex: none; display: grid; justify-items: center; width: 3.5rem; padding: 0.3rem 0; border-radius: var(--ui-radius);
+    background: var(--hol-ink, var(--accent)); color: var(--hol-on, var(--paper)); font-family: var(--font-ui); line-height: 1.05; font-variant-numeric: tabular-nums;
+  }
+  .fd__tile-wd, .fd__tile-m { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .fd__tile-d { font-size: 1.5rem; font-weight: 700; }
+  .fd__h { margin: 0; font-size: 1.25rem; line-height: 1.25; }
+  .fd__h::before { content: ''; display: inline-block; width: 0.45rem; height: 0.45rem; margin: 0 0.5rem 0.15rem 0; transform: rotate(45deg); background: var(--hol-warm, var(--accent)); }
+  .fd__h--digest { font-family: var(--font-ui); font-size: 1.0625rem; }
+  .fd__digest { margin: 0.2rem 0 0; font-family: var(--font-ui); font-size: 0.9375rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .fd__body { margin: var(--ui-3) 0 0; display: grid; gap: var(--ui-3); }
+  .fd__feat {
+    display: grid; gap: 0.2rem; padding: var(--ui-3); border-radius: var(--ui-radius); background: var(--ui-surface-1, var(--paper-raised));
+    border-top: 3px solid var(--hol-warm, var(--accent)); color: var(--ink); text-decoration: none; box-shadow: 0 1px 0 var(--rule);
+  }
+  .fd__feat:hover .fd__feat-title { text-decoration: underline; }
+  .fd__feat:focus-visible { outline: 2px solid var(--hol-ink, var(--accent)); outline-offset: 2px; }
+  .fd__feat-time { font-family: var(--font-ui); font-size: 0.9375rem; font-weight: 600; color: var(--hol-ink, var(--accent)); font-variant-numeric: tabular-nums; }
+  .fd__feat-title { font-family: var(--font-display, inherit); font-size: 1.25rem; font-weight: 600; line-height: 1.25; }
+  .fd__feat-venue { font-family: var(--font-ui); font-size: 0.9375rem; color: var(--ink-soft); }
+  .fd__feat-note { font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); }
+  .fd__rows { list-style: none; margin: 0; padding: 0; }
+  .fd__row {
+    display: grid; grid-template-columns: 9.5rem minmax(0, 1fr); column-gap: var(--ui-3); padding: var(--ui-2) 0;
+    border-bottom: 1px solid var(--rule); font-family: var(--font-ui); font-variant-numeric: tabular-nums;
+  }
+  .fd__time { grid-row: span 2; font-size: 0.9375rem; font-weight: 600; color: var(--ink); white-space: nowrap; }
+  .fd__title { color: var(--ink); font-weight: 600; }
+  .fd__venue { font-size: var(--ui-meta); color: var(--ink-soft); }
+  .fd__more summary { cursor: pointer; padding: var(--ui-2) 0; font-family: var(--font-ui); font-weight: 600; color: var(--hol-ink, var(--accent)); min-height: 2.75rem; display: flex; align-items: center; }
+  @media (min-width: 62rem) {
+    .fd--split .fd__body { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); align-items: start; }
+    .fd--split .fd__more { grid-column: 2; }
+  }
+  @media (max-width: 30rem) { .fd__row { grid-template-columns: 6.5rem minmax(0, 1fr); } .fd__time { white-space: normal; } }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .fd[hidden] { display: none; }
+</style>
