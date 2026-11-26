@@ -116,8 +116,13 @@ export interface MatrixView {
 export const MAX_CELL = 15;
 /** The cell word in place of a too-long text: no wording of our own beyond the kind of change. */
 const CELL_FALLBACK: Record<Exclude<MatrixKind, 'normal'>, string> = { closed: 'Closed', hours: 'Changed' };
+/** Changed hours whose text says outright that something ends or closes earlier (owner 2026-11-26 (7)): "Early finish". "Changed"
+ *  stays the word when the direction is not stated. */
+const EARLY = /\b(earlier|early)\b/i;
+const ENDS = /\b(last|clos\w*|finish\w*|end\w*|leave\w*)\b/i;
+export const earlyFinish = (text: string): boolean => EARLY.test(text) && ENDS.test(text);
 
-/** Too-long cells get the fallback word and a footnote; the same text is the same footnote. */
+/** Too-long cells get the fallback word ("Early finish" for stated earlier endings) and a footnote; the same text is the same footnote. */
 export function footnoteCells(rows: MatrixView['rows']): { rows: MatrixView['rows']; notes: string[] } {
   const notes: string[] = [];
   const out = rows.map((r) => ({
@@ -126,7 +131,7 @@ export function footnoteCells(rows: MatrixView['rows']): { rows: MatrixView['row
       if (c.kind === 'normal' || c.text.length <= MAX_CELL) return c;
       let n = notes.indexOf(c.text) + 1;
       if (n === 0) n = notes.push(c.text);
-      return { kind: c.kind, text: CELL_FALLBACK[c.kind], note: n };
+      return { kind: c.kind, text: c.kind === 'hours' && earlyFinish(c.text) ? 'Early finish' : CELL_FALLBACK[c.kind], note: n };
     }),
   }));
   return { rows: out, notes };

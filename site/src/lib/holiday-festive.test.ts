@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { holidayPageFor } from '../config/holiday-pages/registry';
 import { HOLIDAY_THEMES } from '../config/holiday-themes';
 import { closureGrid, seasonClosureGrid } from './holiday-view';
-import { adventStrip, clock, dayBlocks, digestLine, featuredOf, footnoteCells, holidayMatrix, keyDays, MAX_CELL, MIN_STRIP_EVENT_DAYS, seasonRuns, stripRange, weekGroups } from './holiday-festive';
+import { adventStrip, clock, dayBlocks, digestLine, featuredOf, earlyFinish, footnoteCells, holidayMatrix, keyDays, MAX_CELL, MIN_STRIP_EVENT_DAYS, seasonRuns, stripRange, weekGroups } from './holiday-festive';
 import type { ConfirmedEvent, HolidayPageData } from './holiday-page';
 
 // Real data: the towns' own Christmas pages (config/holiday-pages/christmas*.ts), as the build reads them.
@@ -73,8 +73,9 @@ describe('the matrix', () => {
     expect(m.notes).toEqual(['Last trains leave earlier than normal']);
     const rail = m.rows.find((r) => r.name === 'ScotRail')!;
     const at = (iso: string) => rail.cells[m.days.findIndex((d) => d.iso === iso)];
-    expect(at('2026-12-24')).toEqual({ kind: 'hours', text: 'Changed', note: 1 });
-    expect(at('2026-12-31')).toEqual({ kind: 'hours', text: 'Changed', note: 1 });
+    // "Last trains leave earlier than normal" says the service ends earlier: "Early finish" (owner 2026-11-26 (7)).
+    expect(at('2026-12-24')).toEqual({ kind: 'hours', text: 'Early finish', note: 1 });
+    expect(at('2026-12-31')).toEqual({ kind: 'hours', text: 'Early finish', note: 1 });
     expect(at('2026-12-25')).toEqual({ kind: 'closed', text: 'No trains' });
   });
 
@@ -84,7 +85,15 @@ describe('the matrix', () => {
       { kind: 'hours', text: long }, { kind: 'closed', text: `${long} (closed)` }, { kind: 'hours', text: long }, { kind: 'normal', text: 'Normal' },
     ] }]);
     expect(notes).toEqual([long, `${long} (closed)`]);
-    expect(rows[0].cells.map((c) => [c.text, c.note])).toEqual([['Changed', 1], ['Closed', 2], ['Changed', 1], ['Normal', undefined]]);
+    expect(rows[0].cells.map((c) => [c.text, c.note])).toEqual([['Early finish', 1], ['Closed', 2], ['Early finish', 1], ['Normal', undefined]]);
+  });
+
+  it('"Changed" stays the word when the source does not say which way (the ScotRail cell, text changed to have no direction)', () => {
+    const { rows } = footnoteCells([{ name: 'ScotRail', cells: [{ kind: 'hours', text: 'Trains run to a different timetable' }] }]);
+    expect(rows[0].cells[0]).toEqual({ kind: 'hours', text: 'Changed', note: 1 });
+    expect(earlyFinish('Last trains leave earlier than normal')).toBe(true);
+    // "earlier" without an end word is not a finish (the ScotRail text with one word changed: "Last" -> "First", "leave" -> "run").
+    expect(earlyFinish('First trains run earlier than normal')).toBe(false);
   });
 
   it('no grid, no matrix', () => {
