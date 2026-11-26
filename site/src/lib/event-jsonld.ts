@@ -11,6 +11,7 @@
  * into buildEventJsonLd() and renders the result.
  */
 import { publicBody } from './ai-text';
+import { otherTownOf } from './place-locality';
 import {
   buildVenueIndex, resolveVenue, hasResolvedAddress, isVirtualVenue, toZonedISOString,
   type Facility,
@@ -78,7 +79,8 @@ export function buildEventJsonLd(
     address: {
       '@type': 'PostalAddress',
       streetAddress: resolvedVenue!.street_address,
-      addressLocality: site.cityName,
+      // the venue's own town when its address names another one (Farm House Collective, Riverside; lib/place-locality.ts)
+      addressLocality: otherTownOf(resolvedVenue!, site.cityName) ?? site.cityName,
       addressRegion: site.stateAbbr ?? site.region,
       postalCode: resolvedVenue!.postal_code,
       addressCountry: site.addressCountry ?? 'US',

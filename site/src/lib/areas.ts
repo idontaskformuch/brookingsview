@@ -3,6 +3,7 @@
  *  nearest area node within MAX_AREA_KM of its coordinates (Ticketmaster venues carry them), or, for venues without coordinates
  *  (the curated register, own events), the area the script resolved for the venue's name. No area is shown when neither is known. */
 import type { EveningEntry } from './evening-items';
+import { otherTownOf } from './place-locality';
 
 export interface AreaNode { name: string; lat: number; lon: number }
 export interface AreaData {
@@ -37,9 +38,15 @@ export function nearestArea(lat: number, lon: number, areas: AreaNode[], maxKm =
   return best?.name ?? null;
 }
 
-export function withAreas(entries: EveningEntry[], data: AreaData | null | undefined): EveningEntry[] {
-  if (!data) return entries;
-  return entries.map((e) => {
+export function withAreas(entries: EveningEntry[], data: AreaData | null | undefined, homeCity?: string): EveningEntry[] {
+  // A venue whose address names another town gets "Nearby · <town>", never one of this town's areas (owner 2026-11-26: Farm House
+  // Collective, Riverside, on the Moreno Valley site; lib/place-locality.ts). Applies with or without an area file.
+  const marked = homeCity ? entries.map((e) => {
+    const other = e.venue ? otherTownOf({ address: e.venue }, homeCity) : null;
+    return other ? { ...e, area: `Nearby · ${other}` } : e;
+  }) : entries;
+  if (!data) return marked;
+  return marked.map((e) => {
     if (e.area) return e;
     const byCoords = e.lat != null && e.lon != null ? nearestArea(e.lat, e.lon, data.areas) : null;
     const area = byCoords ?? (e.venue ? data.venues[normVenue(e.venue)] ?? null : null);

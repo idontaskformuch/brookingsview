@@ -102,7 +102,8 @@ export function rowFromFeedItem(item: FeedItem, env: RowEnv, facts: (item: FeedI
     start: iso(when), end: iso(s.ends_at),
     time: when ? eventClock(when, env.tz, series ? null : s.ends_at, env.allDayLabel, env.lowerClock) : '',
     title: f.title, href, rel: href && !href.startsWith('/') ? 'noopener' : null,
-    place: f.venue ? [f.venue] : [],
+    // A venue in another town says so on every list (owner 2026-11-26), not only where the row has an area slot.
+    place: [f.venue, f.elsewhere ? `Nearby · ${f.elsewhere}` : null].filter((v): v is string => !!v),
     // Under a day heading the series' weekday is already said: "Weekly · Wed" -> "Weekly".
     extra: [series && when ? seriesKicker(s.meta?.recurrence, when, env.tz).replace(/ · \S+$/, '') : null, eventPriceAgeLine(s)]
       .filter((v): v is string => !!v),

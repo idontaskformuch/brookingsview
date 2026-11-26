@@ -433,7 +433,7 @@ if (story.source_type === 'university_digest' && story.occurs_at && displayBody.
       eventStories: [], meetingStories: [], artsEvents, projectUpdates: [], games: [], regionalGames: [],
       meetingsHaveTime: siteConfig.meetingsHaveTime,
     });
-    return groupWeekItems(days, days, siteConfig.timezone, []);
+    return groupWeekItems(days, days, siteConfig.timezone, [], siteConfig.cityName);
   };
   digestOpenGroups = groupsOf(universityDigest.open as typeof sdsuEvents);
   digestCampusGroups = groupsOf(universityDigest.campus as typeof sdsuEvents);

@@ -21,5 +21,5 @@ export async function loadEveningForFrontPage(feed: FeedItem[], facilities: Faci
     venueCity: (i) => ownVenueCity(i, facilities),
     ticketmasterMaxMiles: layer.maxMiles,
     includeTicketmasterSports: layer.includeTicketmasterSports,
-  }), areaData);
+  }), areaData, siteConfig.cityName);
 }

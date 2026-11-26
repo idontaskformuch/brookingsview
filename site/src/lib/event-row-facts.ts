@@ -8,6 +8,7 @@ import { buildVenueIndex, resolveVenue, type Facility } from './db';
 import { categoryOfEvent } from './event-category';
 import { displayTitle as recase } from './evening-names';
 import { nearestArea, normVenue, type AreaData } from './areas';
+import { otherTownOf } from './place-locality';
 
 export interface FactsContext {
   cityName: string;
@@ -28,9 +29,12 @@ export function makeRowFacts(ctx: FactsContext): (item: FeedItem) => RowFacts {
     const facility = resolveVenue(venueIndex, story.venue_raw);
     const venue = titleVenue ?? story.meta?.venue ?? facility?.name ?? null;
     const byCoords = ctx.areas && facility?.lat != null && facility?.lon != null ? nearestArea(facility.lat, facility.lon, ctx.areas.areas) : null;
-    const area = byCoords ?? (ctx.areas && venue ? ctx.areas.venues[normVenue(venue)] ?? null : null);
+    // A venue whose own address names another town is labelled as such, never given one of this town's areas (owner 2026-11-26:
+    // Farm House Collective, Riverside, on the Moreno Valley site -> "Nearby · Riverside"; lib/place-locality.ts).
+    const elsewhere = facility ? otherTownOf(facility, ctx.cityName) : null;
+    const area = elsewhere ? `Nearby · ${elsewhere}` : byCoords ?? (ctx.areas && venue ? ctx.areas.venues[normVenue(venue)] ?? null : null);
     const byCost = isFreeByCost(story.meta?.cost);
     const teens = /\b(teens?|young adults?)\b/i.test(story.meta?.audience ?? '');
-    return { title: recase(displayTitle), venue, area, free: byCost ?? isFreeEvent(item, ctx.facilities), kids: isKidsEvent(item), teens, cat: categoryOfEvent(displayTitle, story.meta?.category) };
+    return { title: recase(displayTitle), venue, area, elsewhere, free: byCost ?? isFreeEvent(item, ctx.facilities), kids: isKidsEvent(item), teens, cat: categoryOfEvent(displayTitle, story.meta?.category) };
   };
 }

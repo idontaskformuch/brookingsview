@@ -15,6 +15,7 @@
 import { isAllDay, localMidnightIso } from './local-day';
 import { formatClockCompact } from './country-profile';
 import type { DayBucket, DayItem } from './this-week';
+import { otherTownOf } from './place-locality';
 
 export type ThemeId =
   | 'big' | 'city' | 'campus' | 'music' | 'arts' | 'library' | 'family' | 'outdoors' | 'food' | 'sports' | 'community';
@@ -107,12 +108,15 @@ export function formatWhen(dayIndex: number, item: Pick<DayItem, 'startsAt' | 'e
 
 /** A short, readable venue: the parenthetical name when there is one ("Brookings, S.D. (Dana J. Dykhouse
  *  Stadium)"), else the text before the first comma; a street address keeps just its first part. */
-export function shortVenue(venue: string | null | undefined): string | null {
+export function shortVenue(venue: string | null | undefined, homeCity?: string): string | null {
   if (!venue) return null;
   const paren = venue.match(/\(([^)]+)\)/);
   if (paren) return paren[1].trim();
   const first = venue.split(',')[0].trim();
-  return first || null;
+  // An address in another town keeps that town, so the row never reads as the home town (owner 2026-11-26: "Farm House Collective,
+  // 1393 University Ave, Riverside, CA, 92507, United States" on the Moreno Valley week -> "Farm House Collective · Nearby, Riverside").
+  const elsewhere = homeCity ? otherTownOf({ address: venue }, homeCity) : null;
+  return first ? (elsewhere ? `${first} · Nearby, ${elsewhere}` : first) : null;
 }
 
 const SPORT_LABELS: Record<string, string> = {
@@ -220,7 +224,7 @@ function mergeAcrossDays(rows: FlatRow[]): Merged[] {
  *  is the full Monday-to-Sunday list, used only to find each day's weekday. `topPatterns` are the site's
  *  top-event title patterns (siteConfig.topEvents.patterns). */
 export function groupWeekItems(
-  days: DayBucket[], allDays: DayBucket[], timezone: string, topPatterns: string[] = [],
+  days: DayBucket[], allDays: DayBucket[], timezone: string, topPatterns: string[] = [], homeCity?: string,
 ): WeekGroup[] {
   const flat: FlatRow[] = [];
   for (const day of days) {
@@ -231,7 +235,7 @@ export function groupWeekItems(
       const start = item.startsAt ? new Date(item.startsAt).getTime() : 0;
       flat.push({
         dayIndex, timeLabel: timeLabel(item, timezone), startMs: Number.isFinite(start) ? start : 0, item,
-        title: isSport ? normalizeSportTitle(item.title) : item.title, venue: shortVenue(item.venue),
+        title: isSport ? normalizeSportTitle(item.title) : item.title, venue: shortVenue(item.venue, homeCity),
       });
     }
   }

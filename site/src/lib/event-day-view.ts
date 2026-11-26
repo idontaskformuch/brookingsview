@@ -29,6 +29,8 @@ export interface RowFacts {
   /** the source states a teen audience (never guessed from the title) */
   teens?: boolean;
   cat?: Category | null;
+  /** the other town the venue's own address names (lib/place-locality.ts); every row then says "Nearby · <town>" */
+  elsewhere?: string | null;
 }
 
 export interface DayRow {

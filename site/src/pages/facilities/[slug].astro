@@ -49,6 +49,7 @@ import { buildFacilityLede, facilityTitleElements, facilityMapLink, summarizeHou
 import { resolvePageMeta } from '../../lib/page-meta';
 import { linkTarget } from '../../lib/ai-text';
 import { THIN_FACILITY_MIN_OWN_WORDS } from '../../lib/noindex';
+import { otherTownOf } from '../../lib/place-locality';
 
 export async function getStaticPaths() {
   if (!isSectionBuilt('facilities', siteConfig)) return []; // no detail pages under a section the town does not build (lib/sections.ts)
@@ -64,6 +65,9 @@ if (!facility) {
 }
 
 const categoryLabel = FACILITY_CATEGORY_LABELS[facility.category] ?? facility.category;
+// A place in another town (its own address says so: Farm House Collective, Riverside) is shown as Nearby, never as this town
+// (owner 2026-11-26, lib/place-locality.ts): the kind line, the JSON-LD locality and the events link say so.
+const otherTown = otherTownOf(facility, siteConfig.cityName);
 const description = facilityDescription(siteConfig, facility);
 // Sitewide title/H1/lede handoff, facility-detail rule: the lede must
 // include the street address in prose form -- see buildFacilityLede's own
@@ -284,7 +288,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
 <BaseLayout title={pageMeta.title} description={description} ogSlug={`facility-${facility.slug}`} noindex={isThinFacility || isTextThinFacility || isVenue}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <article class="facility">
-    <p class="kind data">{categoryLabel}</p>
+    <p class="kind data">{otherTown ? `Nearby · ${otherTown}` : categoryLabel}</p>
     <h1>{pageMeta.h1}</h1>
 
     {showFacilityImage && (
@@ -423,7 +427,9 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
             </li>
           ))}
         </ul>
-        <p class="more-events"><a href="/events/">See all events in {siteConfig.cityName} →</a></p>
+        {otherTown
+          ? <p class="more-events"><a href="/events/#h-nearby">More events near {siteConfig.cityName} →</a></p>
+          : <p class="more-events"><a href="/events/">See all events in {siteConfig.cityName} →</a></p>}
       </>
     )}
 
@@ -440,7 +446,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
       address: {
         '@type': 'PostalAddress',
         streetAddress: facility.street_address,
-        addressLocality: siteConfig.cityName,
+        addressLocality: otherTown ?? siteConfig.cityName,
         addressRegion: siteConfig.stateAbbr ?? siteConfig.region,
         postalCode: facility.postal_code,
         addressCountry: countryProfile(siteConfig.country).addressCountry,

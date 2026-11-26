@@ -32,7 +32,8 @@ import { siteConfig } from './site-config';
 import { linkTarget } from './ai-text';
 import { tidyCost } from './text-hygiene';
 import { buildVenueIndex, resolveVenue, isVirtualVenue } from './db';
-import { classifyLocalityByCoords, classifyLocalityByText, type LocalityResult, type LocalityMethod } from './town-boundary';
+import { classifyLocalityByCoords, classifyLocalityByText, haversineMiles, type LocalityResult, type LocalityMethod } from './town-boundary';
+import { otherTownOf } from './place-locality';
 
 export type FeedItem =
   | { sourceKind: 'story'; occurs_at: string | null; story: Story }
@@ -507,9 +508,16 @@ export function classifyEventLocality(
   if (isVirtualVenue(venueText)) return { zone: 'in_town', distanceMiles: null, method: 'default' };
 
   const facility = resolveVenue(buildVenueIndex(facilities), venueText);
+  // A place whose own address names another town (Farm House Collective, Riverside, on the Moreno Valley site) is never in town,
+  // whatever its coordinates say (owner 2026-11-26, lib/place-locality.ts).
+  const elsewhere = facility ? otherTownOf(facility, cityName) : null;
   if (facility?.lat != null && facility?.lon != null) {
-    return classifyLocalityByCoords(townId, facility.lat, facility.lon, townCenter);
+    const byCoords = classifyLocalityByCoords(townId, facility.lat, facility.lon, townCenter);
+    return elsewhere && byCoords.zone === 'in_town'
+      ? { zone: 'nearby', distanceMiles: haversineMiles(facility.lat, facility.lon, townCenter.lat, townCenter.lon), method: 'coords' }
+      : byCoords;
   }
+  if (elsewhere) return { zone: 'unknown', distanceMiles: null, method: 'text' };
   if (!venueText) return { zone: 'in_town', distanceMiles: null, method: 'default' };
   return classifyLocalityByText(venueText, cityName);
 }

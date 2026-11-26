@@ -749,6 +749,32 @@ describe('classifyEventLocality', () => {
   });
 });
 
+// Owner 2026-11-26: a place whose own address names another town is never in town. Real row moreno_valley_ca/farm-house-collective
+// (places id 205) and a real event venue_raw (events 332486 "Jazz Night"); the second case changes ONLY lat/lon, to the real
+// moreno_valley_ca/animal-shelter coordinates (inside Moreno Valley's boundary).
+describe('classifyEventLocality: a place in another town', () => {
+  const townCenter = { lat: 33.9425, lon: -117.2297 };
+  const farmHouse = facility({
+    slug: 'farm-house-collective', name: 'Farm House Collective', category: 'other',
+    address: '1393 University Ave, Riverside, CA 92507', street_address: '1393 University Ave', postal_code: '92507',
+    aliases: ['Farm House Collective, 1393 University Ave, Riverside, CA, 92507, United States'],
+    lat: 33.976116689842, lon: -117.341963917642,
+  });
+  const item = storyItem(story({ venue_raw: 'Farm House Collective, 1393 University Ave, Riverside, CA, 92507, United States' }));
+
+  it('is nearby with its distance', () => {
+    const r = classifyEventLocality(item, [farmHouse], 'moreno_valley_ca', 'Moreno Valley', townCenter);
+    expect(r.zone).toBe('nearby');
+    expect(Math.round(r.distanceMiles!)).toBe(7);
+  });
+
+  it('stays nearby even when its coordinates fall inside the town boundary: the address decides', () => {
+    const inside = { ...farmHouse, lat: 33.9156124976037, lon: -117.271213425864 };
+    const r = classifyEventLocality(item, [inside], 'moreno_valley_ca', 'Moreno Valley', townCenter);
+    expect(r.zone).toBe('nearby');
+  });
+});
+
 describe('eventsAtVenue (Phase 3, "Event <-> facility hub")', () => {
   const facilities: Facility[] = [
     facility({ slug: 'library', name: 'Brookings Public Library', category: 'library', aliases: ['brookings public library'] }),

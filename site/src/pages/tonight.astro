@@ -68,7 +68,7 @@ const entries = await withSeasonEntries(withAreas(buildEveningEntries({
   venueCity: (i) => ownVenueCity(i, facilities),
   ticketmasterMaxMiles: layer.maxMiles,
   includeTicketmasterSports: layer.includeTicketmasterSports,
-}), areaData), now, tz);
+}), areaData, siteConfig.cityName), now, tz);
 
 const osmSnapshot = layer.openLate ? await getOsmSnapshot() : null;
 const osm = placesFromSnapshot(osmSnapshot, now) ?? [];

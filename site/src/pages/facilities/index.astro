@@ -33,6 +33,7 @@ import { PARK_HOURS, PARK_HOURS_LABEL } from '../../config/park-hours';
 import { EVENT_VENUES } from '../../config/hours-scope';
 import { todayDate } from '../../lib/today-page';
 import ClusterNav from '../../components/ClusterNav.astro';
+import { otherTownOf } from '../../lib/place-locality';
 
 const pageMeta = resolvePageMeta('facilities', siteConfig);
 const clusterNavItems = resolveHubNavItems('facilities', siteConfig);
@@ -51,7 +52,12 @@ const h1 = hubPromisesHours(facilities.map((f) => ({ hasHours: hoursById.get(f.i
   ? pageMeta.h1 : (pageMeta.h1WithoutHours ?? pageMeta.h1);
 
 const byCategory = new Map<string, typeof facilities>();
+// A place whose own address names another town (Farm House Collective, Riverside) is listed last under "Nearby", never among this
+// town's places (owner 2026-11-26, lib/place-locality.ts).
+const NEARBY_GROUP = '__nearby';
+const nearbyPlaces = facilities.filter((f) => otherTownOf(f, siteConfig.cityName));
 for (const f of facilities) {
+  if (otherTownOf(f, siteConfig.cityName)) continue;
   if (!byCategory.has(f.category)) byCategory.set(f.category, []);
   byCategory.get(f.category)!.push(f);
 }
@@ -61,9 +67,12 @@ const categoryOrder = [
   'recycling', 'animal_shelter', 'medical', 'school_district', 'transit',
   'museum', 'leisure', 'community_center', 'other',
 ];
-const categories = [...byCategory.keys()].sort(
+const townCategories = [...byCategory.keys()].sort(
   (a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b)
 );
+if (nearbyPlaces.length > 0) byCategory.set(NEARBY_GROUP, nearbyPlaces);
+const categories = nearbyPlaces.length > 0 ? [...townCategories, NEARBY_GROUP] : townCategories;
+const groupLabel = (cat: string) => (cat === NEARBY_GROUP ? 'Nearby' : FACILITY_CATEGORY_LABELS[cat] ?? cat);
 // Parks are many and short: a compact grid instead of a long list (Fas 4).
 const GRID_CATEGORIES = new Set(['park']);
 const rowsFor = (cat: string) => byCategory.get(cat)!.map((f) => {
@@ -84,7 +93,7 @@ const rowsFor = (cat: string) => byCategory.get(cat)!.map((f) => {
   };
 });
 // Only the kinds this town actually lists (Glasgow has no parks or city hall here; the old fixed sentence promised them).
-const kindLabels = categories.map((c) => (FACILITY_CATEGORY_LABELS[c] ?? c).toLowerCase());
+const kindLabels = townCategories.map((c) => (FACILITY_CATEGORY_LABELS[c] ?? c).toLowerCase());
 const placeKinds = kindLabels.length > 1 ? `${kindLabels.slice(0, -1).join(', ')} and ${kindLabels[kindLabels.length - 1]}` : kindLabels[0] ?? '';
 
 const canonicalUrl = new URL('/facilities/', Astro.site ?? siteConfig.siteUrl).href;
@@ -106,7 +115,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
 
   {categories.map((cat) => (
     <section class="fac-group">
-      <SectionRule label={FACILITY_CATEGORY_LABELS[cat] ?? cat} />
+      <SectionRule label={groupLabel(cat)} />
       <ul class:list={['fac-list', GRID_CATEGORIES.has(cat) && 'fac-list--grid']}
         data-open-status-tz={siteConfig.timezone} data-gb={forCountry(siteConfig.country, '', '1')} data-sun={JSON.stringify(siteConfig.townCenter)}>
         {rowsFor(cat).map((r) => (
