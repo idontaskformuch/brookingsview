@@ -1,0 +1,16 @@
+{
+  "_about": "Daily source watch (scripts/watch_sources.py, .github/workflows/source-watch.yml; owner order 2026-11-26 (13)). One entry per page to watch: its URL, and what to watch on it as `rules`. A rule that no longer holds opens ONE GitHub issue per watch (the owner gets the mail); nothing is published or switched on by the job. Rule kinds: present (the text must still be on the page), absent (the text must not be on the page), unchanged (the page's text between `from` and `to` must equal the committed baseline). New kinds go in scripts/watch_sources.py RULES. Write a baseline for an unchanged rule: python -m scripts.watch_sources --write-baseline <id>.",
+  "watches": [
+    {
+      "id": "broomfield-holiday-tree-2026-27",
+      "town": "broomfield_co",
+      "url": "https://broomfield.org/4401/Holiday-Tree-Recycling",
+      "title": "[broomfield_co] Holiday tree recycling page changed: 2026-27 sites may be out",
+      "why": "/christmas-tree-recycling/ is a draft (site/src/config/city-answers/broomfield_co.ts) until the city publishes the 2026-27 drop-off sites and dates. The owner decides when the page is released; this watch only tells.",
+      "rules": [
+        { "kind": "present", "text": "will be announced in the Fall", "meaning": "the city still says the 2026-27 sites and dates are not out" },
+        { "kind": "unchanged", "from": "Drop-Off Locations", "to": "Wreaths, live garland", "baseline": "configs/shared/source_watch/broomfield-holiday-tree-2026-27.txt", "meaning": "the list of drop-off sites" }
+      ]
+    }
+  ]
+}

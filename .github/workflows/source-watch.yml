@@ -1,0 +1,29 @@
+name: source-watch
+# Daily: is each page in configs/shared/source_watch.json still saying what we built on? One PoliteFetcher read per page (ViewMediaBot, robots.txt,
+# scrapers/polite_fetch.py). A rule that no longer holds opens ONE GitHub issue per watch (qa/report.py, check ops.source-changed; GitHub's own mail
+# is the alert) and closes it after 3 clean runs. The job publishes and switches on nothing; the owner decides. See scripts/watch_sources.py.
+# First watch: broomfield.org's Holiday Tree Recycling page (the 2026-27 sites and dates; /christmas-tree-recycling/ stays a draft until then).
+# On GitHub's own schedule, like robots-watch (owner order 2026-11-26 (13): a scheduled job, no Claude session).
+
+on:
+  schedule:
+    - cron: "53 7 * * *"   # daily, odd minute
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+      - run: pip install -r requirements.txt
+      - name: Read the watched pages and check their rules
+        run: python -m scripts.watch_sources
