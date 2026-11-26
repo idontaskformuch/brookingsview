@@ -96,6 +96,11 @@
       "born_from": "2026-11-26 SWG3 dry runs kept 66 and 26 rules: the model sometimes quoted SWG3's date as two lines ('Tue 01' + \"Dec '26\"), which validation did not read as a date heading, so ~40 shows were rejected. Owner 2026-11-26: read the two-line form deterministically (weekday must fit the date). Reading it exposed proposal 6c's week-view rule turning one show into an every-Tuesday rule on a months-long programme; a weekday is now recurring only when the line stands under every heading of that weekday. Two dry runs after the fix: 67 kept, identical. Regression fixtures: test_two_line_date_heading_is_read, test_swg3_entry_* in tests/test_evening_register.py (SWG3 fixture).",
       "what": "a venue's date heading over two lines is not read, or one show on a long programme becomes a weekly rule (pytest)"
     },
+    "logic.robots-disallow-any-case": {
+      "severity": "hard",
+      "born_from": "2026-11-26: broomfield.org/robots.txt says \"Disallow: /common/modules/icalendar/\" while the city feeds live under /iCalendar/; RFC 9309 matching (case-sensitive) called them allowed. Owner 2026-11-26: compare paths without regard to case everywhere, stricter than RFC 9309 -- a Disallow in any case applies; an Allow still matches only as written, so nothing closed is ever opened. Checked before commit against 170 source URLs on 73 hosts (configs + places.source_url): only the four Broomfield feeds changed, all kind blocked/enabled false. Regression fixture: tests/fixtures/robots/broomfield-2026-11-26.txt in tests/test_robots.py.",
+      "what": "a robots.txt Disallow written in another case than the URL path does not block it (pytest)"
+    },
     "ops.robots-unblocked": {
       "severity": "hard",
       "born_from": "Owner order 2026-11-25 (repeated 2026-11-26): broomfield.org/robots.txt has disallowed /common/modules/icalendar/ for User-agent * since 2026-10-21, so Broomfield's four city calendar feeds are never read; a daily check of robots.txt only should open an issue (alert_state + qa) when they are allowed again. Note: the rule is lower case and the feeds live under /iCalendar/; RFC 9309 matching alone calls them allowed, so the check also tests the lower-cased path. Regression fixture: tests/fixtures/robots/broomfield-2026-11-26.txt in tests/test_watch_robots_unblock.py.",

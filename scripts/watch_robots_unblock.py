@@ -63,19 +63,11 @@ def findings(status: int | None, verdicts: dict[str, bool]) -> list[dict]:
                         "(configs/broomfield_co.json, the ROBOTS-BLOCKED notes)."}]
 
 
-def _lower_path(url: str) -> str:
-    from urllib.parse import urlsplit, urlunsplit
-    p = urlsplit(url)
-    return urlunsplit((p.scheme, p.netloc, p.path.lower(), p.query, p.fragment))
-
-
 def check(fetcher) -> tuple[int | None, dict[str, bool]]:
-    """A feed counts as allowed only when neither its URL nor the same URL with a lower-case path is disallowed. The rule is written
-    "Disallow: /common/modules/icalendar/" while the feeds live under /common/modules/iCalendar/: RFC 9309 matches paths case-sensitively,
-    so the parser alone says "allowed", yet the site plainly means the calendar (it lists every other path in both cases, and the owner
-    treats the feeds as blocked since 2026-11-04). Only the rule's removal opens the issue."""
+    """The rule is written "Disallow: /common/modules/icalendar/" while the feeds live under /common/modules/iCalendar/; scrapers/robots.py
+    applies a Disallow in any case (owner 2026-11-26, stricter than RFC 9309), so only the rule's removal opens the issue."""
     urls = ical_urls()
-    verdicts = {u: fetcher.robots_verdict(u).ok and fetcher.robots_verdict(_lower_path(u)).ok for u in urls}
+    verdicts = {u: fetcher.robots_verdict(u).ok for u in urls}
     status, _ = fetcher.robots_text(urls[0]) if urls else (None, "")
     return status, verdicts
 

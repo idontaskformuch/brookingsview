@@ -77,17 +77,21 @@ def _select(groups: list[_Group], token: str) -> list[_Group]:
     return named or [g for g in groups if "*" in g.agents]
 
 
-def _pattern(path_pattern: str) -> re.Pattern[str]:
+def _pattern(path_pattern: str, ignore_case: bool = False) -> re.Pattern[str]:
     anchored = path_pattern.endswith("$")
     body = path_pattern[:-1] if anchored else path_pattern
-    return re.compile("".join(".*" if c == "*" else re.escape(c) for c in body) + ("$" if anchored else ""))
+    return re.compile("".join(".*" if c == "*" else re.escape(c) for c in body) + ("$" if anchored else ""),
+                      re.IGNORECASE if ignore_case else 0)
 
 
 def _deciding(rules: list[tuple[bool, str]], target: str) -> tuple[bool, str] | None:
     """The rule that decides `target` (longest match, Allow wins a tie): (allow, pattern), or None when no rule matches."""
     best: tuple[int, bool, str] | None = None  # (pattern length, allow, pattern)
+    # STRICTER than RFC 9309 (owner 2026-11-26): a Disallow applies whatever the case of its path, so "Disallow: /common/modules/icalendar/"
+    # (broomfield.org) also covers /common/modules/iCalendar/. An Allow still matches exactly as written, so this can only ever block
+    # more, never open a path that was closed.
     for allow, pat in rules:
-        if _pattern(pat).match(target):
+        if _pattern(pat, ignore_case=not allow).match(target):
             cand = (len(pat), allow, pat)
             if best is None or cand[0] > best[0] or (cand[0] == best[0] and allow):
                 best = cand

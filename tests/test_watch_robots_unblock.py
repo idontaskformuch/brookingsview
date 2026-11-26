@@ -31,11 +31,10 @@ def test_todays_robots_txt_blocks_every_feed_and_opens_nothing():
     assert w.findings(status, verdicts) == []
 
 
-def test_the_parser_alone_would_say_allowed_because_the_rule_is_lower_case():
-    # Why check() also tests the lower-cased path: RFC 9309 paths are case-sensitive and the rule reads /common/modules/icalendar/
-    url = w.ical_urls()[0]
-    assert _robots.verdict(200, ROBOTS, url).ok
-    assert not _robots.verdict(200, ROBOTS, w._lower_path(url)).ok
+def test_the_parser_itself_blocks_the_mixed_case_feed_path():
+    # owner 2026-11-26: a Disallow applies in any case (stricter than RFC 9309); the rule reads /common/modules/icalendar/
+    for url in w.ical_urls():
+        assert not _robots.verdict(200, ROBOTS, url).ok
 
 
 def test_without_the_icalendar_rule_one_finding_names_every_feed():

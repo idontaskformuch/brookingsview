@@ -116,3 +116,29 @@ def test_user_agent_identifies_site_and_contact_and_is_not_an_ai_crawler(monkeyp
         ua = user_agent(town)
         assert ua.startswith(f"{BOT_NAME} (+https://") and ua.endswith("/contact)")
         assert not any(b in ua.lower() for b in robots.AI_BOT_TOKENS)
+
+
+# --- a Disallow applies in any case (owner 2026-11-26, stricter than RFC 9309) ----------------------------------------------------
+# broomfield.org/robots.txt as read 2026-11-26: "Disallow: /common/modules/icalendar/" while the city's feeds live under /iCalendar/.
+BROOMFIELD = (Path(__file__).parent / "fixtures" / "robots" / "broomfield-2026-11-26.txt").read_text(encoding="utf-8")
+FEED = "https://www.broomfield.org/common/modules/iCalendar/iCalendar.aspx?feed=calendar&catID=65"  # configs/broomfield_co.json
+
+
+def test_a_disallow_covers_every_case_of_its_path():
+    assert not robots.verdict(200, BROOMFIELD, FEED).ok
+    assert not robots.verdict(200, BROOMFIELD, FEED.replace("/iCalendar/", "/ICALENDAR/")).ok
+    # the file lists only "Disallow: /RSS.aspx" and "/rss.aspx"; any other case is closed too
+    assert not robots.verdict(200, BROOMFIELD, "https://www.broomfield.org/Rss.aspx").ok
+
+
+def test_paths_the_file_does_not_name_stay_open():
+    # AlertCenter.aspx: read by the Broomfield source (configs/broomfield_co.json, Fas 5 källa 1), named by no rule in any case
+    assert robots.verdict(200, BROOMFIELD, "https://www.broomfield.org/AlertCenter.aspx").ok
+
+
+def test_an_allow_still_matches_only_as_written_so_nothing_closed_is_opened():
+    # the same file with one added line: an Allow for the feed path in another case than the URL
+    text = BROOMFIELD.replace("Disallow: /common/modules/icalendar/\n", "Disallow: /common/modules/icalendar/\nAllow: /COMMON/modules/iCalendar/\n", 1)
+    assert not robots.verdict(200, text, FEED).ok
+    exact = BROOMFIELD.replace("Disallow: /common/modules/icalendar/\n", "Disallow: /common/modules/icalendar/\nAllow: /common/modules/iCalendar/\n", 1)
+    assert robots.verdict(200, exact, FEED).ok  # an Allow written exactly as the URL, and longer, still wins (RFC 9309)
