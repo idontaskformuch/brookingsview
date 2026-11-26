@@ -92,6 +92,16 @@ trap 'battery_abort "signal INT" 130' INT
 trap 'battery_abort "signal TERM" 143' TERM
 trap 'battery_abort "signal HUP" 129' HUP
 CALLER="$PPID"
+# Lever startaren? kill -0 räcker inte på Linux: en startare som dödats (kill -KILL) blir en zombie tills ITS förälder skördar
+# den, och kill -0 lyckas mot en zombie (tests-workflow rött sedan 0220c133). Tillstånd Z i /proc/<pid>/stat = borta. Saknas
+# /proc-filen (inte Linux/MSYS) gäller kill -0 ensamt.
+caller_alive() {
+  kill -0 "$CALLER" 2>/dev/null || return 1
+  local st
+  st="$(cat "/proc/$CALLER/stat" 2>/dev/null)" || return 0
+  st="${st##*) }"
+  [ "${st%% *}" != "Z" ]
+}
 WATCH_CALLER=0
 [ "$CALLER" -gt 1 ] 2>/dev/null && kill -0 "$CALLER" 2>/dev/null && WATCH_CALLER=1
 
@@ -195,7 +205,7 @@ fi
 BODY_PID=$!
 printf '%s %s\nstarted %s log %s\n' "$$" "$BODY_PID" "$(date '+%F %T')" "$LOG" > "$LOCK"
 while [ -n "$(jobs -rp)" ]; do
-  if [ "$WATCH_CALLER" -eq 1 ] && ! kill -0 "$CALLER" 2>/dev/null; then
+  if [ "$WATCH_CALLER" -eq 1 ] && ! caller_alive; then
     battery_abort "den som startade batteriet (pid $CALLER) finns inte längre" 2
   fi
   sleep 1

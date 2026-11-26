@@ -27,6 +27,15 @@ jobs:
         with:
           python-version-file: .python-version
       - run: pip install -r requirements.txt
+      # tests/test_verify_astro_template_comments.py runs scripts/verify_astro_template_comments.mjs, which loads Astro's parser
+      # (@astrojs/compiler-rs) from site/node_modules. Without this every one of its tests failed with MODULE_NOT_FOUND.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - run: npm ci
+        working-directory: site
       - run: python -m pytest tests/ -v
 
   # Type-checks site/src -- catches the class of regression this was added
