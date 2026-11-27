@@ -35,6 +35,9 @@ jobs:
       # Owner 2026-11-24: build + deploy every weekday morning even when nothing changed (day-dependent pages roll over); weekends: moval-deploy.yml via the dispatcher.
       - name: Did the site content change? (informational, no longer gates the build)
         id: changed
+        env:
+          # ci_changed reads the live <meta data-built-at> like check_deployed_content (named Cloudflare bypass from GitHub's IPs)
+          DEPLOY_CHECK_SECRET: ${{ secrets.DEPLOY_CHECK_SECRET }}
         run: python -m scripts.ci_changed after moreno_valley_ca --preset data
       - uses: actions/setup-node@v4
       - name: Install site deps

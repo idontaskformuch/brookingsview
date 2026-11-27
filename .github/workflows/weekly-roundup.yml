@@ -31,6 +31,9 @@ jobs:
         run: python -m ai_pipeline.weekly --config configs/brookings_sd.json
       - name: Did the site content change?
         id: changed
+        env:
+          # ci_changed reads the live <meta data-built-at> like check_deployed_content (named Cloudflare bypass from GitHub's IPs)
+          DEPLOY_CHECK_SECRET: ${{ secrets.DEPLOY_CHECK_SECRET }}
         run: python -m scripts.ci_changed after brookings_sd --preset content
       # DEPLOY: replaces the old PAGES_DEPLOY_HOOK curl step (2026-09-09) --
       # see scrape.yml's own comment and NEEDS-HUMAN-REVIEW.md #38. The hook

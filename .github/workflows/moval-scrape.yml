@@ -57,6 +57,9 @@ jobs:
         run: python -m ai_pipeline.assign_category_image_rotation --config configs/moreno_valley_ca.json
       - name: Did the site content change?
         id: changed
+        env:
+          # ci_changed reads the live <meta data-built-at> like check_deployed_content (named Cloudflare bypass from GitHub's IPs)
+          DEPLOY_CHECK_SECRET: ${{ secrets.DEPLOY_CHECK_SECRET }}
         run: python -m scripts.ci_changed after moreno_valley_ca --preset data
       # DEPLOY: se scrape.yml:s egen kommentar (och NEEDS-HUMAN-REVIEW.md
       # #38) för hela resonemanget -- wrangler deploy nedan är nu den ENDA
