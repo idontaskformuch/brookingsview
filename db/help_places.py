@@ -38,6 +38,44 @@ _LOCALITY_TAIL = {"brookings_sd": r"SD\b", "broomfield_co": r"CO\b", "moreno_val
                   "glasgow": r"G\d{1,2}\s?\d[A-Z]{2}\b"}
 _SERVES = re.compile(r"\b(serv\w*|support\w*|residents?|famil(?:y|ies)|neighbou?rs)\b", re.I)
 
+# Requirements (owner 2026-11-27, before push): the card shows only a short label from this fixed list. Each label's pattern is matched
+# against the source text the parser hands over (HelpEntry.requirement_sources); the matching text is kept as evidence
+# (requirements_evidence, never shown). Text that matches no label gives no line. The order here is the order on the card.
+REQUIREMENT_LABELS: tuple[tuple[str, re.Pattern], ...] = tuple((label, re.compile(p, re.I)) for label, p in (
+    ("Referral voucher needed", r"\bvoucher\b"),
+    ("Photo ID", r"\b(?:photo|picture)\s+(?:ID|identification)\b"),
+    ("Proof of address", r"\bproof of (?:your )?(?:physical )?(?:address|residence|residency)\b"),
+    ("Proof of income", r"\bproof of income\b"),
+    ("Income limits apply", r"\bincome (?:guidelines|limits?|requirements?)\b"),
+    ("No residency requirement", r"\bno residency requirement\b"),
+    ("Riverside or San Bernardino County residents only", r"\blive within Riverside and San Bernardino counties\b"),
+    ("Call ahead", r"\bcall (?:in advance|ahead)\b"),
+    ("SDSU students only", r"\benrolled SDSU students\b"),
+    ("Seniors 50+ only", r"\bseniors 50 and older only\b"),
+))
+_LABEL_RE = dict(REQUIREMENT_LABELS)
+
+# A meal is listed only when its source says it is free or open to everyone (owner 2026-11-27; the senior lunch at Lakeshore Café was
+# rejected for the same reason). HelpEntry.open_evidence is the phrase; checked, not stored.
+OPEN_TO_ALL = re.compile(r"\bfree\b|\bno (?:cost|charge)\b|\ball are welcome\b|\bopen to (?:all|everyone|the public)\b", re.I)
+
+
+def requirement_labels(sources) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """(labels, evidence): every listed label whose pattern matches one of the source texts, with the first text that matched it."""
+    labels, evidence = [], []
+    for label, pattern in REQUIREMENT_LABELS:
+        hit = next((s for s in sources if s and pattern.search(s)), None)
+        if hit is not None:
+            labels.append(label)
+            if hit not in evidence:
+                evidence.append(hit)
+    return tuple(labels), tuple(evidence)
+
+
+def upcoming_closures(closed, today: date) -> tuple:
+    """Closed days (date, reason) from today on: a passed day is never shown."""
+    return tuple((d, why) for d, why in closed if d >= today)
+
 
 @dataclass(frozen=True)
 class HelpEntry:
@@ -48,17 +86,21 @@ class HelpEntry:
     source_url: str
     source_kind: str
     street_address: str | None = None
-    address: str | None = None  # the full display line ("908 Hope Drive, Brookings, SD 57006"), built by the parser from town config
+    address: str | None = None  # the street address only ("908 Hope Drive"); area + postal code are their own fields (owner 2026-11-27)
     postal_code: str | None = None
     phone: str | None = None
     website: str | None = None
-    requirements_note: str | None = None
+    requirements_note: str | None = None      # labels from REQUIREMENT_LABELS, "; "-separated: what the card shows
+    requirements_evidence: str | None = None  # the source text behind the labels, one per line: never shown
+    location_note: str | None = None          # running text about where ("Located at the ... (VFW) building.", a building name)
     area_name: str | None = None
     audience_tags: tuple[str, ...] = field(default_factory=tuple)
     valid_from: date | None = None
     valid_to: date | None = None
     schedule_rule: str | None = None
     town_evidence: str | None = None  # the town rule's phrase (above); checked, not stored
+    open_evidence: str | None = None  # a meal's "free / open to all" phrase (OPEN_TO_ALL); checked, not stored
+    requirement_sources: tuple[str, ...] = field(default_factory=tuple)  # all requirement text the parser found (dry run shows unlabelled)
 
 
 def _norm(text: str) -> str:
@@ -113,9 +155,24 @@ def validate(entry: HelpEntry, page_text: str) -> list[str]:
     if entry.requirements_note:
         if len(entry.requirements_note) > MAX_NOTE_CHARS:
             problems.append(f"requirements_note longer than {MAX_NOTE_CHARS} characters")
-        for part in entry.requirements_note.split("; "):
+        evidence = (entry.requirements_evidence or "").split("\n") if entry.requirements_evidence else []
+        if not evidence:
+            problems.append("requirements_note without requirements_evidence")
+        for label in entry.requirements_note.split("; "):
+            if label not in _LABEL_RE:
+                problems.append(f"{label!r} is not a requirement label")
+            elif evidence and not any(_LABEL_RE[label].search(e) for e in evidence):
+                problems.append(f"requirement label {label!r} is not what its evidence says")
+    if entry.requirements_evidence:
+        for part in entry.requirements_evidence.split("\n"):
             if not _on_page(part, page_text):
-                problems.append(f"requirements_note line {part!r} is not on the source page")
+                problems.append(f"requirements_evidence line {part!r} is not on the source page")
+    if entry.location_note and not _on_page(entry.location_note, page_text):
+        problems.append(f"location_note {entry.location_note!r} is not on the source page")
+    if entry.category == "meal_program":
+        ev = entry.open_evidence
+        if not ev or not OPEN_TO_ALL.search(ev) or not _on_page(ev, page_text):
+            problems.append("meal: the source does not say the meal is free or open to all")
     if entry.schedule_rule and not _on_page(entry.schedule_rule, page_text):
         problems.append(f"schedule_rule {entry.schedule_rule!r} is not on the source page")
     if entry.valid_from and entry.valid_to and entry.valid_from > entry.valid_to:
@@ -168,13 +225,14 @@ def page_has_enough(visible_count: int, min_entries: int = MIN_ENTRIES) -> bool:
 
 _COLUMNS = ("name", "category", "address", "street_address", "postal_code", "phone", "website", "source_url", "source_kind",
             "verification_status", "verified_date", "requirements_note", "area_name", "audience_tags", "valid_from", "valid_to",
-            "schedule_rule", "verification_method")
+            "schedule_rule", "verification_method", "location_note", "requirements_evidence")   # the last two: migration 078
 
 
 def _values(entry: HelpEntry, today: date) -> tuple:
     return (entry.name, entry.category, entry.address, entry.street_address, entry.postal_code, entry.phone, entry.website,
             entry.source_url, entry.source_kind, "verified", today, entry.requirements_note, entry.area_name,
-            list(entry.audience_tags) or None, entry.valid_from, entry.valid_to, entry.schedule_rule, "help")
+            list(entry.audience_tags) or None, entry.valid_from, entry.valid_to, entry.schedule_rule, "help",
+            entry.location_note, entry.requirements_evidence)
 
 
 def write_entry(cur, entry: HelpEntry, today: date) -> str:

@@ -242,9 +242,20 @@ def _find(pattern: str, text: str, what: str, flags=0) -> re.Match:
     return m
 
 
-def _entry(src: Source, name: str, category: str, **kw) -> hp.HelpEntry:
+def _entry(src: Source, name: str, category: str, requirements=(), **kw) -> hp.HelpEntry:
+    """The address is the street only (owner 2026-11-27). `requirements`: the source text about who can come / what to bring; the
+    card shows only the labels it matches (hp.REQUIREMENT_LABELS), the matched text is kept as evidence."""
+    sources = tuple(s for s in requirements if s)
+    labels, evidence = hp.requirement_labels(sources)
     return hp.HelpEntry(town_id=src.town_id, slug=kw.pop("slug", None) or slugify(name), name=name, category=category,
-                        source_url=src.url, source_kind=src.kind, **kw)
+                        source_url=src.url, source_kind=src.kind, address=kw.get("street_address"),
+                        requirements_note="; ".join(labels) or None, requirements_evidence="\n".join(evidence) or None,
+                        requirement_sources=sources, **kw)
+
+
+def _sentence_with(pattern: str, text: str) -> str | None:
+    """The sentence of `text` that matches `pattern`, verbatim; None when there is none."""
+    return next((s for s in re.split(r"(?<=[.!?])\s+", text) if re.search(pattern, s, re.I)), None)
 
 
 # --- Trussell Trust foodbank template (Glasgow SW, NE, NW) ------------------------------------------------------------------------
@@ -293,8 +304,9 @@ def _trussell(src: Source, pages: dict, today: date) -> list[Parsed]:
         phone_p = re.search(r"location__heading.*?</h\d>\s*<p>(.*?)</p>", b, re.S)
         phone = re.search(r"0\d[\d ]{8,12}\d", _strip(phone_p.group(1))) if phone_p else None
         out.append(Parsed(
-            entry=_entry(src, name, "food_pantry", street_address=addr[street_i], address=", ".join(addr), postal_code=post,
-                         phone=phone.group(0) if phone else None, requirements_note=requirement,
+            entry=_entry(src, name, "food_pantry", street_address=addr[street_i], postal_code=post,
+                         location_note=", ".join(addr[:street_i]) or None,   # the building line(s) before the street
+                         phone=phone.group(0) if phone else None, requirements=[requirement],
                          area_name=area[0] if len(area) == 1 else None, town_evidence=" ".join(addr[street_i:])),
             weekly=_sorted_week(weekly), hours_text="; ".join(hours)))
     return out
@@ -328,8 +340,8 @@ def _social_bite(src: Source, pages: dict, today: date) -> list[Parsed]:
     street, town, post = ls[shop + 1:shop + 4]
     if town != "Glasgow" or not _POSTCODE.match(post):
         raise ParseError(f"Social Bite address {ls[shop:shop + 4]}")
-    return [Parsed(entry=_entry(src, "Social Bite Sauchiehall Street", "meal_program", street_address=street,
-                                address=f"{street}, Glasgow {post}", postal_code=post, town_evidence=f"{street} Glasgow {post}"),
+    return [Parsed(entry=_entry(src, "Social Bite Sauchiehall Street", "meal_program", street_address=street, postal_code=post,
+                                town_evidence=f"{street} Glasgow {post}", open_evidence=ls[t]),   # "Takeaway free food service times"
                    weekly=_sorted_week(weekly), hours_text="; ".join(text))]
 
 
@@ -354,7 +366,7 @@ def _moval_pantries(src: Source, pages: dict, today: date) -> list[Parsed]:
         other = [_strip(x) for x in items if "fa-" not in x]
         if not clock:
             raise ParseError(f"{name}: no schedule")
-        street = postal = None
+        street = postal = where = None
         evidence = serves
         if address:
             loc = re.search(r"Moreno Valley, CA(?: (\d{5}))?", address)
@@ -362,6 +374,12 @@ def _moval_pantries(src: Source, pages: dict, today: date) -> list[Parsed]:
                 evidence = loc.group(0)
                 postal = loc.group(1)
                 street = address[:loc.start()].rstrip(", ") or None
+                # running text after the locality ("- Located at the ... (VFW) building.", "(call for location)")
+                rest = address[loc.end():].strip(" -–").strip()
+                rest = rest[1:-1] if rest.startswith("(") and rest.endswith(")") else rest
+                where = rest[:1].upper() + rest[1:] if rest else None
+            else:
+                where = address   # a building without a street ("Moreno Valley Conference & Recreation Center")
         first = clock[0]
         requirement, review, rule, weekly, dates = None, None, None, [], []
         card_text = " ".join(clock)
@@ -401,8 +419,8 @@ def _moval_pantries(src: Source, pages: dict, today: date) -> list[Parsed]:
             if m:
                 requirement = m.group(1)
         out.append(Parsed(
-            entry=_entry(src, name, "food_pantry", street_address=street, address=address, postal_code=postal,
-                         phone=phone, requirements_note=requirement, schedule_rule=rule, town_evidence=evidence),
+            entry=_entry(src, name, "food_pantry", street_address=street, postal_code=postal, location_note=where,
+                         phone=phone, requirements=[requirement], schedule_rule=rule, town_evidence=evidence),
             weekly=_sorted_week(weekly), dates=tuple(dates), hours_text=" / ".join(clock), review=review))
     return out
 
@@ -445,8 +463,8 @@ def _moval_warm(src: Source, pages: dict, today: date) -> list[Parsed]:
         senior = "Seniors 50 and older only" in ls[i - 2]
         street = re.sub(r",\s*Moreno Valley$", "", address)
         out.append(Parsed(
-            entry=_entry(src, name, "warm_space", street_address=street, address=address,
-                         requirements_note="Seniors 50 and older only" if senior else None,
+            entry=_entry(src, name, "warm_space", street_address=street,
+                         requirements=["Seniors 50 and older only"] if senior else [],
                          audience_tags=("seniors",) if senior else (), town_evidence=serves),
             weekly=_sorted_week(weekly), hours_text="; ".join(hours), role="warm_space",
             review=_MOVAL_WARM_STALE if stale else None))
@@ -470,10 +488,9 @@ def _bcfp(src: Source, pages: dict, today: date) -> list[Parsed]:
             closed.append((d, why.strip()))
     evidence = _find(r"EMERGENCY food needs of Brookings County families", flat, "serves phrase").group(0)
     phone = _find(r"directly: (\d{3}-\d{3}-\d{4})", flat, "phone").group(1)
-    return [Parsed(entry=_entry(src, "Brookings County Food Pantry", "food_pantry", street_address=street, address=street,
-                                phone=phone, requirements_note="Proof of your physical address; Current picture identification"
-                                if "Proof of your physical address" in flat and "Current picture identification" in flat else None,
-                                town_evidence=evidence),
+    bring = [p for p in ("Proof of your physical address", "Current picture identification") if p in flat]
+    return [Parsed(entry=_entry(src, "Brookings County Food Pantry", "food_pantry", street_address=street,
+                                phone=phone, requirements=bring, town_evidence=evidence),
                    weekly=_sorted_week(_week(days, *parse_range(span))), closed=tuple(closed),
                    hours_text=f"{m.group(2).strip()} {span}", review=review)]
 
@@ -485,10 +502,10 @@ def _feeding_brookings(src: Source, pages: dict, today: date) -> list[Parsed]:
     evidence = _find(r"Ascension Lutheran Church in Brookings, SD", flat, "locality").group(0)
     phone = re.search(r"information phone line: (\d{3} \d{3} \d{4})", flat)
     return [Parsed(entry=_entry(src, "Feeding Brookings", "food_pantry", street_address=where.group(1),
-                                address=f"Ascension Lutheran Church, {where.group(1)}, Brookings, SD",
+                                location_note="Ascension Lutheran Church",
                                 phone=phone.group(1) if phone else None,
-                                requirements_note="There is no residency requirement" if "There is no residency requirement" in flat
-                                else None,
+                                requirements=["There is no residency requirement"] if "There is no residency requirement" in flat
+                                else [],
                                 audience_tags=("everyone",) if "All in need are welcome" in flat else (), town_evidence=evidence),
                    weekly=_sorted_week(_week(days_in(m.group(1)), *parse_range(m.group(2)))), hours_text=m.group(0))]
 
@@ -507,8 +524,8 @@ def _jacks(src: Source, pages: dict, today: date) -> list[Parsed]:
     if p is None:
         raise ParseError("Physical Address")
     evidence = " ".join(ls[p + 2:p + 5])
-    return [Parsed(entry=_entry(src, "Jack’s Cupboard", "food_pantry", slug="jacks-cupboard", address=where,
-                                requirements_note=who, audience_tags=("students",), town_evidence=evidence),
+    return [Parsed(entry=_entry(src, "Jack’s Cupboard", "food_pantry", slug="jacks-cupboard", location_note=where,
+                                requirements=[who], audience_tags=("students",), town_evidence=evidence),
                    weekly=_sorted_week(_week(days_in(m.group(2)), *parse_range(m.group(3)))),
                    hours_text=f"{m.group(1)} Hours: {m.group(2).strip()} from {m.group(3)}")]
 
@@ -538,7 +555,9 @@ def _harvest_table(src: Source, pages: dict, today: date) -> list[Parsed]:
         raise ParseError("no schedule years")
     # Town rule: neither page gives Brookings as the meal's locality or says the meal serves Brookings ("organizations around the
     # Brookings Community to serve" is about who hosts). No town_evidence -> rejected until a page of the operator says it.
-    return [Parsed(entry=_entry(src, "Harvest Table", "meal_program"), dates=tuple(dates), closed=tuple(closed),
+    # The home page does say the meal is free ("To provide to anyone in the community a no cost meal, ..."): the town rule alone rejects.
+    home = next((ln for ln in source_text(pages[src.url]).split("\n") if hp.OPEN_TO_ALL.search(ln)), None)
+    return [Parsed(entry=_entry(src, "Harvest Table", "meal_program", open_evidence=home), dates=tuple(dates), closed=tuple(closed),
                    hours_text="Mondays per the Serving Schedule; no time or address on the page")]
 
 
@@ -571,8 +590,7 @@ def _fish(src: Source, pages: dict, today: date) -> list[Parsed]:
         raise ParseError(f"FISH address {ls[g:g + 4]}")
     street, locality = ls[g + 2], ls[g + 3]
     phone = re.fullmatch(r"\d{3}-\d{3}-\d{4}", ls[g + 5])
-    return [Parsed(entry=_entry(src, "Broomfield FISH", "food_pantry", street_address=street, address=f"{street}, {locality}",
-                                postal_code=locality[-5:], phone=phone.group(0) if phone else None,
+    return [Parsed(entry=_entry(src, "Broomfield FISH", "food_pantry", street_address=street, postal_code=locality[-5:], phone=phone.group(0) if phone else None,
                                 town_evidence=f"{street} {locality}"),
                    weekly=_sorted_week(weekly), closed=tuple(closed), hours_text="; ".join(hours), review=review)]
 
@@ -591,9 +609,8 @@ def _north_denver_cares(src: Source, pages: dict, today: date) -> list[Parsed]:
     flat = re.sub(r"\s+", " ", source_text(pages[src.url]))
     addr = _find(r"(\d+ W\. \d+\w* Ave, #\w+) (Broomfield, CO (\d{5}))", flat, "address")
     phone = re.search(r"contact us at (\d{3}-\d{3}-\d{4})", flat)
-    return [Parsed(entry=_entry(src, "North Denver Cares", "food_pantry", street_address=addr.group(1),
-                                address=f"{addr.group(1)}, {addr.group(2)}", postal_code=addr.group(3),
-                                phone=phone.group(1) if phone else None, requirements_note="; ".join(bring),
+    return [Parsed(entry=_entry(src, "North Denver Cares", "food_pantry", street_address=addr.group(1), postal_code=addr.group(3),
+                                phone=phone.group(1) if phone else None, requirements=bring,
                                 town_evidence=addr.group(0)),
                    weekly=_sorted_week(weekly), hours_text="; ".join(hours) + " (*" + _strip(sect.group(2)) + ")")]
 
@@ -606,11 +623,16 @@ def _cross_of_christ(src: Source, pages: dict, today: date) -> list[Parsed]:
     if ds is None:
         raise ParseError(f"rule {rule!r}")
     addr = _find(r"(\d+ [A-Z][A-Za-z ]+?) (Broomfield, CO (\d{5}))", flat, "address")
+    # The meal's own paragraph must say it is free or open to all (hp.OPEN_TO_ALL); none -> the row is rejected, not guessed.
+    para = next((ln for ln in source_text(pages[src.url]).split("\n") if ln.startswith("Community Meals")), None)
+    if para is None:
+        raise ParseError("meal paragraph")
+    welcome = _sentence_with(r"\ball are welcome\b|\bfree\b|\bno (?:cost|charge)\b", para)
     return [Parsed(entry=_entry(src, "Cross of Christ Community Meals", "meal_program", street_address=addr.group(1),
-                                address=f"Cross of Christ Lutheran Church, {addr.group(1)}, {addr.group(2)}",
-                                postal_code=addr.group(3), schedule_rule=rule,
-                                audience_tags=("everyone",) if "All are welcome" in flat else (), town_evidence=addr.group(0)),
-                   dates=tuple((d, None, None) for d in ds), hours_text=rule + " (no time on the page)")]
+                                location_note="Cross of Christ Lutheran Church",
+                                postal_code=addr.group(3), schedule_rule=rule, open_evidence=welcome,
+                                audience_tags=("everyone",) if welcome else (), town_evidence=addr.group(0)),
+                   dates=tuple((d, None, None) for d in ds), hours_text=rule)]
 
 
 # --- registry -------------------------------------------------------------------------------------------------------------------
@@ -662,29 +684,84 @@ def parse(src: Source, pages: dict, today: date) -> list[Parsed]:
 _DOW = ("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
 
 
-def card(row: Parsed) -> str:
-    """The card as /help/ would show it (step 1d decides the layout; this is the content): name, area, times, requirement, source."""
+_MON = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
+def _hm(hhmm: str) -> tuple[int, int, bool]:
+    h, m = (int(x) for x in hhmm[:5].split(":"))
+    return h % 12 or 12, m, h >= 12
+
+
+def _num(h: int, m: int) -> str:
+    return f"{h}:{m:02d}" if m else str(h)
+
+
+def clock_range(opens: str, closes: str, country: str) -> str:
+    """The sites' own formats (owner 2026-11-27). us = timesCompact in site/src/lib/answer-facility.ts ("1–4:30 PM", "8 AM–5 PM",
+    noon/midnight by name, "24 hours"); gb = the facility pages' formatClock(gb) on both ends ("12pm–2pm", "8:30am–9:30am")."""
+    a, b = _hm(opens), _hm(closes)
+    if country == "gb":
+        return "–".join(f"{_num(h, m)}{'pm' if pm else 'am'}" for h, m, pm in (a, b))
+    if opens[:5] == "00:00" and closes[:5] in ("23:59", "24:00", "00:00"):
+        return "24 hours"
+    named = lambda c: ("noon" if c[2] else "midnight") if c[0] == 12 and c[1] == 0 else None   # noqa: E731
+    one = lambda c: named(c) or f"{_num(c[0], c[1])} {'PM' if c[2] else 'AM'}"   # noqa: E731
+    past_midnight = closes[:5] <= opens[:5]
+    if not named(a) and not named(b) and a[2] == b[2] and not past_midnight:
+        return f"{_num(a[0], a[1])}–{_num(b[0], b[1])} {'PM' if b[2] else 'AM'}"
+    return f"{one(a)}–{one(b)}"
+
+
+def _days(days: list[int]) -> str:
+    """daysCompact (answer-facility.ts): Monday first, a run of days as a range ("Mon–Fri"), "daily" for all seven."""
+    order = sorted(set(days), key=lambda d: (d - 1) % 7)
+    if len(order) == 7:
+        return "daily"
+    runs: list[list[int]] = []
+    for d in order:
+        if runs and (d - 1) % 7 == (runs[-1][-1] - 1) % 7 + 1:
+            runs[-1].append(d)
+        else:
+            runs.append([d])
+    return ", ".join(f"{_DOW[r[0]]}–{_DOW[r[-1]]}" if len(r) > 1 else _DOW[r[0]] for r in runs)
+
+
+def week_line(weekly, country: str) -> str:
+    """Rows grouped by identical times in the order they first appear Monday-first, as the facility meta does (groupHours):
+    "Mon, Wed, Fri 1–4:30 PM; Sat 9 AM–noon"."""
+    groups: dict = {}
+    for d, o, c in sorted(weekly, key=lambda r: ((r[0] - 1) % 7, r[1])):
+        groups.setdefault((o, c), []).append(d)
+    return "; ".join(f"{_days(ds)} {clock_range(o, c, country)}" for (o, c), ds in groups.items())
+
+
+def short_date(d: date, country: str) -> str:
+    """shortDate (answer-facility.ts): "Tue Dec 1" (us), "Tue 1 Dec" (gb)."""
+    mon = _MON[d.month - 1]
+    return f"{_DOW[(d.weekday() + 1) % 7]} {d.day} {mon}" if country == "gb" else f"{_DOW[(d.weekday() + 1) % 7]} {mon} {d.day}"
+
+
+def card(row: Parsed, today: date) -> str:
+    """The card as /help/ would show it (step 1d builds it in the site with the same rules; this is the content): name, area (area
+    name + postal code), street address, location note, times in the site's format, requirement labels, source."""
     e = row.entry
-    where = e.area_name or e.postal_code or ""
-    if e.address:
-        where = f"{e.address}" + (f" ({e.area_name})" if e.area_name else "")
+    country = "gb" if e.town_id == "glasgow" else "us"
     if row.weekly:
-        by_day: dict = {}
-        for d, o, c in row.weekly:
-            by_day.setdefault(d, []).append(f"{o}–{c}")
-        when = ", ".join(f"{_DOW[d]} {' & '.join(v)}" for d, v in sorted(by_day.items(), key=lambda kv: (kv[0] - 1) % 7))
+        when = week_line(row.weekly, country)
     elif row.dates:
-        shown = [f"{d:%a} {d.day} {d:%b}" + (f" {o}–{c}" if o else "") for d, o, c in row.dates[:4]]
-        when = ", ".join(shown) + (" …" if len(row.dates) > 4 else "") + ("" if row.dates[0][1] else " (no time given)")
+        upcoming = [r for r in row.dates if r[0] >= today]
+        shown = [short_date(d, country) + (f" {clock_range(o, c, country)}" if o and c else "") for d, o, c in upcoming[:4]]
+        when = ", ".join(shown) + (" …" if len(upcoming) > 4 else "")
     else:
-        when = "—"
-    if row.closed:
-        when += " · closed " + ", ".join(f"{d:%a} {d.day} {d:%b}" for d, _ in row.closed)
-    out = [f"  {e.name}", f"    Area:     {where or '—'}", f"    When:     {when}"]
-    if e.requirements_note:
-        out.append(f"    Needs:    {e.requirements_note}")
-    if e.audience_tags:
-        out.append(f"    For:      {', '.join(e.audience_tags)}")
+        when = ""
+    closed = hp.upcoming_closures(row.closed, today)
+    out = [f"  {e.name}"]
+    area = " ".join(x for x in (e.area_name, e.postal_code) if x)
+    for label, value in (("Area", area), ("Address", e.street_address), ("Where", e.location_note), ("When", when),
+                         ("Closed", ", ".join(short_date(d, country) for d, _ in closed)), ("Needs", e.requirements_note),
+                         ("For", ", ".join(e.audience_tags))):
+        if value:
+            out.append(f"    {label + ':':<9} {value}")
     out.append(f"    Source:   {e.source_url}  (Checked <date of write>)")
     return "\n".join(out)
 
@@ -733,13 +810,16 @@ def dry_run(today: date) -> int:
                 hit = [f"{n} ({c})" for _, n, c, a in places if num in a]
                 role = f"  role on: {hit[0]}" if hit else "  role: no existing place (new warm_space row)"
             print(f"  {r.decision.upper():7} {r.entry.name}{note}{clash}{role}" + (f"\n           why: {r.why}" if r.why else ""))
+            unlabelled = [s for s in r.entry.requirement_sources if not hp.requirement_labels([s])[0]]
+            if unlabelled:   # requirement text that matches no label: no line on the card; shown here for the owner
+                print(f"           no label: {unlabelled}")
         published = [(s, r) for s, r, _ in items if r and r.decision == "publish"]
         firsts = list({s.id: r for s, r in reversed(published)}.values())[::-1]   # one per source first
         shown = (firsts + [r for _, r in published if r not in firsts])[:3]
         if shown:
             print("  -- example cards --")
             for r in shown:
-                print(card(r))
+                print(card(r, today))
     return 0
 
 

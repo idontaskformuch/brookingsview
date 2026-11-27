@@ -66,7 +66,8 @@ def test_trussell_sw_five_centres_with_referral_and_postcode():
     ibrox = rows[0]
     assert ibrox.weekly == ((MON, "12:00", "14:00"),)
     assert (ibrox.entry.street_address, ibrox.entry.postal_code) == ("67 Clifford Street", "G51 1QH")
-    assert ibrox.entry.requirements_note == "In line with Trussell Trust policy, our Foodbank Centres use a voucher referral system."
+    assert ibrox.entry.requirements_note == "Referral voucher needed"
+    assert ibrox.entry.location_note == "Ibrox Parish Church"   # the building line before the street
     assert ibrox.entry.area_name is None   # SW addresses have no area line; the heading is not taken as one
     assert decisions(rows) == ["publish"] * 5
 
@@ -78,8 +79,8 @@ def test_trussell_ne_six_centres_area_from_the_address():
     assert parkhead.weekly == ((MON, "13:00", "15:00"), (WED, "10:30", "12:30"), (FRI, "13:00", "15:00"))
     assert parkhead.entry.area_name == "Parkhead"
     assert by_name(rows, "The Story Coffee").entry.area_name == "Bridgeton"   # "Glasgow / Bridgeton / G40 1QH"
-    assert parkhead.entry.requirements_note == ("In order to get help from our foodbank, you will need a voucher issued by "
-                                                "local agencies.")
+    assert parkhead.entry.requirements_evidence == ("In order to get help from our foodbank, you will need a voucher issued by "
+                                                    "local agencies.")
     assert decisions(rows) == ["publish"] * 6
 
 
@@ -115,7 +116,7 @@ def test_moval_sixteen_pantries():
     assert by_name(rows, "Al Rahma").weekly == ((FRI, "14:00", "17:00"),)
     assert by_name(rows, "Joseph Project").weekly == ((THU, "08:00", "12:00"),)
     assert by_name(rows, "Al Rahma").entry.street_address == "12125 Day Street, Suite T102"
-    assert by_name(rows, "Church of Christ").entry.requirements_note == "Must call in advance"
+    assert by_name(rows, "Church of Christ").entry.requirements_evidence == "Must call in advance"
 
 
 def test_moval_monthly_patterns_become_dated_rows():
@@ -126,7 +127,9 @@ def test_moval_monthly_patterns_become_dated_rows():
     assert crossword.dates[0][1:] == ("10:00", "11:00")
     fa = by_name(rows, "Feeding America")
     assert [d for d, _, _ in fa.dates] == [date(2026, 12, 10), date(2027, 1, 14)]
-    assert fa.entry.requirements_note.startswith("Distribution participants must live within Riverside and San Bernardino counties")
+    assert fa.entry.requirements_note == "Income limits apply; Riverside or San Bernardino County residents only"
+    assert fa.entry.requirements_evidence.startswith("Distribution participants must live within Riverside and San Bernardino")
+    assert fa.entry.location_note == "Moreno Valley Conference & Recreation Center" and fa.entry.address is None
 
 
 def test_moval_rows_the_owner_must_see_first_are_queued():
@@ -164,8 +167,9 @@ def test_jacks_cupboard_students_only():
     [row] = run("jacks-cupboard")
     assert row.weekly == ((TUE, "15:00", "18:00"), (WED, "15:00", "18:00"))
     assert row.entry.audience_tags == ("students",)
-    assert row.entry.requirements_note == "Currently enrolled SDSU students"
-    assert row.entry.address == "Ben Reifel Hall (south side)"   # the Location: line only, not the sentence after it
+    assert row.entry.requirements_evidence == "Currently enrolled SDSU students"
+    assert row.entry.location_note == "Ben Reifel Hall (south side)"   # the Location: line only, not the sentence after it
+    assert row.entry.address is None   # a building, not a street address
     assert row.decision == "publish"
 
 
@@ -189,7 +193,7 @@ def test_broomfield_fish_week_and_closures():
 def test_north_denver_cares():
     [row] = run("north-denver-cares")
     assert row.weekly == ((TUE, "10:00", "16:00"), (WED, "10:00", "14:00"), (THU, "09:00", "13:00"))
-    assert row.entry.requirements_note == "Photo ID; Proof of Income; Proof of Residence"
+    assert row.entry.requirements_evidence == "Photo ID\nProof of Residence\nProof of Income"
     assert row.decision == "publish"
 
 
@@ -198,6 +202,99 @@ def test_cross_of_christ_meal_days_without_times():
     assert [d for d, _, _ in row.dates] == [date(2026, 12, 1), date(2026, 12, 15), date(2027, 1, 5), date(2027, 1, 19)]
     assert all(o is None and c is None for _, o, c in row.dates)   # no time on the page: days only
     assert row.decision == "publish"
+
+
+# --- the card (owner 2026-11-27, before push) --------------------------------------------------------------------------------------
+def card_of(source_id, needle=None, today=TODAY):
+    rows = run(source_id)
+    return hs.card(by_name(rows, needle) if needle else rows[0], today)
+
+
+def test_card_times_in_the_us_sites_format():
+    # 1: the answer pages' timesCompact ("1–4:30 PM"), never 24-hour; place_hours itself stays "HH:MM" like every other place
+    c = card_of("brookings-county-food-pantry")
+    assert "Mon, Wed, Fri 1–4:30 PM" in c
+    assert "13:00" not in c and "16:30" not in c
+    assert "Tue 10 AM–4 PM; Wed 10 AM–2 PM; Thu 9 AM–1 PM" in card_of("north-denver-cares")
+
+
+def test_card_times_in_glasgows_facility_page_format():
+    # 1: Glasgow = the facility pages' formatClock(gb) on both ends ("12pm–2pm")
+    c = card_of("glasgow-sw-foodbank", "Ibrox")
+    assert "Mon 12pm–2pm" in c and "12:00" not in c
+
+
+def test_requirement_labels_come_from_a_fixed_list():
+    # 2: a short label from REQUIREMENT_LABELS; the source sentence is kept as evidence and never shown
+    ibrox = by_name(run("glasgow-sw-foodbank"), "Ibrox").entry
+    assert ibrox.requirements_note == "Referral voucher needed"
+    assert ibrox.requirements_evidence == ("In line with Trussell Trust policy, our Foodbank Centres use a voucher referral "
+                                           "system.")
+    assert by_name(run("glasgow-ne-foodbank"), "Parkhead").entry.requirements_note == "Referral voucher needed"
+    [ndc] = run("north-denver-cares")
+    assert ndc.entry.requirements_note == "Photo ID; Proof of address; Proof of income"
+    [bcfp] = run("brookings-county-food-pantry")
+    assert bcfp.entry.requirements_note == "Photo ID; Proof of address"
+    assert run("feeding-brookings")[0].entry.requirements_note == "No residency requirement"
+    assert run("jacks-cupboard")[0].entry.requirements_note == "SDSU students only"
+    assert by_name(run("moval-food-pantries"), "Church of Christ").entry.requirements_note == "Call ahead"
+    c = card_of("glasgow-sw-foodbank", "Ibrox")
+    assert "Needs:    Referral voucher needed" in c and "Trussell Trust policy" not in c
+
+
+def test_requirement_text_without_a_label_gives_no_line():
+    # BCFP page text (fetched 2026-11-27) that names no requirement of the list
+    assert hp.requirement_labels(["Ex: Current utility or gas bill, lease/rental agreement"]) == ((), ())
+    # Social Bite has no requirement text at all: no Needs line
+    assert "Needs:" not in card_of("social-bite-glasgow")
+
+
+def test_address_is_the_street_and_running_text_is_a_location_note():
+    # 3: "22616 Alessandro Blvd., Moreno Valley, CA 92553 - Located at the Veterans of Foreign Wars (VFW) building."
+    bul = by_name(run("moval-food-pantries"), "Building Up Lives").entry
+    assert (bul.address, bul.street_address) == ("22616 Alessandro Blvd.", "22616 Alessandro Blvd.")
+    assert bul.location_note == "Located at the Veterans of Foreign Wars (VFW) building."
+    c = card_of("moval-food-pantries", "Building Up Lives")
+    assert "Area:     92553" in c and "Address:  22616 Alessandro Blvd.\n" in c
+
+
+def test_area_is_area_name_and_postcode_without_duplicates():
+    # 3: The Story Coffee: "Glasgow / Bridgeton / G40 1QH" printed "(Bridgeton)" after an address that already had it
+    c = card_of("glasgow-ne-foodbank", "The Story Coffee")
+    assert "Area:     Bridgeton G40 1QH" in c
+    assert "Address:  209-211 Main Street\n" in c
+    assert c.count("Bridgeton") == 1
+
+
+def test_days_without_a_clock_time_show_only_the_dates():
+    # 4: Cross of Christ has no time on its page
+    c = card_of("cross-of-christ-meals")
+    assert "When:     Tue Dec 1, Tue Dec 15, Tue Jan 5, Tue Jan 19\n" in c
+    for src in hs.SOURCES:
+        for row in run(src.id):
+            assert "no time" not in hs.card(row, TODAY).casefold(), (src.id, row.entry.name)
+
+
+def test_a_meal_must_say_it_is_free_or_open_to_all():
+    # 5: same rule as the senior lunch (Lakeshore Café, rejected for no "free"): cross-of-christ_outreach.html line 25
+    [row] = run("cross-of-christ-meals")
+    assert row.entry.open_evidence == "All are welcome to come and serve a meal or come and receive a meal."
+    assert row.decision == "publish"
+    # the same page with the one sentence changed so it no longer says the meal is open to all
+    src = hs.SOURCE_BY_ID["cross-of-christ-meals"]
+    body = (FIX / "cross_of_christ_outreach.html").read_bytes().replace(b"All are welcome", b"Volunteers are welcome")
+    [changed] = hs.parse(src, {src.url: body}, TODAY)
+    assert changed.decision == "reject" and "free or open to all" in changed.why
+    assert run("social-bite-glasgow")[0].entry.open_evidence == "Takeaway free food service times"
+
+
+def test_passed_closures_are_not_shown():
+    # 6: BCFP's Thanksgiving closure (27 Nov 2026) is gone from the card the day after
+    assert "Fri Nov 27" in card_of("brookings-county-food-pantry")
+    c = card_of("brookings-county-food-pantry", today=date(2026, 11, 28))
+    assert "Nov 27" not in c and "Fri Dec 25" in c
+    assert hp.upcoming_closures(run("broomfield-fish")[0].closed, date(2026, 12, 25)) == (
+        (date(2026, 12, 25), "Christmas Day"), (date(2027, 1, 1), "New Year’s Day"))
 
 
 def test_every_published_row_validates_against_its_own_page():

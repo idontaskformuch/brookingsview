@@ -31,14 +31,16 @@ PANTRY = hp.HelpEntry(
     town_id="brookings_sd", slug="brookings-county-food-pantry", name="Brookings County Food Pantry", category="food_pantry",
     source_url="https://brookingscountyfoodpantry.weebly.com/", source_kind="operator",
     street_address="908 Hope Drive", phone="605-692-5007",
-    requirements_note="Proof of your physical address; Current picture identification",
+    requirements_note="Photo ID; Proof of address",
+    requirements_evidence="Current picture identification\nProof of your physical address",
     audience_tags=("everyone",), town_evidence="EMERGENCY food needs of Brookings County families",
 )
 # Feeding Brookings, https://www.feedingbrookings.org/ (fetched 2026-11-27)
 FEEDING = hp.HelpEntry(
     town_id="brookings_sd", slug="feeding-brookings", name="Feeding Brookings", category="food_pantry",
     source_url="https://www.feedingbrookings.org/", source_kind="operator",
-    street_address="2030 3rd St.", requirements_note="There is no residency requirement",
+    street_address="2030 3rd St.", requirements_note="No residency requirement",
+    requirements_evidence="There is no residency requirement",
     audience_tags=("everyone",), town_evidence="Ascension Lutheran Church in Brookings, SD",
 )
 FEEDING_PAGE = ("There is no residency requirement. Where are we?\nAscension Lutheran Church in Brookings. 2030 3rd St.\n"
@@ -126,10 +128,34 @@ def test_real_rows_validate_against_their_own_page():
     assert hp.validate(FEEDING, FEEDING_PAGE) == []
 
 
-def test_requirement_not_on_the_page_is_refused():
-    # Feeding Brookings with requirements_note changed to a line its page does not carry
-    bad = replace(FEEDING, requirements_note="Photo ID required")
-    assert any("requirements_note" in p for p in hp.validate(bad, FEEDING_PAGE))
+def test_requirement_evidence_not_on_the_page_is_refused():
+    # Feeding Brookings with requirements_evidence changed to a line its page does not carry
+    bad = replace(FEEDING, requirements_evidence="Photo ID required")
+    assert any("requirements_evidence" in p for p in hp.validate(bad, FEEDING_PAGE))
+
+
+def test_requirement_label_must_be_on_the_list_and_match_its_evidence():
+    # Feeding Brookings with requirements_note changed to a label outside the list
+    assert any("not a requirement label" in p
+               for p in hp.validate(replace(FEEDING, requirements_note="There is no residency requirement"), FEEDING_PAGE))
+    # Feeding Brookings with requirements_note changed to a listed label its evidence does not say
+    assert any("Photo ID" in p for p in hp.validate(replace(FEEDING, requirements_note="Photo ID"), FEEDING_PAGE))
+    # a label without evidence
+    assert any("evidence" in p for p in hp.validate(replace(FEEDING, requirements_evidence=None), FEEDING_PAGE))
+
+
+def test_location_note_must_be_on_the_page():
+    assert hp.validate(replace(FEEDING, location_note="Ascension Lutheran Church"), FEEDING_PAGE) == []
+    # location_note changed to a building the page does not name
+    assert any("location_note" in p for p in hp.validate(replace(FEEDING, location_note="VFW building"), FEEDING_PAGE))
+
+
+def test_migration_078_adds_location_note_and_requirements_evidence():
+    sql = next(MIGRATIONS.glob("078_*.sql")).read_text(encoding="utf-8")
+    assert check_additive(sql) == []
+    for col in ("location_note", "requirements_evidence"):
+        assert any(re.match(rf"(?i)alter table places add column if not exists {col}\b", s) for s in statements(sql))
+    assert {"location_note", "requirements_evidence"} <= set(hp._COLUMNS)
 
 
 def test_street_address_not_on_the_page_is_refused():
@@ -235,11 +261,13 @@ def test_insert_writes_every_help_field_and_a_stable_content_hash():
     assert action == "insert"
     sql, params = cur.calls[-1]
     assert sql.startswith("INSERT INTO places")
-    for col in ("source_kind", "verification_status", "requirements_note", "audience_tags", "verified_date", "content_hash"):
+    for col in ("source_kind", "verification_status", "requirements_note", "audience_tags", "verified_date", "content_hash",
+                "location_note", "requirements_evidence"):
         assert col in sql
     assert "help-brookings-county-food-pantry" in params
     assert "verified" in params and TODAY in params
-    assert "Proof of your physical address; Current picture identification" in params
+    assert "Photo ID; Proof of address" in params   # the labels the card shows
+    assert "Current picture identification\nProof of your physical address" in params   # the evidence, kept
 
 
 def test_update_never_touches_a_non_help_place():
