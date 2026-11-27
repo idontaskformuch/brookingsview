@@ -133,6 +133,12 @@ describe('the rules behind them', () => {
     expect(run(byslug('chippers-lanes-broomfield')).description).toContain('Open Mon–Thu, Sun 10 AM–11 PM; Fri–Sat 10 AM–midnight.');
     expect(run(byslug('gallery-of-modern-art-goma')).description).toContain('Open Mon–Thu, Sat 10am–5pm; Fri, Sun 11am–5pm.');
   });
+  it('a time is never followed by a comma and a day, on any fixture page (owner 27 nov: Mitchell Library was "Sat 9am–5pm, Tue, Thu 9am–8pm")', () => {
+    const timeCommaDay = /(\d(?:\s?(?:am|pm|AM|PM))|noon|midnight),\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b/;
+    for (const c of CASES) expect(run(c).description, c.slug).not.toMatch(timeCommaDay);
+    expect(run(byslug('the-mitchell-library')).description).toContain('Open Mon, Wed, Fri–Sat 9am–5pm; Tue, Thu 9am–8pm.');
+    expect('Open Mon, Wed, Fri, Sat 9am–5pm, Tue, Thu 9am–8pm.').toMatch(timeCommaDay); // the pattern catches the old form
+  });
   it('a street with its own full stop gets no second one (Landfill: "47532 30th St.")', () => {
     expect(run(byslug('landfill-office-collection-shop')).description).not.toContain('..');
   });
