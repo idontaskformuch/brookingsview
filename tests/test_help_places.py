@@ -22,23 +22,27 @@ PANTRY_PAGE = (
     "To receive emergency food assistance please bring the following with you:\n1.\nProof of your physical address (\n"
     "Ex: Current utility or gas bill, lease/rental agreement, or letter of acceptance for public assistance\n2.\n"
     "Current picture identification.\nThe Brookings County Food Pantry, now located at\n908 Hope Drive, is open for Public Assistance\n"
-    "Monday - Wednesday - Friday\n1:00 p.m. - 4:30 p.m."
+    "Monday - Wednesday - Friday\n1:00 p.m. - 4:30 p.m.\nBrookings Food Pantry Mission: The primary objects and purposes of the "
+    "Brookings County Food Pantry shall be to help solve EMERGENCY food needs of Brookings County families by providing them with "
+    "surplus or salvaged food"
 )
+# 1b: postal_code dropped (57006 is on neither page; a postal code is now checked like the street) and town_evidence added.
 PANTRY = hp.HelpEntry(
     town_id="brookings_sd", slug="brookings-county-food-pantry", name="Brookings County Food Pantry", category="food_pantry",
     source_url="https://brookingscountyfoodpantry.weebly.com/", source_kind="operator",
-    street_address="908 Hope Drive", postal_code="57006", phone="605-692-5007",
+    street_address="908 Hope Drive", phone="605-692-5007",
     requirements_note="Proof of your physical address; Current picture identification",
-    audience_tags=("everyone",),
+    audience_tags=("everyone",), town_evidence="EMERGENCY food needs of Brookings County families",
 )
 # Feeding Brookings, https://www.feedingbrookings.org/ (fetched 2026-11-27)
 FEEDING = hp.HelpEntry(
     town_id="brookings_sd", slug="feeding-brookings", name="Feeding Brookings", category="food_pantry",
     source_url="https://www.feedingbrookings.org/", source_kind="operator",
-    street_address="2030 3rd St.", postal_code="57006", requirements_note="There is no residency requirement",
-    audience_tags=("everyone",),
+    street_address="2030 3rd St.", requirements_note="There is no residency requirement",
+    audience_tags=("everyone",), town_evidence="Ascension Lutheran Church in Brookings, SD",
 )
-FEEDING_PAGE = "There is no residency requirement. Where are we?\nAscension Lutheran Church in Brookings. 2030 3rd St."
+FEEDING_PAGE = ("There is no residency requirement. Where are we?\nAscension Lutheran Church in Brookings. 2030 3rd St.\n"
+                "If you can use a box, drive up to Ascension Lutheran Church in Brookings, SD any Thursday 3-5pm.")
 
 
 # --- categories and their mirrors ----------------------------------------------------------------------------------------------
@@ -249,3 +253,46 @@ def test_update_of_an_existing_help_place():
     assert hp.write_entry(cur, PANTRY, TODAY) == "update"
     sql, params = cur.calls[-1]
     assert sql.startswith("UPDATE places SET") and params[-1] == 7
+
+
+# --- 1b: the town rule (owner 2026-11-27). Phrases verbatim from the pages fetched 2026-11-27 (tests/fixtures/help_sources_2026-11-27/).
+@pytest.mark.parametrize("town, phrase, kind", [
+    ("broomfield_co", "6900 W. 117th Ave, #700W Broomfield, CO 80020", "locality"),          # north_denver_cares.html
+    ("glasgow", "Ibrox Parish Church 67 Clifford Street Glasgow G51 1QH", "locality"),         # glasgowsw_locations.html
+    ("glasgow", "209-211 Main Street Glasgow Bridgeton G40 1QH", "locality"),                  # glasgowne_locations.html (The Story Coffee)
+    ("brookings_sd", "Brookings, SD 57007", "locality"),                                       # jacks_cupboard.html
+    ("moreno_valley_ca", "The pantries below serve residents across Moreno Valley.", "serves"),  # moval_food_pantries.html
+    ("brookings_sd", "EMERGENCY food needs of Brookings County families", "serves"),           # brookings_county_food_pantry.html
+])
+def test_town_rule_accepts_a_locality_or_a_serving_statement(town, phrase, kind):
+    assert hp.town_kind(town, phrase) == kind
+
+
+@pytest.mark.parametrize("town, phrase", [
+    ("broomfield_co", "Northglenn, CO 80234"),   # Good Shepherd's own locality (Phase 0 report), rejected: another town
+    ("brookings_sd", "Feeding Brookings"),                      # the operator's name is not a place
+    ("broomfield_co", "Broomfield FISH"),
+    ("glasgow", "Glasgow SW Foodbank"),
+    ("moreno_valley_ca", "Moreno Valley Conference & Recreation Center"),
+])
+def test_town_rule_refuses_a_name_without_locality_or_service(town, phrase):
+    assert hp.town_kind(town, phrase) is None
+
+
+def test_a_row_without_town_evidence_is_rejected_with_the_rule_as_reason():
+    decision, why = hp.publish_decision(replace(FEEDING, town_evidence=None), FEEDING_PAGE)
+    assert decision == "reject" and "neither gives Brookings as the locality nor says it serves it" in why
+
+
+def test_town_evidence_must_be_on_the_page():
+    # FEEDING with the one field town_evidence changed to a phrase that is not on feedingbrookings.org
+    assert any("town:" in p for p in hp.validate(replace(FEEDING, town_evidence="Brookings, SD 57006"), FEEDING_PAGE))
+
+
+def test_postal_code_must_be_on_the_page():
+    # PANTRY with the one field postal_code set: 57006 is not on brookingscountyfoodpantry.weebly.com
+    assert any("postal_code" in p for p in hp.validate(replace(PANTRY, postal_code="57006"), PANTRY_PAGE))
+
+
+def test_review_reason_queues_a_valid_row():
+    assert hp.publish_decision(PANTRY, PANTRY_PAGE, review="two seasonal schedules") == ("queue", "two seasonal schedules")

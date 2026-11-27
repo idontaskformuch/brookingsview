@@ -2,7 +2,7 @@
 
 One place for the rules every /help/ writer and reader shares: which categories exist and which are on, what a row must carry
 before it is written (nothing guessed: the street address and every requirement line must stand verbatim on the source page),
-publish / queue / reject, and when a row is visible (verified, from an official or operator source, checked within MAX_AGE_DAYS,
+the town rule (TOWN_NAMES below: the source gives the town as locality or says it serves the town), publish / queue / reject, and when a row is visible (verified, from an official or operator source, checked within MAX_AGE_DAYS,
 inside its season). The site mirrors HELP_CATEGORIES (site/src/lib/db.ts, site/astro.config.mjs; tests/test_help_places.py).
 """
 from __future__ import annotations
@@ -24,6 +24,20 @@ MAX_AGE_DAYS = 45   # spec help.max_age_days; the same 45 as site-config placeSt
 MIN_ENTRIES = 6     # spec help.min_entries; owner decision 1: stays 6, a town below it has no /help/ page
 MAX_NOTE_CHARS = 160
 
+# Town rule (owner 2026-11-27): a place is on a town's /help/ only when its source page EITHER gives the town as the place's
+# locality OR says in so many words that it serves the town. The parser names the phrase (HelpEntry.town_evidence); it must stand
+# verbatim on the source page and pass one of the two tests:
+#   locality  the town name followed by the state or a UK postcode, at most one word between ("Broomfield, CO 80020",
+#             "Glasgow G51 1QH", "Glasgow Bridgeton G40 1QH")
+#   serves    the town name together with a serving word ("The pantries below serve residents across Moreno Valley.")
+# A page that names only another town (Good Shepherd: "Northglenn, CO 80234") or no town at all (Harvest Table) is rejected, and the
+# site's own domain name or the operator's name ("Feeding Brookings") is never evidence. Which "serves" sentence a parser uses is
+# chosen per source and shown to the owner in the dry run; the test only keeps a phrase that names neither from passing.
+TOWN_NAMES = {"brookings_sd": "Brookings", "broomfield_co": "Broomfield", "moreno_valley_ca": "Moreno Valley", "glasgow": "Glasgow"}
+_LOCALITY_TAIL = {"brookings_sd": r"SD\b", "broomfield_co": r"CO\b", "moreno_valley_ca": r"CA\b",
+                  "glasgow": r"G\d{1,2}\s?\d[A-Z]{2}\b"}
+_SERVES = re.compile(r"\b(serv\w*|support\w*|residents?|famil(?:y|ies)|neighbou?rs)\b", re.I)
+
 
 @dataclass(frozen=True)
 class HelpEntry:
@@ -44,6 +58,7 @@ class HelpEntry:
     valid_from: date | None = None
     valid_to: date | None = None
     schedule_rule: str | None = None
+    town_evidence: str | None = None  # the town rule's phrase (above); checked, not stored
 
 
 def _norm(text: str) -> str:
@@ -54,6 +69,29 @@ def _on_page(value: str, page: str) -> bool:
     """Verbatim on the page as whole words ("908 Hope Dr" is not on a page that says "908 Hope Drive")."""
     needle = _norm(value)
     return bool(needle) and re.search(rf"(?<!\w){re.escape(needle)}(?!\w)", _norm(page)) is not None
+
+
+def town_kind(town_id: str, evidence: str | None) -> str | None:
+    """'locality' | 'serves' | None: which half of the town rule the phrase meets (None = neither)."""
+    name = TOWN_NAMES.get(town_id)
+    if not name or not evidence:
+        return None
+    text = re.sub(r"\s+", " ", evidence)
+    if re.search(rf"\b{re.escape(name)}\b,?\s+(?:[A-Za-z]+\s+)?{_LOCALITY_TAIL[town_id]}", text):
+        return "locality"
+    if re.search(rf"\b{re.escape(name)}\b", text) and _SERVES.search(text):
+        return "serves"
+    return None
+
+
+def town_problem(entry: HelpEntry, page_text: str) -> str | None:
+    if not entry.town_evidence:
+        return f"town: the source neither gives {TOWN_NAMES.get(entry.town_id, entry.town_id)} as the locality nor says it serves it"
+    if not _on_page(entry.town_evidence, page_text):
+        return f"town: {entry.town_evidence!r} is not on the source page"
+    if town_kind(entry.town_id, entry.town_evidence) is None:
+        return f"town: {entry.town_evidence!r} is neither a {TOWN_NAMES.get(entry.town_id)} locality nor a serving statement"
+    return None
 
 
 def validate(entry: HelpEntry, page_text: str) -> list[str]:
@@ -70,6 +108,8 @@ def validate(entry: HelpEntry, page_text: str) -> list[str]:
         problems.append(f"audience_tags {sorted(bad_tags)} not in {sorted(AUDIENCE_TAGS)}")
     if entry.street_address and not _on_page(entry.street_address, page_text):
         problems.append(f"street_address {entry.street_address!r} is not on the source page")
+    if entry.postal_code and not _on_page(entry.postal_code, page_text):
+        problems.append(f"postal_code {entry.postal_code!r} is not on the source page")
     if entry.requirements_note:
         if len(entry.requirements_note) > MAX_NOTE_CHARS:
             problems.append(f"requirements_note longer than {MAX_NOTE_CHARS} characters")
@@ -80,16 +120,23 @@ def validate(entry: HelpEntry, page_text: str) -> list[str]:
         problems.append(f"schedule_rule {entry.schedule_rule!r} is not on the source page")
     if entry.valid_from and entry.valid_to and entry.valid_from > entry.valid_to:
         problems.append("valid_from after valid_to")
+    town = town_problem(entry, page_text)
+    if town:
+        problems.append(town)
     return problems
 
 
-def publish_decision(entry: HelpEntry, page_text: str) -> tuple[str, str]:
-    """('publish' | 'queue' | 'reject', why). Spec Phase 2: official/operator publish, other goes to the candidate queue."""
+def publish_decision(entry: HelpEntry, page_text: str, review: str | None = None) -> tuple[str, str]:
+    """('publish' | 'queue' | 'reject', why). Spec Phase 2: official/operator publish, other goes to the candidate queue.
+    `review` = the parser could read the row but something on the page needs the owner first (a stale page, two seasonal
+    schedules without dates, "every other Monday" without a start date): queued, never published."""
     problems = validate(entry, page_text)
     if problems:
         return "reject", "; ".join(problems)
     if entry.source_kind not in PUBLISHED_KINDS:
         return "queue", f"source_kind {entry.source_kind}"
+    if review:
+        return "queue", review
     return "publish", ""
 
 
