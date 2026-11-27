@@ -34,7 +34,7 @@ from __future__ import annotations
 import os
 
 from scrapers.base_parser import BaseParser, FetchResult
-from scrapers.event_sources import EVENT_SOURCE_KINDS
+from scrapers.event_sources import EMPTY_BODY_PREFIX, EVENT_SOURCE_KINDS, EmptyBody
 from scrapers.user_agent import user_agent
 
 _INERT_KINDS = {
@@ -67,6 +67,7 @@ class EventsParser(BaseParser):
     def fetch(self) -> FetchResult:
         sources = self.source_cfg.get("sources", [])
         blobs: dict[str, bytes] = {}
+        empty: list[str] = []
 
         for src in sources:
             name = src.get("name")
@@ -88,6 +89,9 @@ class EventsParser(BaseParser):
 
             try:
                 blob = source_kind.fetch(src, self._headers())
+            except EmptyBody:  # already printed; recorded on the run for ops.ical-empty
+                empty.append(name)
+                continue
             except Exception as exc:  # noqa: BLE001 — en trasig delkälla ska inte fälla de andra
                 print(f"    [events:{name}] fel vid hämtning: {exc}")
                 continue
@@ -100,8 +104,10 @@ class EventsParser(BaseParser):
         combined = b"\n--EVENTSOURCE--\n".join(
             name.encode() + b"\n" + blob for name, blob in blobs.items()
         )
+        # docs_attempted stays 0: an empty feed must not turn the run 'degraded' (scrape-liveness counts only 'ok'); the text is the signal.
         return FetchResult(raw=combined, content_type="text/calendar",
-                           url="multi:events", http_code=200)
+                           url="multi:events", http_code=200,
+                           docs_last_error=f"{EMPTY_BODY_PREFIX}{', '.join(empty)}" if empty else None)
 
     def parse(self, fetched: FetchResult) -> list[dict]:
         blobs = getattr(self, "_blobs", None)

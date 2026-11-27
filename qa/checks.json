@@ -71,6 +71,11 @@
       "born_from": "2026-11-09: a sport page that keeps failing is skipped while the other sports are written (sports/http.py retry + page isolation), so last_success stays fresh and ops.sport-freshness cannot see it; the warning in sport_sources_health.last_error is the only sign",
       "what": "the same `warning:` has been in sport_sources_health.last_error for more than 3 days"
     },
+    "ops.ical-empty": {
+      "severity": "hard",
+      "born_from": "2026-11-26 (Thanksgiving): Brookings' chamber iCal feed answered 200 with an empty body; 715daa30 made it transient (rows kept, warning), but a feed that stays empty would only print a warning on every run while the other feeds keep the events run 'ok' and the per-town events staleness fresh",
+      "what": "one events feed has answered an empty body in every 'ok' events run (scrape_runs.docs_last_error) for more than 3 days"
+    },
     "ops.weather-freshness": {
       "severity": "hard",
       "born_from": "2026-11-08: the cron-dispatcher's weather/warnings/sports jobs failed only in Cloudflare's logs, which nobody reads; scripts/check_freshness.py on GitHub's own schedule opens an issue instead",

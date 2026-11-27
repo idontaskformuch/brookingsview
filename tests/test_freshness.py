@@ -273,6 +273,62 @@ def test_collect_checks_every_active_source_and_the_issue_closes_when_the_warnin
     assert plan_actions([], [open_issue], clean_to_close=2, scope_towns=ALL_TOWNS_SCOPE, scope_checks=lambda c: c == cf.CHECK_ID["sport"]) == []
 
 
+# ---------------------------------------------------------------- ops.ical-empty: one events feed answering an empty body for > 3 days
+# 2026-11-26 Brookings' "chamber" feed (configs/brookings_sd.json) answered 200 with an empty body. The events run stays 'ok' (the other
+# feeds are read) and ops.scrape-liveness / the per-town events staleness (MAX(created_at) over every feed) cannot see one silent feed.
+
+EMPTY = "warning: empty response body: chamber"
+
+
+def runs_every_12h(days: float, text: str | None, until: datetime = NOW) -> list[tuple]:
+    n = int(days * 2)
+    return [(until - timedelta(hours=12 * (n - i)), text) for i in range(n + 1)]
+
+
+def test_an_empty_body_in_every_run_for_more_than_three_days_opens_a_finding_per_feed():
+    runs = runs_every_12h(3.5, EMPTY)
+    [f] = cf.ical_empty_findings("brookings_sd", runs, NOW)
+    assert f["check"] == "ops.ical-empty" == cf.CHECK_ID["icalempty"] and f["town"] == "brookings_sd" and f["pattern"] == "events/chamber"
+    assert "chamber" in f["message"] and "3.5 days" in f["message"]
+
+
+def test_three_days_or_less_is_quiet():
+    assert cf.ical_empty_findings("brookings_sd", runs_every_12h(3, EMPTY), NOW) == []
+    assert cf.ical_empty_findings("brookings_sd", runs_every_12h(0.5, EMPTY), NOW) == []
+
+
+def test_one_good_run_in_between_restarts_the_count_and_a_good_latest_run_is_quiet():
+    runs = runs_every_12h(5, EMPTY)
+    i = len(runs) - 4  # 1.5 days ago the feed answered with a body
+    runs[i] = (runs[i][0], None)
+    assert cf.ical_empty_findings("brookings_sd", runs, NOW) == []
+    assert cf.ical_empty_findings("brookings_sd", runs_every_12h(5, EMPTY)[:-1] + [(NOW, None)], NOW) == []
+    assert cf.ical_empty_findings("brookings_sd", [], NOW) == []
+
+
+def test_two_empty_feeds_are_two_findings_and_other_texts_are_ignored():
+    runs = runs_every_12h(4, "warning: empty response body: library, chamber")
+    assert sorted(f["pattern"] for f in cf.ical_empty_findings("brookings_sd", runs, NOW)) == ["events/chamber", "events/library"]
+    assert cf.ical_empty_findings("brookings_sd", runs_every_12h(4, "agenda HTTP 403 (möte 12)"), NOW) == []
+
+
+def test_collect_reads_the_events_runs_of_every_town():
+    seen = []
+
+    class Conn:
+        def execute(self, sql, params):
+            seen.append(params[0])
+            self.rows = runs_every_12h(4, EMPTY) if params[0] == "brookings_sd" else []
+            return self
+
+        def fetchall(self):
+            return self.rows
+
+    findings, lines = cf.collect(Conn(), NOW, {"icalempty"}, NOW.date())
+    assert seen == cf.ALL_TOWNS and len(lines) == len(cf.ALL_TOWNS)
+    assert [(f["check"], f["town"], f["pattern"]) for f in findings] == [("ops.ical-empty", "brookings_sd", "events/chamber")]
+
+
 def test_the_store_keeps_the_time_of_the_first_identical_warning():
     import inspect
     from sports import store

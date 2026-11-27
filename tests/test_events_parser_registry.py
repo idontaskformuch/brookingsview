@@ -105,6 +105,33 @@ def test_mixed_sources_one_broken_never_blocks_the_others(capsys):
         EVENT_SOURCE_KINDS.pop("flaky", None)
 
 
+def test_an_empty_body_is_recorded_on_the_run_so_ops_ical_empty_can_see_it_last(capsys):
+    # 2026-11-26 Brookings' "chamber" feed (configs/brookings_sd.json) answered 200 with an empty body. The other sources are still read,
+    # the run stays 'ok' (docs_attempted 0), and the source name lands in docs_last_error (scrape_runs) for scripts/check_freshness.py.
+    from scrapers.event_sources import EmptyBody
+    _install_stub_kind()
+
+    def empty_fetch(source_cfg, headers):
+        raise EmptyBody(source_cfg["name"])
+
+    EVENT_SOURCE_KINDS["empty"] = EventSourceKind(fetch=empty_fetch, parse=lambda n, b, tz: [])
+    try:
+        parser = _parser([
+            {"name": "library", "kind": "stub", "url": "https://example.com/good"},
+            {"name": "chamber", "kind": "empty", "url": "https://example.com/empty"},
+        ])
+        fetched = parser.fetch()
+        assert [r["title"] for r in parser.parse(fetched)] == ["library"]
+        assert fetched.docs_last_error == "warning: empty response body: chamber"
+        assert fetched.docs_attempted == 0 and fetched.docs_failed == 0
+        assert "fel vid hämtning" not in capsys.readouterr().out
+        # a run with no empty body writes nothing there
+        assert _parser([{"name": "library", "kind": "stub", "url": "https://example.com/good"}]).fetch().docs_last_error is None
+    finally:
+        _remove_stub_kind()
+        EVENT_SOURCE_KINDS.pop("empty", None)
+
+
 def test_parse_reconstructs_from_raw_snapshot_when_blobs_not_cached():
     # simulates a fresh EventsParser instance parsing a previously-saved
     # snapshot blob (e.g. a retry in a separate process) -- self._blobs

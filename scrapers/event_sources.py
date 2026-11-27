@@ -134,6 +134,14 @@ def _get(fetcher: PoliteFetcher, source_cfg: dict, url: str, params: dict | None
     return got.body
 
 
+EMPTY_BODY_PREFIX = "warning: empty response body: "  # + ", "-joined source names; scripts/check_freshness.py parses it
+
+
+class EmptyBody(Exception):
+    """A feed answered 200 with an empty body. Transient: scrapers/parsers/events.py skips the source (its rows stay as they are) and records
+    the name in scrape_runs.docs_last_error, where ops.ical-empty (scripts/check_freshness.py) opens an issue when it lasts > 3 days."""
+
+
 def _fetch_ical(source_cfg: dict, headers: dict) -> bytes | None:
     url = source_cfg.get("url")
     if not url:
@@ -143,7 +151,7 @@ def _fetch_ical(source_cfg: dict, headers: dict) -> bytes | None:
         # 2026-11-26 (Thanksgiving) the Visit Brookings feed answered 200 with an empty body. Transient: no blob, so the source is skipped
         # like a failed fetch and its rows stay as they are, instead of "kunde inte tolka ICS: Found no components ...".
         print(f"    [events:{source_cfg.get('name')}] warning: empty response body -- hoppar över, provas igen nästa körning")
-        return None
+        raise EmptyBody(source_cfg.get("name"))
     return body
 
 

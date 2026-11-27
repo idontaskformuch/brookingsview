@@ -6,6 +6,8 @@ issues are independent (qa/report.py `scope_checks`: a run of this script only e
   ops.sport-freshness    sport_sources_health.last_success per ACTIVE sports source (configs sports.enabled or sports.collect)        26 h  (one daily run, 17:00 UTC)
   ops.sport-warning      a `warning:` in sport_sources_health.last_error (a page skipped, a guard that held rows back) that has lasted > 3 days
                          unchanged; the source still counts as fresh, so only this check shows a sport page that fails every day
+  ops.ical-empty         one events feed answered 200 with an empty body in every 'ok' events run (scrape_runs.docs_last_error) for > 3 days;
+                         the run stays ok and the per-town events staleness (MAX(created_at) over all feeds) cannot see one silent feed
   ops.weather-freshness  weather_snapshots, newest row per town, payload->>'fetched_at' (written every whole hour)    3 h
   ops.alerts-freshness   dispatcher_heartbeat job 'alerts' per town (written by the Worker after each good 15-min fetch) 2 h
   ops.safety-freshness   dispatcher_heartbeat job 'safety' per safety town (wildfire + air quality)                    3 h
@@ -38,6 +40,7 @@ from db.db import get_conn
 from qa.report import report
 from scrapers.alert_state import reconcile
 from scrapers.alerts import send_alert
+from scrapers.event_sources import EMPTY_BODY_PREFIX
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -48,7 +51,9 @@ TOKEN_WARN_DAYS = 30  # the issue opens on 2027-09-21
 
 LIMIT_HOURS = {"sport": 26, "weather": 3, "alerts": 2, "safety": 3}
 SPORT_WARNING_DAYS = 3
-CHECK_ID = {"sport": "ops.sport-freshness", "sportwarn": "ops.sport-warning", "weather": "ops.weather-freshness", "alerts": "ops.alerts-freshness",
+ICAL_EMPTY_DAYS = 3
+ICAL_EMPTY_LOOKBACK_DAYS = 14  # runs read per town; a feed empty for the whole window reports "14.0 days"
+CHECK_ID = {"sport": "ops.sport-freshness", "sportwarn": "ops.sport-warning", "icalempty": "ops.ical-empty", "weather": "ops.weather-freshness", "alerts": "ops.alerts-freshness",
             "safety": "ops.safety-freshness", "register": "ops.evening-register-freshness", "token": "ops.token-expiry",
             "hours": "ops.hours-verified", "registercut": "ops.evening-register-cutoff"}
 # Checks that only open/close an issue: the job that finds the problem already sends its own alert (scripts/refresh_evening_register.py
@@ -150,6 +155,34 @@ def sport_warning_finding(town: str, source_id: str, last_error: str | None, sin
     return {"check": CHECK_ID["sportwarn"], "town": town, "pattern": source_id, "path": f"/{town}/{source_id}",
             "message": f"{source_id}: the same warning has been in sport_sources_health.last_error for {days:.1f} days (limit {SPORT_WARNING_DAYS}): "
                        f"{last_error[:300]} Part of the schedule is not being read; check the brookingsview sports workflow log."}
+
+
+def _empty_feeds(text: str | None) -> set[str]:
+    if not text or not text.startswith(EMPTY_BODY_PREFIX):
+        return set()
+    return {n.strip() for n in text[len(EMPTY_BODY_PREFIX):].split(",") if n.strip()}
+
+
+def ical_empty_findings(town: str, runs: list[tuple], now: datetime) -> list[dict]:
+    """runs: (started_at, docs_last_error) of the town's 'ok' events runs, oldest first. A finding per feed that answered an empty body in
+    EVERY run since more than ICAL_EMPTY_DAYS ago (one run with a body restarts the count). Pure, so it is tested without a DB."""
+    if not runs:
+        return []
+    out: list[dict] = []
+    for name in sorted(_empty_feeds(runs[-1][1])):
+        since = runs[-1][0]
+        for started, text in reversed(runs):
+            if name not in _empty_feeds(text):
+                break
+            since = started
+        if now - since <= timedelta(days=ICAL_EMPTY_DAYS):
+            continue
+        days = (now - since).total_seconds() / 86400
+        out.append({"check": CHECK_ID["icalempty"], "town": town, "pattern": f"events/{name}", "path": f"/{town}/events/{name}",
+                    "message": f"events feed '{name}' has answered 200 with an empty body in every events run for {days:.1f} days (limit "
+                               f"{ICAL_EMPTY_DAYS}); its rows are kept as they were, so new and changed events are missing. Open the feed URL "
+                               f"(configs/{town}.json events.sources) and check the scrape workflow log."})
+    return out
 
 
 def token_findings(today: date) -> list[dict]:
@@ -259,6 +292,13 @@ def collect(conn, now: datetime, only: set[str], today: date) -> tuple[list[dict
             lines.append(f"  [freshness] sportwarn {town}/{source_id}: {'ISSUE' if found else 'ok'}")
             if found:
                 findings.append(found)
+    if "icalempty" in only:
+        for town in ALL_TOWNS:
+            runs = conn.execute("SELECT started_at, docs_last_error FROM scrape_runs WHERE town_id = %s AND source_key = 'events' AND status = 'ok' "
+                                "AND started_at > %s ORDER BY started_at", (town, now - timedelta(days=ICAL_EMPTY_LOOKBACK_DAYS))).fetchall()
+            found = ical_empty_findings(town, runs, now)
+            lines.append(f"  [freshness] icalempty {town}: {'ISSUE ' + ', '.join(f['pattern'] for f in found) if found else 'ok'}")
+            findings += found
     if "weather" in only:
         for town in WEATHER_TOWNS:
             row = conn.execute("SELECT payload->>'fetched_at' FROM weather_snapshots WHERE town_id = %s ORDER BY observed_for DESC LIMIT 1", (town,)).fetchone()
