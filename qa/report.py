@@ -75,7 +75,7 @@ def fp_of_body(body: str) -> str | None:
 NOTIFY = os.environ.get("QA_NOTIFY", "@idontaskformuch")
 
 
-def render_issue(fp: str, g: dict, run_url: str = "") -> tuple[str, str]:
+def render_issue(fp: str, g: dict, run_url: str = "", clean_to_close: int = 3) -> tuple[str, str]:
     title = f"[QA] {g['check']} — {g['town'] or 'all'} {g['pattern']} ({len(g['items'])} träff)"
     lines = [f"<!-- qa-fp:{fp} -->", f"**Kontroll:** `{g['check']}`  ", f"**Stad:** {g['town'] or '-'}  ",
              f"**Vad den fångar:** {REGISTRY.get(g['check'], {}).get('what', '')}  ",
@@ -86,7 +86,8 @@ def render_issue(fp: str, g: dict, run_url: str = "") -> tuple[str, str]:
         lines.append(f"- … och {len(g['items']) - 15} till")
     if run_url:
         lines += ["", f"Körning: {run_url}"]
-    lines += ["", "Stängs automatiskt efter 3 rena körningar i rad. Waiver: `qa/known-issues.json`."]
+    after = "1 ren körning" if clean_to_close == 1 else f"{clean_to_close} rena körningar i rad"
+    lines += ["", f"Stängs automatiskt efter {after}. Waiver: `qa/known-issues.json`."]
     if NOTIFY:
         lines += ["", f"cc {NOTIFY}"]
     return title, "\n".join(lines)
@@ -116,7 +117,7 @@ def plan_actions(findings: list[dict], open_issues: list[dict], clean_to_close: 
     for fp, g in groups.items():
         issue = by_fp.get(fp)
         if issue is None:
-            title, body = render_issue(fp, g)
+            title, body = render_issue(fp, g, clean_to_close=clean_to_close)
             actions.append({"op": "create", "fp": fp, "title": title, "body": body})
         elif trailing_clean(issue.get("comments", [])) > 0:
             actions.append({"op": "comment", "number": issue["number"], "body": f"{RECUR_MARK}Felet är tillbaka ({len(g['items'])} träff).{f' cc {NOTIFY}' if NOTIFY else ''}"})

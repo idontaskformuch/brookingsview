@@ -116,6 +116,21 @@
       "born_from": "Owner order 2026-11-26 (13): Broomfield's /christmas-tree-recycling/ is a draft until the city publishes the 2026-27 drop-off sites and dates (broomfield.org/4401/Holiday-Tree-Recycling still says they \"will be announced in the Fall\"); a scheduled job, not a Claude session, must tell the owner when that sentence goes or the site list changes, and the same job is to carry the freshness check of the /help/ spec. Regression fixture: tests/fixtures/source_watch/broomfield-4401-holiday-tree-recycling-2026-11-19.html in tests/test_watch_sources.py (the real page; each failing case changes one thing in it).",
       "what": "a page in configs/shared/source_watch.json no longer holds one of its rules: a text that must be there is gone, one that must not be there appears, or the text between two markers differs from the committed baseline (daily, source-watch.yml, one issue per watch): the owner decides, nothing is published"
     },
+    "ops.help-changed": {
+      "severity": "hard",
+      "born_from": "Owner order 2026-11-27 (after f538d8ea, the /help/ freshness job): a help place that was shown and then went to changed (the page's new reading fails validation or the parser no longer reads the page) or gone (404/410, or the row is no longer on the page) disappears from /help/ without anyone being told. One issue per town (the row, the source, the diff); closes after 1 clean weekly run for that town. Regression fixtures: the 2026-11-27 pages in tests/fixtures/help_sources_2026-11-27, one change each, in tests/test_help_alerts.py.",
+      "what": "a /help/ row that was shown went to changed or gone in this week's freshness run (scripts/watch_sources.py help_freshness; one issue per town); the row is hidden until a later reading of the page passes validation"
+    },
+    "ops.help-unreadable": {
+      "severity": "hard",
+      "born_from": "Owner order 2026-11-27 (after f538d8ea): a help source that cannot be read (403, robots.txt, 5xx, no answer) changes nothing in the freshness job, so its rows quietly age out after 45 days. Two weekly runs in a row unreadable -> one issue per source; closes after 1 clean run. Regression fixtures: tests/test_help_alerts.py (broomfield-fish page, each unreadable kind).",
+      "what": "a /help/ source page was unreadable on two weekly freshness runs in a row (one issue per source); nothing was changed, its rows are hidden after 45 days without a reading"
+    },
+    "ops.help-min-entries": {
+      "severity": "hard",
+      "born_from": "Owner order 2026-11-27 (after f538d8ea): a town's /help/ page is hidden when fewer than help.min_entries (6) entries are visible, so rows lost one by one make the whole page vanish silently. Towns that expect a page carry min_entries in configs/shared/source_watch.json (Moreno Valley, Glasgow); Brookings 4 and Broomfield 3 are under it by owner decision 1 and are not armed. Regression fixture: moval.gov's food-pantries page (14 shown rows, 404) in tests/test_help_alerts.py.",
+      "what": "a town with min_entries in its help watch has fewer visible /help/ entries than min_entries after this week's freshness run (one issue per town): /help/ is hidden there"
+    },
     "ops.evening-register-cutoff": {
       "severity": "hard",
       "born_from": "2026-11-25 run 45701360375: glasgow/swg3's model reply was cut off at max_tokens 8000 (the page lists a year of shows); the annotation pointed only to '.github#28' (GitHub's location for a ::warning:: without a file, no issue) and the alert was never sent (ALERT_WEBHOOK missing in evening-register.yml). Owner 2026-11-26: never raise max_tokens again, crop the page / send it in parts, and let the alert point to an issue that exists. Regression fixtures: tests/fixtures/evening_register/swg3-events-2026-11-26.html (test_swg3_* in tests/test_evening_register.py) and the registercut tests in tests/test_freshness.py.",

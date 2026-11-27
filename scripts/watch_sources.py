@@ -31,6 +31,7 @@ import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import NamedTuple
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG = ROOT / "configs" / "shared" / "source_watch.json"
@@ -158,6 +159,26 @@ HELP_KIND = "help_freshness"
 WEEKDAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 GONE_STATUSES = (404, 410)
 
+# Alarms (owner order 2026-11-27): one GitHub issue per town for rows lost (ops.help-changed), one per source for a source unreadable
+# on two runs in a row (ops.help-unreadable), one per town that falls under its min_entries (ops.help-min-entries). They close after
+# ONE clean run of the same town (the next weekly run); the page watches above keep their 3. Only towns with `min_entries` in their
+# rule are checked for it: Brookings (4) and Broomfield (3) are under 6 by owner decision 1, so an alarm there would never be quiet.
+HELP_CHECKS = {"changed": "ops.help-changed", "unreadable": "ops.help-unreadable", "min": "ops.help-min-entries"}
+HELP_CHECK_IDS = frozenset(HELP_CHECKS.values())
+HELP_CLEAN_TO_CLOSE = 1
+
+
+class PrevCheck(NamedTuple):
+    """What help_source_checks held for a source before this run."""
+    hash: str | None
+    http_status: int | None
+    exists: bool
+
+
+def was_unreadable(prev: PrevCheck) -> bool:
+    """The last run could not read the source: a check row whose status is not an answer (200, or 404/410 = gone)."""
+    return prev.exists and prev.http_status != 200 and prev.http_status not in GONE_STATUSES
+
 
 def is_help_watch(watch: dict) -> bool:
     return any(r.get("kind") == HELP_KIND for r in watch.get("rules", []))
@@ -167,9 +188,17 @@ def due(watch: dict, today) -> bool:
     return WEEKDAYS[today.weekday()] == watch["weekday"]
 
 
+def _rule(watch: dict) -> dict:
+    return next(r for r in watch["rules"] if r["kind"] == HELP_KIND)
+
+
 def _max_age(watch: dict) -> int:
     from db import help_places as hp
-    return next((r.get("max_age_days", hp.MAX_AGE_DAYS) for r in watch["rules"] if r["kind"] == HELP_KIND), hp.MAX_AGE_DAYS)
+    return _rule(watch).get("max_age_days", hp.MAX_AGE_DAYS)
+
+
+def _min_entries(watch: dict) -> int | None:
+    return _rule(watch).get("min_entries")
 
 
 def page_hash(pages: dict) -> str:
@@ -214,10 +243,10 @@ def row_from_parsed(parsed, row_id: int, status: str, verified, today, place_id:
     """A DB row as the job reads it, built from a parse (tests; the same shape load_help_rows returns)."""
     e = parsed.entry
     if parsed.role:   # a role keeps its times as text (place_roles.schedule_text); the place's own hours are the venue's
-        return {"key": ("role", place_id, parsed.role), "id": row_id, "status": status, "verified_date": verified,
+        return {"key": ("role", place_id, parsed.role), "id": row_id, "name": e.name, "status": status, "verified_date": verified,
                 "valid_to": e.valid_to, "requirements_note": e.requirements_note, "weekly": (), "dates": (),
                 "schedule_text": parsed.hours_text}
-    return {"key": ("place", e.slug), "id": row_id, "status": status,
+    return {"key": ("place", e.slug), "id": row_id, "name": e.name, "status": status,
             "verified_date": verified, "valid_to": e.valid_to, "requirements_note": e.requirements_note,
             "weekly": tuple(sorted((d, _hm(o), _hm(c)) for d, o, c in parsed.weekly)),
             "dates": tuple(sorted((d, _hm(o), _hm(c)) for d, o, c in parsed.dates if d >= today)),
@@ -261,35 +290,50 @@ class HelpPlan:
     actions: list = field(default_factory=list)
     # ('bump', key) ('status', key, new) ('write', key | None, parsed, status) ('extend', key, [(date, opens, closes)]) ('expired', key)
     lines: list = field(default_factory=list)
+    # A row that was SHOWN (verified) and now is changed or gone: {key, name, from, to, why, diff}. Queued, stale and already
+    # hidden rows raise none: they were reported when they were lost, or were never shown.
+    events: list = field(default_factory=list)
+    unreadable_twice: bool = False   # this run and the last one could not read the source
 
 
 def _name(key) -> str:
     return key[1] if key[0] == "place" else f"{key[2]} on place {key[1]}"
 
 
+def _was(row: dict) -> str:
+    """What the row said before this run, for an alarm's diff."""
+    return "was: " + (row["schedule_text"] if row.get("schedule_text") else _hours_line(row["weekly"], row["dates"]))
+
+
 def plan_help_source(src, res: dict, stored_hash: str | None, rows: list[dict], today, max_age_days: int | None = None,
-                     resolve_role=None) -> HelpPlan:
+                     resolve_role=None, prev_unreadable: bool = False) -> HelpPlan:
     """What the freshness check does to one source's rows. Pure: res = url -> Fetched | Refused, rows = the DB rows of this
-    source (load_help_rows). resolve_role(parsed) -> the place id a role row belongs on, or None."""
+    source (load_help_rows). resolve_role(parsed) -> the place id a role row belongs on, or None. prev_unreadable = the last run
+    could not read the source (was_unreadable)."""
     from db import help_places as hp
     from scrapers import help_sources as hs
     max_age = hp.MAX_AGE_DAYS if max_age_days is None else max_age_days
     fetch, status, note = classify_fetch(res)
     pages = {u: res[u].body for u in src.fixtures if u in res and fetch == "ok"}
-    p = HelpPlan(src.id, src.town_id, src.url, fetch, status, note, page_hash(pages) if fetch == "ok" else None)
+    p = HelpPlan(src.id, src.town_id, src.url, fetch, status, note, page_hash(pages) if fetch == "ok" else None,
+                 unreadable_twice=fetch == "unreadable" and prev_unreadable)
     by_key = {r["key"]: r for r in rows}
     touched: set = set()
 
-    def status_to(key, new, why):
-        if by_key[key]["status"] != new:
+    def status_to(key, new, why, diff=()):
+        row = by_key[key]
+        if row["status"] != new:
             p.actions.append(("status", key, new))
             p.lines.append(f"{new.upper():8} {_name(key)}: {why}")
+            if new in ("changed", "gone") and row["status"] == "verified":
+                p.events.append({"key": key, "name": row.get("name") or _name(key), "from": row["status"], "to": new,
+                                 "why": why, "diff": list(diff) or [_was(row)]})
         touched.add(key)
 
     if fetch == "gone":
         p.hash_action = "clear"
         for r in rows:
-            status_to(r["key"], "gone", note)
+            status_to(r["key"], "gone", f"the page answers status {status}")
     elif fetch == "ok" and p.page_hash == stored_hash:
         parsed = {}
         try:
@@ -328,8 +372,8 @@ def plan_help_source(src, res: dict, stored_hash: str | None, rows: list[dict], 
                 seen.add(key)
                 r = by_key.get(key)
                 if x.decision == "reject":
-                    if r is not None:
-                        status_to(key, "changed", x.why)
+                    if r is not None:   # the diff is what the page says now against the stored row, even if it fails validation
+                        status_to(key, "changed", x.why, _diff(r, x, today))
                     else:
                         p.lines.append(f"new row rejected {x.entry.name}: {x.why}")
                     continue
@@ -358,10 +402,10 @@ def plan_help_source(src, res: dict, stored_hash: str | None, rows: list[dict], 
     return p
 
 
-def load_help_rows(cur, src, today) -> tuple[list[dict], str | None, list]:
-    """(rows of this source, stored hash or None, the town's places for role placement). Read-only."""
+def load_help_rows(cur, src, today) -> tuple[list[dict], PrevCheck, list]:
+    """(rows of this source, what help_source_checks held for it, the town's places for role placement). Read-only."""
     from db import help_places as hp
-    cur.execute("SELECT id, slug, verification_status, verified_date, valid_to, requirements_note FROM places "
+    cur.execute("SELECT id, slug, verification_status, verified_date, valid_to, requirements_note, name FROM places "
                 "WHERE town_id = %s AND source_url = %s AND category = ANY(%s) ORDER BY id",
                 (src.town_id, src.url, list(hp.HELP_CATEGORIES)))
     places = cur.fetchall()
@@ -374,26 +418,93 @@ def load_help_rows(cur, src, today) -> tuple[list[dict], str | None, list]:
         for pid, dow, o, c, vf in cur.fetchall():
             hours.setdefault(pid, []).append((dow, _hm(o), _hm(c), vf))
     rows = []
-    for pid, slug, st, vd, vt, req in places:
+    for pid, slug, st, vd, vt, req, name in places:
         hs_ = hours.get(pid, [])
-        rows.append({"key": ("place", slug), "id": pid, "status": st, "verified_date": vd, "valid_to": vt, "requirements_note": req,
+        rows.append({"key": ("place", slug), "id": pid, "name": name, "status": st, "verified_date": vd, "valid_to": vt, "requirements_note": req,
                      "weekly": tuple(sorted((d, o, c) for d, o, c, vf in hs_ if vf is None)),
                      "dates": tuple(sorted((vf, o, c) for d, o, c, vf in hs_ if vf is not None and vf >= today)),
                      "schedule_text": None})
     cur.execute("SELECT pr.id, pr.place_id, pr.role, pr.verification_status, pr.verified_date, pr.valid_to, pr.requirements_note, "
-                "pr.schedule_text FROM place_roles pr JOIN places p ON p.id = pr.place_id WHERE p.town_id = %s AND pr.source_url = %s",
+                "pr.schedule_text, p.name FROM place_roles pr JOIN places p ON p.id = pr.place_id WHERE p.town_id = %s AND pr.source_url = %s",
                 (src.town_id, src.url))
-    for rid, pid, role, st, vd, vt, req, sched in cur.fetchall():
-        rows.append({"key": ("role", pid, role), "id": rid, "status": st, "verified_date": vd, "valid_to": vt,
+    for rid, pid, role, st, vd, vt, req, sched, pname in cur.fetchall():
+        rows.append({"key": ("role", pid, role), "id": rid, "name": f"{pname} ({role})", "status": st, "verified_date": vd, "valid_to": vt,
                      "requirements_note": req, "weekly": (), "dates": (), "schedule_text": sched})
-    stored = None
-    cur.execute("SELECT to_regclass('help_source_checks') IS NOT NULL")
-    if cur.fetchone()[0]:
-        cur.execute("SELECT section_hash FROM help_source_checks WHERE source_id = %s", (src.id,))
-        got = cur.fetchone()
-        stored = got[0] if got else None
+    prev = PrevCheck(None, None, False)   # migration 080 is live: the table always exists
+    cur.execute("SELECT section_hash, http_status FROM help_source_checks WHERE source_id = %s", (src.id,))
+    got = cur.fetchone()
+    if got:
+        prev = PrevCheck(got[0], got[1], True)
     cur.execute("SELECT id, slug, name, category, coalesce(address, '') FROM places WHERE town_id = %s", (src.town_id,))
-    return rows, stored, cur.fetchall()
+    return rows, prev, cur.fetchall()
+
+
+def load_town_places(cur, town: str) -> list[dict]:
+    """Every help place of the town, whatever its source, with what help_places.is_visible reads. Read-only."""
+    from db import help_places as hp
+    cols = ("slug", "category", "source_kind", "verification_status", "verified_date", "valid_from", "valid_to")
+    cur.execute(f"SELECT {', '.join(cols)} FROM places WHERE town_id = %s AND category = ANY(%s)", (town, list(hp.HELP_CATEGORIES)))
+    return [dict(zip(cols, r)) for r in cur.fetchall()]
+
+
+def visible_entries(places: list[dict], plans: list, today, max_age_days: int) -> tuple[int, int]:
+    """(shown before, shown after) the plans, counted with help_places.is_visible on the town's help places. The plans' actions are
+    played on a copy: bump (verified today, stale -> verified), status, write (status, season, a new place). Roles (warm_space on
+    an existing venue) are not counted here; Phase 3's page decides what counts."""
+    from db import help_places as hp
+    rows = {p["slug"]: dict(p) for p in places}
+    count = lambda: sum(1 for r in rows.values() if hp.is_visible(r, today, max_age_days))   # noqa: E731
+    before = count()
+    for plan_ in plans:
+        for a in plan_.actions:
+            key = a[1] if a[1] is not None else (row_key(a[2]) if a[0] == "write" else None)
+            if key is None or key[0] != "place":
+                continue
+            if a[0] == "write":
+                e = a[2].entry
+                rows[e.slug] = {**rows.get(e.slug, {}), "slug": e.slug, "category": e.category, "source_kind": e.source_kind,
+                                "verification_status": a[3], "verified_date": today, "valid_from": e.valid_from, "valid_to": e.valid_to}
+            elif key[1] in rows and a[0] == "bump":
+                r = rows[key[1]]
+                r["verified_date"] = today
+                r["verification_status"] = bumped_status(r["verification_status"])
+            elif key[1] in rows and a[0] == "status":
+                rows[key[1]]["verification_status"] = a[2]
+    return before, count()
+
+
+def help_findings(watch: dict, plans: list[HelpPlan], places: list[dict], today) -> list[dict]:
+    """The alarms of one town's weekly run, as qa/report.py findings (one issue per check + town + pattern)."""
+    town = watch["town"]
+    out: list[dict] = []
+    for p in plans:
+        for ev in p.events:
+            out.append({"check": HELP_CHECKS["changed"], "town": town, "pattern": "help-rows", "path": f"/{town}/help",
+                        "message": f'{ev["name"]} ({_name(ev["key"])}) {ev["from"]} -> {ev["to"]}: source {p.url}: {ev["why"]}. '
+                                   f'Diff: {" | ".join(ev["diff"])}. The row is hidden from /help/ until a later reading of the page '
+                                   f'passes validation.'})
+    for p in plans:
+        if p.unreadable_twice:
+            out.append({"check": HELP_CHECKS["unreadable"], "town": town, "pattern": p.source_id, "path": f"/{town}/help/{p.source_id}",
+                        "message": f'{p.url}: not readable on two runs in a row ({p.note or "no answer"}). Nothing was changed; its '
+                                   f'rows are hidden after {_max_age(watch)} days without a reading.'})
+    floor = _min_entries(watch)
+    if floor is not None:
+        before, after = visible_entries(places, plans, today, _max_age(watch))
+        if after < floor:
+            moved = sum(1 for p in plans for ev in p.events)
+            out.append({"check": HELP_CHECKS["min"], "town": town, "pattern": "help-min-entries", "path": f"/{town}/help",
+                        "message": f"{town} has {after} visible /help/ entries (was {before} before this run), under min_entries {floor}: "
+                                   f"/help/ is hidden there until it is back to {floor}. Rows lost this run: {moved}."})
+    return out
+
+
+def report_help(findings: list[dict], checked_towns: set, run_url: str = "") -> None:
+    """Issues for the help alarms. Scope: only the towns checked in THIS run and only the help checks, so a clean run of one town
+    closes its own issue after one run (HELP_CLEAN_TO_CLOSE) and nothing else's."""
+    from qa import report as qr
+    qr.report(findings, report_only=False, scope_towns=checked_towns, clean_to_close=HELP_CLEAN_TO_CLOSE, run_url=run_url,
+              scope_checks=lambda c: c in HELP_CHECK_IDS)
 
 
 def role_resolver(town_places):
@@ -448,19 +559,22 @@ def apply_help_plan(cur, p: HelpPlan, rows_by_key: dict, today) -> None:
                 (p.source_id, p.town_id, p.url, p.http_status, p.note or None, p.page_hash if p.hash_action == "store" else None))
 
 
-def run_help(watch: dict, fetcher_for, cur, today, write: bool = False) -> list[HelpPlan]:
-    """Every /help/ source of the watch's town: read, plan, and (write=True) apply. cur reads the DB (and writes when write)."""
+def run_help(watch: dict, fetcher_for, cur, today, write: bool = False) -> tuple[list[HelpPlan], list[dict]]:
+    """Every /help/ source of the watch's town: read, plan, and (write=True) apply. cur reads the DB (and writes when write).
+    Returns (plans, the town's help places as they were BEFORE this run: the alarms count what the plans change)."""
     from scrapers.help_sources import SOURCES
+    before = load_town_places(cur, watch["town"])
     plans = []
     for src in (s for s in SOURCES if s.town_id == watch["town"]):
         f = fetcher_for(src.town_id)
         res = {u: f.get(u) for u in src.fixtures}
-        rows, stored, town_places = load_help_rows(cur, src, today)
-        p = plan_help_source(src, res, stored, rows, today, _max_age(watch), role_resolver(town_places))
+        rows, prev, town_places = load_help_rows(cur, src, today)
+        p = plan_help_source(src, res, prev.hash, rows, today, _max_age(watch), role_resolver(town_places),
+                             prev_unreadable=was_unreadable(prev))
         if write:
             apply_help_plan(cur, p, {r["key"]: r for r in rows}, today)
         plans.append(p)
-    return plans
+    return plans, before
 
 
 class CacheOnly:
@@ -510,18 +624,33 @@ def write_baseline(watch: dict, text: str, base: Path = ROOT) -> list[Path]:
 
 
 def main_help(help_watches: list[dict], fetcher_for, today, write: bool) -> None:
-    """The due help watches. write=False: the DB is only read (dry run). write=True: one transaction per town."""
+    """The due help watches. write=False: the DB is only read (dry run), the alarms are printed. write=True: one transaction per
+    town; once a town's rows are committed its alarms go to GitHub (that town's issues close after one clean run), so a failure in
+    a later town cannot lose them."""
     from db.db import connect
+    repo, run_id = os.environ.get("GITHUB_REPOSITORY"), os.environ.get("GITHUB_RUN_ID")
+    run_url = f"https://github.com/{repo}/actions/runs/{run_id}" if repo and run_id else ""
     conn = connect()
     try:
         for watch in help_watches:
             with conn.cursor() as cur:
-                plans = run_help(watch, fetcher_for, cur, today, write=write)
+                plans, places = run_help(watch, fetcher_for, cur, today, write=write)
             if write:
                 conn.commit()
             else:
                 conn.rollback()
             print_help(watch, plans)
+            alarms = help_findings(watch, plans, places, today)
+            if not write:
+                for f in alarms:
+                    print(f"  ALARM {f['check']} {f['pattern']} - {f['message']}")
+                if not alarms:
+                    print("  (no alarm)")
+                continue
+            try:
+                report_help(alarms, {watch["town"]}, run_url)
+            except Exception as exc:  # pragma: no cover -- GitHub's API must not hide the result printed above
+                print(f"[source-watch] help issue reporting failed for {watch['town']}: {exc}", file=sys.stderr)
     finally:
         conn.close()
 

@@ -142,7 +142,7 @@ def test_an_entry_missing_from_the_new_page_is_gone():
 
 # --- 404 / gone and unreadable --------------------------------------------------------------------------------------------------
 def test_404_marks_gone_hides_and_clears_the_hash():
-    for status in (404, 410):
+    for status in (404, 410):   # (an alert for it: tests/test_help_alerts.py)
         p = plan(FISH, {FISH.url: Fetched(FISH.url, FISH.url, status)}, stored(FISH), rows_as_written(FISH))
         assert p.fetch == "gone" and p.http_status == status
         assert ops(p) == [("status", ("place", "broomfield-fish"), "gone")]

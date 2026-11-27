@@ -29,13 +29,14 @@
       "id": "help-moreno_valley_ca",
       "town": "moreno_valley_ca",
       "weekday": "Wed",
-      "rules": [ { "kind": "help_freshness", "max_age_days": 45 } ]
+      "_min_entries": "min_entries (spec help.min_entries, owner decision 1: 6) arms the alarm ops.help-min-entries: set only where /help/ is expected to be on (Moreno Valley, Glasgow). Brookings (4) and Broomfield (3) are under 6 by decision 1 and have none.",
+      "rules": [ { "kind": "help_freshness", "max_age_days": 45, "min_entries": 6 } ]
     },
     {
       "id": "help-glasgow",
       "town": "glasgow",
       "weekday": "Thu",
-      "rules": [ { "kind": "help_freshness", "max_age_days": 45 } ]
+      "rules": [ { "kind": "help_freshness", "max_age_days": 45, "min_entries": 6 } ]
     }
   ]
 }
