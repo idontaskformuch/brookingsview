@@ -88,5 +88,9 @@ def test_write_baseline_round_trips(tmp_path):
 
 def test_the_config_is_valid():
     for watch in w.load():
-        assert watch["url"].startswith("https://") and watch["id"] and watch["town"] and watch["rules"]
+        assert watch["id"] and watch["town"] and watch["rules"]
+        if w.is_help_watch(watch):   # tests/test_help_freshness.py
+            assert [r["kind"] for r in watch["rules"]] == [w.HELP_KIND] and "url" not in watch
+            continue
+        assert watch["url"].startswith("https://")
         assert all(r["kind"] in w.RULES for r in watch["rules"])

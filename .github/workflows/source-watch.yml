@@ -26,4 +26,7 @@ jobs:
           python-version-file: .python-version
       - run: pip install -r requirements.txt
       - name: Read the watched pages and check their rules
+        # The help_freshness watches (one town a day, Mon-Thu) read and write the /help/ rows in the DB (migration 080).
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python -m scripts.watch_sources

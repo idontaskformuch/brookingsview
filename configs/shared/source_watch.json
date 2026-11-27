@@ -11,6 +11,31 @@
         { "kind": "present", "text": "will be announced in the Fall", "meaning": "the city still says the 2026-27 sites and dates are not out" },
         { "kind": "unchanged", "from": "Drop-Off Locations", "to": "Wreaths, live garland", "baseline": "configs/shared/source_watch/broomfield-holiday-tree-2026-27.txt", "meaning": "the list of drop-off sites" }
       ]
+    },
+    {
+      "id": "help-brookings_sd",
+      "town": "brookings_sd",
+      "weekday": "Mon",
+      "why": "/help/ freshness (spec help-resources Phase 2): every source in scrapers/help_sources.py for the town, once a week on `weekday` (UTC). Rows are verified, rewritten, hidden (changed / gone / stale) in the DB; see scripts/watch_sources.py help_freshness.",
+      "rules": [ { "kind": "help_freshness", "max_age_days": 45 } ]
+    },
+    {
+      "id": "help-broomfield_co",
+      "town": "broomfield_co",
+      "weekday": "Tue",
+      "rules": [ { "kind": "help_freshness", "max_age_days": 45 } ]
+    },
+    {
+      "id": "help-moreno_valley_ca",
+      "town": "moreno_valley_ca",
+      "weekday": "Wed",
+      "rules": [ { "kind": "help_freshness", "max_age_days": 45 } ]
+    },
+    {
+      "id": "help-glasgow",
+      "town": "glasgow",
+      "weekday": "Thu",
+      "rules": [ { "kind": "help_freshness", "max_age_days": 45 } ]
     }
   ]
 }

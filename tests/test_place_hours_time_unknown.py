@@ -40,7 +40,7 @@ def _statements():
 
 def test_every_python_reader_handles_time_unknown():
     found = list(_statements())
-    assert len(found) == 6, f"a new place_hours reader: decide how it treats time_unknown, then count it here: {found}"
+    assert len(found) == 7, f   # 7th: scripts/watch_sources.py help_freshness (open days only, 2026-11-27)"a new place_hours reader: decide how it treats time_unknown, then count it here: {found}"
     for file, line in found:
         listed = any(file == f and text in line for f, text in COUNTS_EVERY_ROW)
         assert listed or "time_unknown" in line, (file, line)
