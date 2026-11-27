@@ -26,19 +26,30 @@ def sync_programs(cur, town_id: str, block: dict) -> None:
              prog.get("home_venue"), prog.get("level_default"), rivals.get(prog["id"], [])))
 
 
+# keep_known_time (sports/models.py): a results page without times must not turn a stored clock time into midnight. The old row keeps its
+# start_at and time_tba when the new row is time_tba and the stored one is not, on the same local day. SET expressions read the old row.
+_SAME_DAY_KNOWN = ("EXCLUDED.time_tba AND NOT sport_events.time_tba AND "
+                   "(sport_events.start_at AT TIME ZONE sport_events.tz)::date = (EXCLUDED.start_at AT TIME ZONE EXCLUDED.tz)::date")
+_KEEP_TIME_SET = {"start_at": f"start_at=CASE WHEN {_SAME_DAY_KNOWN} THEN sport_events.start_at ELSE EXCLUDED.start_at END",
+                  "time_tba": f"time_tba=CASE WHEN {_SAME_DAY_KNOWN} THEN false ELSE EXCLUDED.time_tba END"}
+
+
+def upsert_sql(keep_known_time: bool) -> str:
+    placeholders = ",".join(["%s"] * (len(_EVENT_COLS) + 3))
+    sets = [(_KEEP_TIME_SET.get(c) if keep_known_time else None) or f"{c}=EXCLUDED.{c}" for c in _EVENT_COLS]
+    updates = ",".join(sets) + ",last_seen=now(),withdrawn_at=NULL,missed_runs=0"  # listed again = no longer withdrawn (sports/withdraw.py)
+    return (f"INSERT INTO sport_events (town_id, source, source_uid, {','.join(_EVENT_COLS)}) VALUES ({placeholders}) "
+            f"ON CONFLICT (town_id, source, source_uid) DO UPDATE SET {updates}")
+
+
 def upsert_events(cur, town_id: str, events: list[NormalizedEvent]) -> int:
     """Insert or update by (town_id, source, source_uid). first_seen is kept, last_seen moves. Rows are never deleted."""
-    placeholders = ",".join(["%s"] * (len(_EVENT_COLS) + 3))
-    updates = ",".join(f"{c}=EXCLUDED.{c}" for c in _EVENT_COLS) + ",last_seen=now(),withdrawn_at=NULL,missed_runs=0"  # listed again = no longer withdrawn (sports/withdraw.py)
     for ev in events:
         bad = ev.problems()
         if bad:
             raise ValueError(f"{ev.source}:{ev.source_uid}: {'; '.join(bad)}")
         values = [ev.result_type if c == "result_type" else getattr(ev, c) for c in _EVENT_COLS]
-        cur.execute(
-            f"INSERT INTO sport_events (town_id, source, source_uid, {','.join(_EVENT_COLS)}) VALUES ({placeholders}) "
-            f"ON CONFLICT (town_id, source, source_uid) DO UPDATE SET {updates}",
-            [town_id, ev.source, ev.source_uid, *values])
+        cur.execute(upsert_sql(ev.keep_known_time), [town_id, ev.source, ev.source_uid, *values])
     return len(events)
 
 

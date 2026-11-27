@@ -327,9 +327,41 @@
         "url": "https://queensparkfc.co.uk/calendar/womens-combined-26-27/",
         "note": "sports-deep S2 (owner 2026-11-15): as queens-park; first read 2026-11-15 (24 games, SWPL 2, Sky Sports Cup, Women's Scottish Cup).",
         "params": { "team": "Queen's Park Women", "tz": "Europe/London" }
+      },
+      {
+        "adapter": "clanihc_fixtures",
+        "program": "glasgow-clan",
+        "sport": "hockey",
+        "level": "pro",
+        "gender": "men",
+        "url": "https://clanihc.com/games/fixtures/",
+        "note": "sports-deep S4 (owner 2026-11-15 v4, built 2026-11-27): the club's own lists in the server HTML, three reads per run (fixtures pages 1-2 + results). robots.txt allows all but /wp-admin/; no terms page. No arena on the cards: home games take home_venue / venue_overrides. Page 2 holds the rest of the season: if the club adds a page 3, add it to pages.",
+        "params": { "team": "Glasgow Clan", "tz": "Europe/London",
+          "pages": ["https://clanihc.com/games/fixtures/", "https://clanihc.com/games/fixtures/page/2/"],
+          "results": "https://clanihc.com/games/results/" }
+      },
+      {
+        "adapter": "gladiators_fixtures",
+        "program": "gladiators-men",
+        "sport": "basketball",
+        "level": "pro",
+        "gender": "men",
+        "url": "https://caledoniagladiators.com/mens-fixtures/",
+        "note": "sports-deep S3 (owner 2026-11-15 v4, built 2026-11-27): the whole season (and last season's results) in the server HTML, one read per run. No terms page; facts and a link back only. 'Home Game' = home_venue (the Arena at Playsport).",
+        "params": { "team": "Caledonia Gladiators (M)", "tz": "Europe/London" }
+      },
+      {
+        "adapter": "gladiators_fixtures",
+        "program": "gladiators-women",
+        "sport": "basketball",
+        "level": "semi-pro",
+        "gender": "women",
+        "url": "https://caledoniagladiators.com/womens-fixtures/",
+        "note": "sports-deep S3 (owner 2026-11-15 v4, built 2026-11-27): as gladiators-men. Level 'semi-pro' is a DECISION for the owner to confirm (no source states it; same choice as Queen's Park Women).",
+        "params": { "team": "Caledonia Gladiators (W)", "tz": "Europe/London" }
       }
     ],
-    "source_priority": ["sportmonks", "sportspress_calendar"],
+    "source_priority": ["sportmonks", "sportspress_calendar", "clanihc_fixtures", "gladiators_fixtures"],
     "submissions": { "enabled": false }
   },
   "data_sources": {
