@@ -9,6 +9,14 @@ must be flagged, not guessed.
 from ai_pipeline.facility_hours import parse_hours_text
 
 
+def test_a_season_caveat_never_becomes_a_week_with_closed_days_hillcrest():
+    # Owner 2026-11-27 (B.3): a schedule with a caveat about the schedule itself is not a plain weekly schedule, so no day of it may count
+    # as closed. Real row places.hillcrest-aquatic-center (brookings_sd), hours_text verbatim; today it is flagged because "Swim" is no day
+    # name. This test keeps it flagged however the parser changes.
+    r = parse_hours_text("Swim season begins the end of May - Mid August | OPEN SWIM: 1-7 p.m. daily")
+    assert r.structured is None and r.needs_review is True
+
+
 def test_none_and_empty_are_not_flagged_just_have_no_data():
     for raw in (None, "", "   "):
         result = parse_hours_text(raw)
