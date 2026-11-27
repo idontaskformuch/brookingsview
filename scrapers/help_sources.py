@@ -878,10 +878,10 @@ def main(argv: list[str]) -> int:
     mode.add_argument("--dry-run", action="store_true")
     mode.add_argument("--write", action="store_true", help="1c: write to the DB (live needs --prod + ALLOW_PROD_WRITE=help_sources)")
     ap.add_argument("--today", type=date.fromisoformat, default=date.today())
-    args = ap.parse_args(argv)
+    from db.db import connect   # reads --prod from sys.argv (the write guard); argv here is a copy that still holds it
+    args = ap.parse_args([a for a in argv if a != "--prod"])
     if args.dry_run:
         return dry_run(args.today)
-    from db.db import connect
     conn = connect()
     try:
         with conn.cursor() as cur:

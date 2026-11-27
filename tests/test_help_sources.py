@@ -352,3 +352,10 @@ def test_role_target_never_guesses():
     num_place = next(p for p in MORENO_PLACES if p[4].split()[0] == row.entry.street_address.split()[0])
     with pytest.raises(ValueError, match="2 places"):
         hs.role_target(row, [num_place, (99, "x", "x", "park", num_place[4])])
+
+
+def test_main_accepts_prod_flag_for_the_write_guard(monkeypatch):
+    # 2026-11-27: `python -m scrapers.help_sources --write --prod` stopped in argparse ("unrecognized arguments: --prod").
+    seen = []
+    monkeypatch.setattr(hs, "dry_run", lambda today: seen.append(today) or 0)
+    assert hs.main(["--dry-run", "--today", "2026-11-27", "--prod"]) == 0 and seen == [TODAY]
