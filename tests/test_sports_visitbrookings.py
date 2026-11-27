@@ -97,6 +97,57 @@ def test_a_403_is_a_no_and_is_not_retried():
     assert net.urls.count("https://visitbrookingssd.com/events/?ical=1") == 1
 
 
+# 2026-11-26 (Thanksgiving) the feed answered 200 with an EMPTY body; Calendar.from_ical('') raised "Found no components where exactly one is
+# required: " and internal:sdsu-club-hockey went to error in sport_sources_health. An empty body is transient: rows kept, a warning, no error.
+@pytest.mark.parametrize("body", ["", "\r\n", "   \n"])
+def test_an_empty_body_is_transient_every_team_counts_as_not_read(body):
+    rows = run(body)
+    assert list(rows) == []
+    assert [(u["program"], u["sport"], u["gender"]) for u in rows.unread] == [("sdsu-club-hockey", "hockey", None)]
+    assert "empty" in rows.unread[0]["reason"]
+
+
+def test_a_body_that_is_not_empty_but_not_ical_is_still_an_error():
+    with pytest.raises(Exception):
+        run("<html>maintenance</html>")
+
+
+class Db:
+    """sport_events + sport_sources_health in memory (same shape as tests/test_sports_isolation.py)."""
+
+    def __init__(self, rows):
+        self.rows, self.health, self.calls, self._result = rows, [], [], []
+
+    def execute(self, sql, params=()):
+        self.calls.append((sql, params))
+        if sql.lstrip().startswith("SELECT"):
+            self._result = [dict(r) for r in self.rows]
+        elif "sport_sources_health" in sql:
+            self.health.append(params)
+
+    def fetchall(self):
+        return self._result
+
+
+def test_runner_empty_body_keeps_the_rows_and_is_ok_with_a_warning_not_an_error(capsys):
+    from datetime import datetime, timedelta, timezone
+    # The two real games in the fixture (UIDs 10020482 Creighton, 10020465 Augustana); the only changed field is start_at, moved into the future
+    # so both are upcoming rows the withdraw step would judge.
+    future = datetime.now(timezone.utc) + timedelta(days=30)
+    db_rows = [dict(id=i, source_uid=e.source_uid, program_id=e.program_id, sport=e.sport, gender=e.gender, start_at=future + timedelta(days=i),
+                    status="scheduled", withdrawn_at=None, missed_runs=1, home_program_id=e.home_program_id, home_name=e.home_name,
+                    away_program_id=e.away_program_id, away_name=e.away_name)
+               for i, e in enumerate(run(), start=1)]
+    db = Db(db_rows)
+    assert runner.run_source(db, "brookings_sd", SOURCE, http=Net(feed="").http()) == "ok"
+    assert not any(sql.startswith("UPDATE sport_events") or "INSERT INTO sport_events" in sql for sql, _ in db.calls)
+    assert [(r["missed_runs"], r["withdrawn_at"]) for r in db.rows] == [(1, None), (1, None)]
+    town, sid, last_success, count, warning, _ = db.health[-1]  # the success shape of store.record_health: last_success is set
+    assert (town, sid, count) == ("brookings_sd", "internal:sdsu-club-hockey", 0) and last_success is not None
+    assert warning.startswith("warning: ") and "empty" in warning and "Found no components" not in warning
+    assert "[sports:internal:sdsu-club-hockey] warning:" in capsys.readouterr().out
+
+
 def test_config_is_valid_and_the_two_sources_have_their_own_ids():
     assert validate_sports_config(CFG) == []
     ids = [runner.source_id(s) for s in CFG["sports"]["sources"]]

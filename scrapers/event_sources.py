@@ -138,7 +138,13 @@ def _fetch_ical(source_cfg: dict, headers: dict) -> bytes | None:
     url = source_cfg.get("url")
     if not url:
         return None
-    return _get(_fetcher(source_cfg, headers), source_cfg, url)
+    body = _get(_fetcher(source_cfg, headers), source_cfg, url)
+    if body is not None and not body.strip():
+        # 2026-11-26 (Thanksgiving) the Visit Brookings feed answered 200 with an empty body. Transient: no blob, so the source is skipped
+        # like a failed fetch and its rows stay as they are, instead of "kunde inte tolka ICS: Found no components ...".
+        print(f"    [events:{source_cfg.get('name')}] warning: empty response body -- hoppar över, provas igen nästa körning")
+        return None
+    return body
 
 
 def _categories(component) -> list[str]:

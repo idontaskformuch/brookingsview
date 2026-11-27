@@ -227,6 +227,17 @@ def test_a_feed_whose_robots_names_an_ai_crawler_is_still_read_in_standard_mode(
     assert CHAMBER["url"] in urls(sess)
 
 
+@pytest.mark.parametrize("body", ["", "\r\n"])
+def test_an_empty_ical_body_is_transient_no_blob_and_a_warning(monkeypatch, capsys, body):
+    # 2026-11-26 the chamber feed answered 200 with an empty body (Thanksgiving). Skipped like a failed fetch, so the source's rows stay
+    # as they are, with a warning instead of "kunde inte tolka ICS: Found no components ...".
+    robots = (ROBOTS / "visitbrookings.txt").read_text(encoding="utf-8")
+    es, _ = _patch(monkeypatch, {"https://visitbrookingssd.com/robots.txt": (200, robots), CHAMBER["url"]: (200, body)}, pf.MemoryLedger())
+    assert es._fetch_ical(CHAMBER, UA_BROOKINGS) is None
+    out = capsys.readouterr().out
+    assert "[events:chamber] warning:" in out and "empty" in out
+
+
 def test_llm_excluded_is_carried_on_the_fetch_and_in_the_log_with_bot_and_rule():
     """visitbrookings.txt verbatim: /events/?ical=1 is llm_excluded (GPTBot, "Disallow: /events/"), on the Fetched and in the fetch log.
     downtownbrookings.txt verbatim: the AI crawlers share the `*` rules, so /festival-of-lights is fetched and NOT marked."""

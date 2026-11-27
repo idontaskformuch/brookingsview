@@ -24,7 +24,7 @@ import re
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
-from sports.models import NormalizedEvent
+from sports.models import Fetched, NormalizedEvent
 
 SOURCE_PREFIX = "visitbrookings"
 _UID_ID = re.compile(r"^(\d+)-")
@@ -79,4 +79,10 @@ def parse_feed(ics_text: str, params: dict) -> list[NormalizedEvent]:
 
 
 def fetch(params: dict, http) -> list[NormalizedEvent]:
-    return parse_feed(http.get_text(params["url"]), params)
+    """A 200 with an empty body (2026-11-26, Thanksgiving) is transient, not an error: every configured team counts as not read, so the
+    runner keeps their rows as they are and records a success with a warning (sports/runner.py). Any other body that does not parse still raises."""
+    text = http.get_text(params["url"])
+    if not text.strip():
+        return Fetched(unread=[{"program": params["program"], "sport": t["sport"], "gender": t.get("gender"), "slug": t["name"],
+                                "reason": "the feed answered with an empty body (transient; tried again next run)"} for t in params["teams"]])
+    return parse_feed(text, params)
