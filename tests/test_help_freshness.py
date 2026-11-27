@@ -61,7 +61,10 @@ def test_unchanged_page_bumps_last_verified():
 
 
 def test_unchanged_page_brings_a_stale_row_back_and_leaves_changed_and_gone_alone():
-    for status, expected in (("stale", [("bump", ("place", "broomfield-fish"))]), ("changed", []), ("gone", [])):
+    # (a changed or gone row is read again even when the hash is the same: tests/test_help_alerts.py)
+    for status, expected in (("stale", [("bump", ("place", "broomfield-fish"))]),
+                             ("changed", [("write", (("place", "broomfield-fish"), "verified"))]),
+                             ("gone", [("write", (("place", "broomfield-fish"), "verified"))])):
         rows = rows_as_written(FISH, status=status, verified=TODAY - timedelta(days=50))
         assert ops(plan(FISH, results(FISH), stored(FISH), rows)) == expected, status
 

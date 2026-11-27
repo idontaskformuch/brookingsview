@@ -34,6 +34,7 @@ REGISTRY = json.loads((Path(__file__).parent / "checks.json").read_text(encoding
 LABEL_AUTO = "qa-auto"
 CLEAN_MARK = "<!-- qa-clean -->"
 RECUR_MARK = "<!-- qa-recur -->"
+NEW_MARK = "<!-- qa-new -->"
 
 
 def severity(check_id: str) -> str:
@@ -86,8 +87,10 @@ def render_issue(fp: str, g: dict, run_url: str = "", clean_to_close: int = 3) -
         lines.append(f"- … och {len(g['items']) - 15} till")
     if run_url:
         lines += ["", f"Körning: {run_url}"]
-    after = "1 ren körning" if clean_to_close == 1 else f"{clean_to_close} rena körningar i rad"
-    lines += ["", f"Stängs automatiskt efter {after}. Waiver: `qa/known-issues.json`."]
+    # A check that closes on a condition, not on a count of clean runs, says so itself (checks.json "closes").
+    after = REGISTRY.get(g["check"], {}).get("closes") or (
+        "efter 1 ren körning" if clean_to_close == 1 else f"efter {clean_to_close} rena körningar i rad")
+    lines += ["", f"Stängs automatiskt {after}. Waiver: `qa/known-issues.json`."]
     if NOTIFY:
         lines += ["", f"cc {NOTIFY}"]
     return title, "\n".join(lines)
@@ -121,6 +124,15 @@ def plan_actions(findings: list[dict], open_issues: list[dict], clean_to_close: 
             actions.append({"op": "create", "fp": fp, "title": title, "body": body})
         elif trailing_clean(issue.get("comments", [])) > 0:
             actions.append({"op": "comment", "number": issue["number"], "body": f"{RECUR_MARK}Felet är tillbaka ({len(g['items'])} träff).{f' cc {NOTIFY}' if NOTIFY else ''}"})
+        elif any(it.get("announce") for it in g["items"]):
+            # A finding that lives on (a hidden /help/ row) can gain items while its issue is open: items flagged `announce`
+            # are new in THIS run and get one comment; the rest of the issue is left alone.
+            fresh = [it for it in g["items"] if it.get("announce")]
+            lines = [f"{NEW_MARK}Nytt denna körning ({len(fresh)} träff):"]
+            lines += [f"- {it.get('url') or it.get('path') or ''} — {it.get('message', '')}" for it in fresh[:15]]
+            if NOTIFY:
+                lines.append(f"cc {NOTIFY}")
+            actions.append({"op": "comment", "number": issue["number"], "body": "\n".join(lines)})
     for fp, issue in by_fp.items():
         if fp in groups:
             continue

@@ -290,9 +290,10 @@ class HelpPlan:
     actions: list = field(default_factory=list)
     # ('bump', key) ('status', key, new) ('write', key | None, parsed, status) ('extend', key, [(date, opens, closes)]) ('expired', key)
     lines: list = field(default_factory=list)
-    # A row that was SHOWN (verified) and now is changed or gone: {key, name, from, to, why, diff}. Queued, stale and already
-    # hidden rows raise none: they were reported when they were lost, or were never shown.
-    events: list = field(default_factory=list)
+    # Every row of the source that is changed or gone once this run is done (a state, not an event): {key, name, status, why, diff,
+    # new}. why/diff = this run's reading when there is one (None: the source was not readable); new = it became hidden in THIS run
+    # from verified or stale (announced in a comment on an open issue). Queued rows are never in it: they were never shown.
+    hidden: list = field(default_factory=list)
     unreadable_twice: bool = False   # this run and the last one could not read the source
 
 
@@ -319,22 +320,30 @@ def plan_help_source(src, res: dict, stored_hash: str | None, rows: list[dict], 
                  unreadable_twice=fetch == "unreadable" and prev_unreadable)
     by_key = {r["key"]: r for r in rows}
     touched: set = set()
+    final = {r["key"]: r["status"] for r in rows}   # each row's status once this plan is applied
+    why_hidden: dict = {}                            # key -> (reason, diff, new) from this run's reading
 
     def status_to(key, new, why, diff=()):
         row = by_key[key]
+        if row["status"] == "queued":   # never shown: stays in the owner's queue, nothing to hide or to tell
+            touched.add(key)
+            return
         if row["status"] != new:
             p.actions.append(("status", key, new))
             p.lines.append(f"{new.upper():8} {_name(key)}: {why}")
-            if new in ("changed", "gone") and row["status"] == "verified":
-                p.events.append({"key": key, "name": row.get("name") or _name(key), "from": row["status"], "to": new,
-                                 "why": why, "diff": list(diff) or [_was(row)]})
+        final[key] = new
+        if new in ("changed", "gone"):
+            why_hidden[key] = (why, list(diff) or [_was(row)], row["status"] in ("verified", "stale"))
         touched.add(key)
 
+    # A changed or gone row is read again even when the page hash is the same: after a parser fix (or a row that came back) the
+    # page has not changed, and the row must not stay hidden for ever.
+    retry = any(r["status"] in ("changed", "gone") for r in rows)
     if fetch == "gone":
         p.hash_action = "clear"
         for r in rows:
             status_to(r["key"], "gone", f"the page answers status {status}")
-    elif fetch == "ok" and p.page_hash == stored_hash:
+    elif fetch == "ok" and p.page_hash == stored_hash and not retry:
         parsed = {}
         try:
             parsed = {row_key(x, resolve_role): x for x in hs.parse(src, pages, today)}
@@ -352,7 +361,7 @@ def plan_help_source(src, res: dict, stored_hash: str | None, rows: list[dict], 
                 p.actions.append(("extend", r["key"], new))
                 p.lines.append(f"EXTEND   {_name(r['key'])}: " + ", ".join(d.isoformat() for d, _, _ in new))
     elif fetch == "ok":
-        p.page_changed = True
+        p.page_changed = p.page_hash != stored_hash
         try:
             parsed = hs.parse(src, pages, today)
         except hs.ParseError as exc:
@@ -380,6 +389,7 @@ def plan_help_source(src, res: dict, stored_hash: str | None, rows: list[dict], 
                 new_status = "queued" if x.decision == "queue" or (r and r["status"] == "queued") else "verified"
                 p.actions.append(("write", key if r else None, x, new_status))
                 touched.add(key)
+                final[key] = new_status
                 if r is None:
                     p.lines.append(f"NEW      {x.entry.name} ({new_status})")
                 else:
@@ -399,6 +409,11 @@ def plan_help_source(src, res: dict, stored_hash: str | None, rows: list[dict], 
         elif r.get("valid_to") and r["valid_to"] < today:
             p.actions.append(("expired", r["key"]))
             p.lines.append(f"EXPIRED  {_name(r['key'])}: season ended {r['valid_to']} (hidden by valid_to)")
+    for r in rows:
+        if final[r["key"]] in ("changed", "gone"):
+            why, diff, new = why_hidden.get(r["key"], (None, [], False))
+            p.hidden.append({"key": r["key"], "name": r.get("name") or _name(r["key"]), "status": final[r["key"]],
+                             "was": r["status"], "why": why, "diff": diff, "new": new})
     return p
 
 
@@ -477,11 +492,15 @@ def help_findings(watch: dict, plans: list[HelpPlan], places: list[dict], today)
     """The alarms of one town's weekly run, as qa/report.py findings (one issue per check + town + pattern)."""
     town = watch["town"]
     out: list[dict] = []
-    for p in plans:
-        for ev in p.events:
+    for p in plans:   # every row that is hidden as changed/gone, every run: the issue closes when none is left
+        for h in p.hidden:
+            what = f'{h["name"]} ({_name(h["key"])})'
+            head = (f'{what} {h["was"]} -> {h["status"]}' if h["new"] else f'{what} is {h["status"]} since an earlier run')
+            reading = f': {h["why"]}' if h["why"] else " (the source could not be read this run)"
+            diff = f' Diff: {" | ".join(h["diff"])}.' if h["diff"] and h["why"] else ""
             out.append({"check": HELP_CHECKS["changed"], "town": town, "pattern": "help-rows", "path": f"/{town}/help",
-                        "message": f'{ev["name"]} ({_name(ev["key"])}) {ev["from"]} -> {ev["to"]}: source {p.url}: {ev["why"]}. '
-                                   f'Diff: {" | ".join(ev["diff"])}. The row is hidden from /help/ until a later reading of the page '
+                        "announce": h["new"],
+                        "message": f'{head}: source {p.url}{reading}.{diff} Hidden from /help/ until a later reading of the page '
                                    f'passes validation.'})
     for p in plans:
         if p.unreadable_twice:
@@ -492,7 +511,7 @@ def help_findings(watch: dict, plans: list[HelpPlan], places: list[dict], today)
     if floor is not None:
         before, after = visible_entries(places, plans, today, _max_age(watch))
         if after < floor:
-            moved = sum(1 for p in plans for ev in p.events)
+            moved = sum(1 for p in plans for h in p.hidden if h["new"])
             out.append({"check": HELP_CHECKS["min"], "town": town, "pattern": "help-min-entries", "path": f"/{town}/help",
                         "message": f"{town} has {after} visible /help/ entries (was {before} before this run), under min_entries {floor}: "
                                    f"/help/ is hidden there until it is back to {floor}. Rows lost this run: {moved}."})

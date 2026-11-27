@@ -118,8 +118,9 @@
     },
     "ops.help-changed": {
       "severity": "hard",
-      "born_from": "Owner order 2026-11-27 (after f538d8ea, the /help/ freshness job): a help place that was shown and then went to changed (the page's new reading fails validation or the parser no longer reads the page) or gone (404/410, or the row is no longer on the page) disappears from /help/ without anyone being told. One issue per town (the row, the source, the diff); closes after 1 clean weekly run for that town. Regression fixtures: the 2026-11-27 pages in tests/fixtures/help_sources_2026-11-27, one change each, in tests/test_help_alerts.py.",
-      "what": "a /help/ row that was shown went to changed or gone in this week's freshness run (scripts/watch_sources.py help_freshness; one issue per town); the row is hidden until a later reading of the page passes validation"
+      "born_from": "Owner order 2026-11-27 (after f538d8ea, the /help/ freshness job): a help place that was shown and then went to changed (the page's new reading fails validation or the parser no longer reads the page) or gone (404/410, or the row is no longer on the page) disappears from /help/ without anyone being told. One issue per town (the row, the source, the diff). Owner 2026-11-27, before push: the issue lives as long as the row is hidden and closes only when the row is verified again or removed (not after a count of clean runs); a row lost while the issue is open is added in a comment. Regression fixtures: the 2026-11-27 pages in tests/fixtures/help_sources_2026-11-27, one change each, in tests/test_help_alerts.py.",
+      "closes": "när ingen rad i staden är dold längre (changed/gone): raden har blivit verified igen eller tagits bort",
+      "what": "a /help/ row (place or warm_space role) is hidden as changed or gone (scripts/watch_sources.py help_freshness, weekly; one issue per town): the page's new reading fails validation, the page is gone, or the row is no longer on it; it stays hidden until a later reading of the page passes validation"
     },
     "ops.help-unreadable": {
       "severity": "hard",
