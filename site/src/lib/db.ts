@@ -2624,6 +2624,7 @@ export async function getAllPlaceHoursForTown(): Promise<(PlaceHoursRow & { plac
      WHERE p.town_id = ${TOWN_ID}
        AND NOT (p.slug = ANY(${[...unconfirmedHoursSlugs(TOWN_ID), ...hoursLinkOnlySlugs(TOWN_ID)]}::text[]))
        AND NOT (p.category = ANY(${[...HELP_CATEGORIES]}::text[]))
+       AND NOT ph.time_unknown
   `) as (PlaceHoursRow & { place_id: number })[];
 }
 
@@ -2634,6 +2635,7 @@ export async function getPlaceHours(placeId: number): Promise<PlaceHoursRow[]> {
       JOIN places p ON p.id = ph.place_id
      WHERE ph.place_id = ${placeId}
        AND NOT (p.slug = ANY(${[...unconfirmedHoursSlugs(TOWN_ID), ...hoursLinkOnlySlugs(TOWN_ID)]}::text[]))
+       AND NOT ph.time_unknown
      ORDER BY ph.day_of_week
   `) as PlaceHoursRow[];
 }
@@ -2682,7 +2684,7 @@ export async function getPlaceGuardrailData(): Promise<PlaceGuardrailRow[]> {
     SELECT p.slug, p.source_url, p.verified_date, p.hours_confidence,
            COUNT(ph.id)::int AS place_hours_count
       FROM places p
-      LEFT JOIN place_hours ph ON ph.place_id = p.id
+      LEFT JOIN place_hours ph ON ph.place_id = p.id AND NOT ph.time_unknown
      WHERE p.town_id = ${TOWN_ID}
        AND NOT (p.category = ANY(${[...HELP_CATEGORIES]}::text[]))
      GROUP BY p.slug, p.source_url, p.verified_date, p.hours_confidence

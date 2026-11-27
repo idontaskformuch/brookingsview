@@ -335,7 +335,9 @@ def run_broomfield_departments(fetcher: PoliteFetcher, conn) -> int:
             print(f"[no source] {slug}")
             continue
         pid, url = row
-        cur.execute("SELECT day_of_week, opens, closes FROM place_hours WHERE place_id = %s ORDER BY day_of_week, opens", (pid,))
+        # time_unknown rows (migration 079) are not a time and not "closed": left out of the comparison.
+        cur.execute("SELECT day_of_week, opens, closes FROM place_hours WHERE place_id = %s AND NOT time_unknown "
+                    "ORDER BY day_of_week, opens", (pid,))
         db_rows = [(DAYS[d][:3], _hhmm(o), _hhmm(c)) for d, o, c in cur.fetchall()]
         got = fetcher.get(url)
         if isinstance(got, Refused):
@@ -413,8 +415,9 @@ def run_reverify(conn, apply: bool, today: date, make_fetcher=None, sleep=None, 
     cur.execute("SELECT id, town_id, slug, verification_method, source_url FROM places WHERE verification_method = ANY(%s) "
                 "ORDER BY town_id, slug", (list(REVERIFIERS),))
     places = cur.fetchall()
+    # time_unknown rows (migration 079) would read as closed days in the week compared with the page: left out.
     cur.execute("SELECT place_id, day_of_week, opens, closes, valid_from FROM place_hours WHERE place_id = ANY(%s) "
-                "ORDER BY place_id, day_of_week, opens", ([p[0] for p in places],))
+                "AND NOT time_unknown ORDER BY place_id, day_of_week, opens", ([p[0] for p in places],))
     rows: dict[int, list[tuple]] = {}
     for pid, d, o, c, vf in cur.fetchall():
         rows.setdefault(pid, []).append((d, o, c, vf))

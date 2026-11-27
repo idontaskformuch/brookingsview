@@ -633,7 +633,7 @@ async function buildLastmodMap(townId, databaseUrl) {
            (p.address IS NULL OR p.address = '') AS no_address,
            (p.phone IS NULL OR p.phone = '') AS no_phone,
            (p.hours_text IS NULL OR p.hours_text = '') AS no_hours_text,
-           NOT EXISTS(SELECT 1 FROM place_hours ph WHERE ph.place_id = p.id) AS no_structured_hours,
+           NOT EXISTS(SELECT 1 FROM place_hours ph WHERE ph.place_id = p.id AND NOT ph.time_unknown) AS no_structured_hours,
            (p.street_address IS NULL OR p.street_address = '') AS no_street,
            (p.services IS NULL OR cardinality(p.services) = 0) AS no_services,
            p.description AS description, p.services AS services

@@ -301,7 +301,8 @@ def test_schedule_replaces_rows_of_the_place_and_stores_dates_as_one_day_rows():
     sqls = [s for s, _ in cur.calls]
     assert sqls[0].startswith("DELETE FROM place_hours WHERE place_id") and sqls[1].startswith("DELETE FROM place_hours_exceptions")
     hours = [p for s, p in cur.calls if s.startswith("INSERT INTO place_hours ")]
-    assert hours == [(42, 1, "13:00", "16:30", None, None), (42, 2, None, None, date(2026, 12, 1), date(2026, 12, 1))]   # Tue Dec 1
+    assert hours == [(42, 1, "13:00", "16:30", None, None, False),
+                     (42, 2, None, None, date(2026, 12, 1), date(2026, 12, 1), True)]   # Tue Dec 1, no time: time_unknown (079)
     exc = [p for s, p in cur.calls if s.startswith("INSERT INTO place_hours_exceptions")]
     assert [p[1] for p in exc] == [date(2026, 12, 25)]   # a passed closure is not written
     assert n == (2, 1)

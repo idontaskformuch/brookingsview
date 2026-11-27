@@ -262,16 +262,17 @@ def write_entry(cur, entry: HelpEntry, today: date, status: str = "verified") ->
 def write_schedule(cur, place_id: int, weekly, dates, closed, source_url: str, today: date) -> tuple[int, int]:
     """The help place's schedule as the source gives it now (call only with the id write_entry wrote: a help place).
     Replaces the place's place_hours + place_hours_exceptions. weekly -> one row per weekday; dates -> one row per date
-    (day_of_week of that date, valid_from = valid_to = the date); for a help place every place_hours row is an OPEN day and a
-    dated row without clock times means "open, time not given" (decision 3 / 1b point 4) -- closures live only in exceptions.
-    closed -> exceptions from today on (a passed closure is not written). Returns (hours rows, exception rows)."""
+    (day_of_week of that date, valid_from = valid_to = the date). Every row here is an OPEN day: a day the source gives without
+    a clock time gets time_unknown = true (migration 079; a null/null row without the marker means closed). Closures live only
+    in exceptions. closed -> exceptions from today on (a passed closure is not written). Returns (hours rows, exception rows)."""
     cur.execute("DELETE FROM place_hours WHERE place_id = %s", (place_id,))
     cur.execute("DELETE FROM place_hours_exceptions WHERE place_id = %s", (place_id,))
     rows = [(place_id, d, o, c, None, None) for d, o, c in weekly]
     rows += [(place_id, (d.weekday() + 1) % 7, o, c, d, d) for d, o, c in dates]
+    rows = [(*r, r[2] is None and r[3] is None) for r in rows]
     for r in rows:
-        cur.execute("INSERT INTO place_hours (place_id, day_of_week, opens, closes, valid_from, valid_to) "
-                    "VALUES (%s, %s, %s, %s, %s, %s)", r)
+        cur.execute("INSERT INTO place_hours (place_id, day_of_week, opens, closes, valid_from, valid_to, time_unknown) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s)", r)
     upcoming = upcoming_closures(closed, today)
     for d, reason in upcoming:
         cur.execute("INSERT INTO place_hours_exceptions (place_id, date, opens, closes, reason, source_url, last_verified_at) "

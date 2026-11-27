@@ -57,9 +57,13 @@ def main(argv: list[str]) -> int:
                 continue
             parsed = parse_hours_text(text)
             cur2 = conn.cursor()
-            cur2.execute("SELECT day_of_week, opens, closes FROM place_hours WHERE place_id = %s", (pid,))
-            rows = cur2.fetchall()
+            cur2.execute("SELECT day_of_week, opens, closes, time_unknown FROM place_hours WHERE place_id = %s", (pid,))
+            fetched = cur2.fetchall()
+            rows = [r[:3] for r in fetched if not r[3]]
             problems = []
+            if any(r[3] for r in fetched):
+                # migration 079: a day without a time beside an hours_text that gives times is a contradiction, never "closed"
+                problems.append("time_unknown place_hours rows beside hours_text")
             if parsed.structured is not None and "seasons" in parsed.structured:
                 # Seasonal hours live in hours_structured only (scripts/sync_place_hours_from_text.py); rows would contradict them.
                 import json as _json
