@@ -2482,6 +2482,7 @@ export async function getFacilities(): Promise<Facility[]> {
            parking_note, visit_notes
       FROM places
      WHERE town_id = ${TOWN_ID}
+       AND NOT (category = ANY(${[...HELP_CATEGORIES]}::text[]))
      ORDER BY category, name
   `) as Facility[]).map((f) => applyHoursLinkOnly(TOWN_ID, f));
 }
@@ -2584,6 +2585,7 @@ export async function getFacilityBySlug(slug: string): Promise<Facility | null> 
            parking_note, visit_notes
       FROM places
      WHERE town_id = ${TOWN_ID} AND slug = ${slug}
+       AND NOT (category = ANY(${[...HELP_CATEGORIES]}::text[]))
      LIMIT 1
   `) as Facility[];
   return rows[0] ? applyHoursLinkOnly(TOWN_ID, rows[0]) : null;
@@ -2621,6 +2623,7 @@ export async function getAllPlaceHoursForTown(): Promise<(PlaceHoursRow & { plac
       JOIN places p ON p.id = ph.place_id
      WHERE p.town_id = ${TOWN_ID}
        AND NOT (p.slug = ANY(${[...unconfirmedHoursSlugs(TOWN_ID), ...hoursLinkOnlySlugs(TOWN_ID)]}::text[]))
+       AND NOT (p.category = ANY(${[...HELP_CATEGORIES]}::text[]))
   `) as (PlaceHoursRow & { place_id: number })[];
 }
 
@@ -2681,6 +2684,7 @@ export async function getPlaceGuardrailData(): Promise<PlaceGuardrailRow[]> {
       FROM places p
       LEFT JOIN place_hours ph ON ph.place_id = p.id
      WHERE p.town_id = ${TOWN_ID}
+       AND NOT (p.category = ANY(${[...HELP_CATEGORIES]}::text[]))
      GROUP BY p.slug, p.source_url, p.verified_date, p.hours_confidence
   `) as PlaceGuardrailRow[];
 }
@@ -2728,6 +2732,11 @@ export const FACILITY_CATEGORY_LABELS: Record<string, string> = {
  *  can link to its place -- NOT public facilities (owner 2026-11-13). They never reach the /facilities/ hub, Today's "Hours today",
  *  llms.txt or the sitemap; their own page builds but is always noindex. astro.config.mjs mirrors this list (venue-category.test.ts). */
 export const VENUE_CATEGORIES: ReadonlySet<string> = new Set(['bar_brewery', 'music_venue', 'shopping']);
+
+/** /help/ categories (owner 2026-11-27, decision 4): read only by the /help/ page, never by getFacilities(), so they have no
+ *  /facilities/<slug>/ page, are not in the hub, Today, llms.txt, event venue matching or the sitemap. Mirrors
+ *  db/help_places.py HELP_CATEGORIES and astro.config.mjs (tests/test_help_places.py fails if they disagree). */
+export const HELP_CATEGORIES: ReadonlySet<string> = new Set(['food_pantry', 'meal_program', 'warm_space', 'assistance_program', 'free_clinic']);
 
 export function isPublicPlace(f: { category: string }): boolean {
   return !VENUE_CATEGORIES.has(f.category);

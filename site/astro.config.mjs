@@ -609,9 +609,12 @@ async function buildLastmodMap(townId, databaseUrl) {
     }
   }
 
+  // Mirrors HELP_CATEGORIES (lib/db.ts, db/help_places.py; tests/test_help_places.py): no /facilities/ page, so never in the sitemap.
+  const HELP_CATEGORIES = ['food_pantry', 'meal_program', 'warm_space', 'assistance_program', 'free_clinic'];
   const facilities = await sql`
     SELECT slug, verified_date FROM places
      WHERE town_id = ${townId} AND verified_date IS NOT NULL
+       AND NOT (category = ANY(${HELP_CATEGORIES}::text[]))
   `;
   for (const f of facilities) map.set(`/facilities/${f.slug}/`, f.verified_date);
 
@@ -636,6 +639,7 @@ async function buildLastmodMap(townId, databaseUrl) {
            p.description AS description, p.services AS services
       FROM places p
      WHERE p.town_id = ${townId}
+       AND NOT (p.category = ANY(${HELP_CATEGORIES}::text[]))
   `;
   for (const f of thinFacilities) {
     if (VENUE_CATEGORIES.includes(f.category)) noindexThinPageUrls.add(`/facilities/${f.slug}/`);

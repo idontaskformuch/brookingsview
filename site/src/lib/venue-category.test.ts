@@ -43,3 +43,26 @@ describe('venue categories (bars, music venues, shopping) are place rows, not pu
     expect(slugPage).toMatch(/noindex=\{[^}]*\bisVenue\b[^}]*\}/);
   });
 });
+
+describe('/help/ categories never reach the facilities layer (owner 2026-11-27, decision 4: no detail page, not in hub or sitemap)', () => {
+  const HELP_FILTER = 'AND NOT (category = ANY(${[...HELP_CATEGORIES]}::text[]))';
+  const body = (src: string, fn: string) => {
+    const start = src.indexOf(`export async function ${fn}(`);
+    expect(start).toBeGreaterThan(-1);
+    return src.slice(start, src.indexOf('\n}\n', start));
+  };
+
+  it('getFacilities and getFacilityBySlug leave them out (so no [slug] path, hub, Today, llms.txt or event venue)', () => {
+    const db = read('./db.ts');
+    expect(body(db, 'getFacilities')).toContain(HELP_FILTER);
+    expect(body(db, 'getFacilityBySlug')).toContain(HELP_FILTER);
+    expect(body(db, 'getAllPlaceHoursForTown')).toContain('AND NOT (p.category = ANY(${[...HELP_CATEGORIES]}::text[]))');
+    expect(body(db, 'getPlaceGuardrailData')).toContain('AND NOT (p.category = ANY(${[...HELP_CATEGORIES]}::text[]))');
+  });
+
+  it('both sitemap queries in astro.config.mjs leave them out', () => {
+    const cfg = read('../../astro.config.mjs');
+    expect(cfg).toMatch(/SELECT slug, verified_date FROM places\s+WHERE town_id = \$\{townId\} AND verified_date IS NOT NULL\s+AND NOT \(category = ANY\(\$\{HELP_CATEGORIES\}::text\[\]\)\)/);
+    expect(cfg).toMatch(/FROM places p\s+WHERE p\.town_id = \$\{townId\}\s+AND NOT \(p\.category = ANY\(\$\{HELP_CATEGORIES\}::text\[\]\)\)/);
+  });
+});

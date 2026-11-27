@@ -69,15 +69,17 @@ def load_registry(conn, town_id: str) -> dict[str, dict]:
     """normalized-alias -> facility dict, built from every facility's `name`
     plus its `aliases[]`. A facility with no `street_address`/`postal_code`
     resolves (for display purposes) but the caller must still treat it as
-    ineligible for rich-result Event markup -- see resolve_venue()."""
+    ineligible for rich-result Event markup -- see resolve_venue().
+    /help/ places (db/help_places.HELP_CATEGORIES) are never venues: they have no detail page to link to (owner 2026-11-27)."""
+    from db.help_places import HELP_CATEGORIES
     with conn.cursor() as cur:
         cur.execute(
             """
             SELECT slug, name, aliases, category, address, street_address,
                    postal_code, phone, website, lat, lon
-              FROM places WHERE town_id = %s
+              FROM places WHERE town_id = %s AND category <> ALL(%s)
             """,
-            (town_id,),
+            (town_id, list(HELP_CATEGORIES)),
         )
         rows = cur.fetchall()
 
