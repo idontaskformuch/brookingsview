@@ -283,6 +283,41 @@ def test_update_of_an_existing_help_place():
     assert sql.startswith("UPDATE places SET") and params[-1] == 7
 
 
+def test_queued_entry_is_written_hidden():
+    # 1c (owner 2026-11-27): a queued row is stored but never visible -- verification_status 'queued', not 'verified'.
+    cur = RecCur(existing=None)
+    hp.write_entry(cur, PANTRY, TODAY, status="queued")
+    _, params = cur.calls[-1]
+    assert "queued" in params and "verified" not in params
+    with pytest.raises(ValueError):
+        hp.write_entry(RecCur(), PANTRY, TODAY, status="published")
+
+
+def test_schedule_replaces_rows_of_the_place_and_stores_dates_as_one_day_rows():
+    cur = RecCur()
+    n = hp.write_schedule(cur, 42, weekly=[(1, "13:00", "16:30")], dates=[(date(2026, 12, 1), None, None)],
+                          closed=[(date(2026, 11, 26), "Thanksgiving"), (date(2026, 12, 25), "Christmas")],
+                          source_url="https://x", today=TODAY)
+    sqls = [s for s, _ in cur.calls]
+    assert sqls[0].startswith("DELETE FROM place_hours WHERE place_id") and sqls[1].startswith("DELETE FROM place_hours_exceptions")
+    hours = [p for s, p in cur.calls if s.startswith("INSERT INTO place_hours ")]
+    assert hours == [(42, 1, "13:00", "16:30", None, None), (42, 2, None, None, date(2026, 12, 1), date(2026, 12, 1))]   # Tue Dec 1
+    exc = [p for s, p in cur.calls if s.startswith("INSERT INTO place_hours_exceptions")]
+    assert [p[1] for p in exc] == [date(2026, 12, 25)]   # a passed closure is not written
+    assert n == (2, 1)
+
+
+def test_queued_role_never_touches_the_venue_services():
+    cur = RecCur()
+    hp.write_role(cur, 9, "warm_space", PANTRY, TODAY, status="queued", schedule_text="Mon 9-5")
+    sqls = [s for s, _ in cur.calls]
+    assert len(sqls) == 1 and sqls[0].startswith("INSERT INTO place_roles") and "ON CONFLICT (place_id, role)" in sqls[0]
+    assert "queued" in cur.calls[0][1]
+    cur = RecCur()
+    hp.write_role(cur, 9, "warm_space", PANTRY, TODAY, status="verified")
+    assert any(s.startswith("UPDATE places SET services") for s, _ in cur.calls)
+
+
 # --- 1b: the town rule (owner 2026-11-27). Phrases verbatim from the pages fetched 2026-11-27 (tests/fixtures/help_sources_2026-11-27/).
 @pytest.mark.parametrize("town, phrase, kind", [
     ("broomfield_co", "6900 W. 117th Ave, #700W Broomfield, CO 80020", "locality"),          # north_denver_cares.html

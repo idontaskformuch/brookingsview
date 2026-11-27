@@ -228,19 +228,24 @@ _COLUMNS = ("name", "category", "address", "street_address", "postal_code", "pho
             "schedule_rule", "verification_method", "location_note", "requirements_evidence")   # the last two: migration 078
 
 
-def _values(entry: HelpEntry, today: date) -> tuple:
+WRITE_STATUSES = ("verified", "queued")   # 1c: 'queued' = publish_decision said queue; stored, never visible (is_visible wants verified)
+
+
+def _values(entry: HelpEntry, today: date, status: str = "verified") -> tuple:
+    if status not in WRITE_STATUSES:
+        raise ValueError(f"status {status!r} is not one of {WRITE_STATUSES}")
     return (entry.name, entry.category, entry.address, entry.street_address, entry.postal_code, entry.phone, entry.website,
-            entry.source_url, entry.source_kind, "verified", today, entry.requirements_note, entry.area_name,
+            entry.source_url, entry.source_kind, status, today, entry.requirements_note, entry.area_name,
             list(entry.audience_tags) or None, entry.valid_from, entry.valid_to, entry.schedule_rule, "help",
             entry.location_note, entry.requirements_evidence)
 
 
-def write_entry(cur, entry: HelpEntry, today: date) -> str:
+def write_entry(cur, entry: HelpEntry, today: date, status: str = "verified") -> str:
     """Insert or update one validated entry (call publish_decision first). Never touches a place outside HELP_CATEGORIES:
     a pantry in a church we already list as a venue is a separate row, not a rewrite of the venue."""
+    values = _values(entry, today, status)
     cur.execute("SELECT id, category FROM places WHERE town_id = %s AND slug = %s", (entry.town_id, entry.slug))
     existing = cur.fetchone()
-    values = _values(entry, today)
     if existing is None:
         cols = ("town_id", "slug", *_COLUMNS, "content_hash", "updated_at")
         cur.execute(f"INSERT INTO places ({', '.join(cols)}) VALUES ({', '.join(['%s'] * (len(cols) - 1))}, now())",
@@ -252,3 +257,42 @@ def write_entry(cur, entry: HelpEntry, today: date) -> str:
     sets = ", ".join(f"{c} = %s" for c in _COLUMNS)
     cur.execute(f"UPDATE places SET {sets}, updated_at = now() WHERE id = %s", (*values, place_id))
     return "update"
+
+
+def write_schedule(cur, place_id: int, weekly, dates, closed, source_url: str, today: date) -> tuple[int, int]:
+    """The help place's schedule as the source gives it now (call only with the id write_entry wrote: a help place).
+    Replaces the place's place_hours + place_hours_exceptions. weekly -> one row per weekday; dates -> one row per date
+    (day_of_week of that date, valid_from = valid_to = the date); for a help place every place_hours row is an OPEN day and a
+    dated row without clock times means "open, time not given" (decision 3 / 1b point 4) -- closures live only in exceptions.
+    closed -> exceptions from today on (a passed closure is not written). Returns (hours rows, exception rows)."""
+    cur.execute("DELETE FROM place_hours WHERE place_id = %s", (place_id,))
+    cur.execute("DELETE FROM place_hours_exceptions WHERE place_id = %s", (place_id,))
+    rows = [(place_id, d, o, c, None, None) for d, o, c in weekly]
+    rows += [(place_id, (d.weekday() + 1) % 7, o, c, d, d) for d, o, c in dates]
+    for r in rows:
+        cur.execute("INSERT INTO place_hours (place_id, day_of_week, opens, closes, valid_from, valid_to) "
+                    "VALUES (%s, %s, %s, %s, %s, %s)", r)
+    upcoming = upcoming_closures(closed, today)
+    for d, reason in upcoming:
+        cur.execute("INSERT INTO place_hours_exceptions (place_id, date, opens, closes, reason, source_url, last_verified_at) "
+                    "VALUES (%s, %s, NULL, NULL, %s, %s, now())", (place_id, d, reason, source_url))
+    return len(rows), len(upcoming)
+
+
+def write_role(cur, place_id: int, role: str, entry: HelpEntry, today: date, status: str = "verified",
+               schedule_text: str | None = None) -> None:
+    """Decision 2: a role (warm_space) on a place we already have, with its own dates and source in place_roles. A queued role
+    writes only the place_roles row: the venue's own row (services) is left exactly as it is until the role is published."""
+    if status not in WRITE_STATUSES:
+        raise ValueError(f"status {status!r} is not one of {WRITE_STATUSES}")
+    cur.execute("INSERT INTO place_roles (place_id, role, valid_from, valid_to, source_url, source_kind, verification_status, "
+                "verified_date, requirements_note, schedule_text) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                "ON CONFLICT (place_id, role) DO UPDATE SET valid_from = EXCLUDED.valid_from, valid_to = EXCLUDED.valid_to, "
+                "source_url = EXCLUDED.source_url, source_kind = EXCLUDED.source_kind, "
+                "verification_status = EXCLUDED.verification_status, verified_date = EXCLUDED.verified_date, "
+                "requirements_note = EXCLUDED.requirements_note, schedule_text = EXCLUDED.schedule_text",
+                (place_id, role, entry.valid_from, entry.valid_to, entry.source_url, entry.source_kind, status, today,
+                 entry.requirements_note, schedule_text))
+    if status == "verified":
+        cur.execute("UPDATE places SET services = array_append(coalesce(services, '{}'), %s) "
+                    "WHERE id = %s AND NOT (%s = ANY(coalesce(services, '{}')))", (role, place_id, role))

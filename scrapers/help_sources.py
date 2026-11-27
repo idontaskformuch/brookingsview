@@ -823,12 +823,77 @@ def dry_run(today: date) -> int:
     return 0
 
 
+def parse_all(today: date) -> list[tuple[Source, Parsed]]:
+    """Every source from its fixture (the pages fetched 2026-11-27), as the dry run reads them. A ParseError stops everything."""
+    out = []
+    for src in SOURCES:
+        pages = {u: (FIXTURES / n).read_bytes() for u, n in src.fixtures.items()}
+        out += [(src, r) for r in parse(src, pages, today)]
+    return out
+
+
+def role_target(row: Parsed, places) -> tuple:
+    """The one existing non-help place a role row belongs on: same street number in its address (the dry run's match).
+    places = (id, slug, name, category, address). Zero or several hits raise: never a guess."""
+    num = (row.entry.street_address or "").split()[0] if row.entry.street_address else ""
+    hits = [p for p in places if num and p[3] not in hp.HELP_CATEGORIES and re.search(rf"(?<!\d){re.escape(num)}(?!\d)", p[4] or "")]
+    if len(hits) != 1:
+        raise ValueError(f"role {row.entry.name}: {len(hits)} places match street number {num!r}: {[h[1] for h in hits]}")
+    return hits[0]
+
+
+def write(cur, today: date) -> dict:
+    """Step 1c (owner 2026-11-27): the dry run's rows into places / place_hours / place_hours_exceptions / place_roles.
+    publish -> verified; queue -> 'queued' (stored, hidden); reject -> nothing. Returns per town counts + lines for the report."""
+    report: dict = {}
+    places_by_town: dict = {}
+    for src, row in parse_all(today):
+        e = row.entry
+        t = report.setdefault(e.town_id, {"publish": 0, "queue": 0, "reject": 0, "lines": []})
+        t[row.decision] += 1
+        if row.decision == "reject":
+            t["lines"].append(f"REJECT {e.name}: {row.why}")
+            continue
+        status = "verified" if row.decision == "publish" else "queued"
+        if row.role:
+            if e.town_id not in places_by_town:
+                cur.execute("SELECT id, slug, name, category, coalesce(address, '') FROM places WHERE town_id = %s", (e.town_id,))
+                places_by_town[e.town_id] = cur.fetchall()
+            pid, slug, name, *_ = role_target(row, places_by_town[e.town_id])
+            hp.write_role(cur, pid, row.role, e, today, status=status, schedule_text=row.hours_text)
+            t["lines"].append(f"{status.upper()} role {row.role} on {slug} (id {pid}) <- {e.name}" + (f"  why: {row.why}" if row.why else ""))
+            continue
+        action = hp.write_entry(cur, e, today, status=status)
+        cur.execute("SELECT id FROM places WHERE town_id = %s AND slug = %s", (e.town_id, e.slug))
+        pid = cur.fetchone()[0]
+        n_hours, n_exc = hp.write_schedule(cur, pid, row.weekly, row.dates, row.closed, e.source_url, today)
+        t["lines"].append(f"{status.upper()} {action} {e.slug} (id {pid}) hours {n_hours} exceptions {n_exc}"
+                          + (f"  why: {row.why}" if row.why else ""))
+    return report
+
+
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--dry-run", action="store_true", required=True)
+    mode = ap.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--dry-run", action="store_true")
+    mode.add_argument("--write", action="store_true", help="1c: write to the DB (live needs --prod + ALLOW_PROD_WRITE=help_sources)")
     ap.add_argument("--today", type=date.fromisoformat, default=date.today())
     args = ap.parse_args(argv)
-    return dry_run(args.today)
+    if args.dry_run:
+        return dry_run(args.today)
+    from db.db import connect
+    conn = connect()
+    try:
+        with conn.cursor() as cur:
+            report = write(cur, args.today)
+        conn.commit()
+    finally:
+        conn.close()
+    for town, t in report.items():
+        print(f"=== {town}: publish {t['publish']}, queue {t['queue']}, reject {t['reject']}")
+        for line in t["lines"]:
+            print("  " + line)
+    return 0
 
 
 if __name__ == "__main__":

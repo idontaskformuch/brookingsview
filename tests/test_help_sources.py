@@ -303,3 +303,52 @@ def test_every_published_row_validates_against_its_own_page():
             if row.decision == "publish":
                 assert hp.validate(row.entry, row.page_text) == [], (src.id, row.entry.name)
                 assert row.weekly or row.dates, (src.id, row.entry.name)   # never a published row without confirmed days
+
+
+# --- 1c: write (owner 2026-11-27). Role targets = the real moreno_valley_ca places rows (id, slug, name, category, address) read 2026-11-27.
+MORENO_PLACES = [
+    (56, "senior-community-center", "Senior Community Center", "community_center", "25075 Fir Avenue, Moreno Valley, CA 92553"),
+    (6, "iris-plaza-branch-library", "Moreno Valley Public Library — Iris Plaza Branch", "library",
+     "16170 Perris Blvd, Moreno Valley, CA 92551 (Iris Ave. and Perris Blvd.)"),
+    (4, "main-library", "Moreno Valley Public Library — Main Branch", "library", "25480 Alessandro Blvd, Moreno Valley, CA 92553"),
+    (26, "cottonwood-golf-center-banquet-facility", "Cottonwood Golf Center & Banquet Facility", "park",
+     "13671 Frederick Street, Moreno Valley, CA 92553"),
+]
+
+
+class WriteCur:
+    """New help slugs do not exist yet; the town's places are MORENO_PLACES (other towns: none needed)."""
+    def __init__(self):
+        self.calls, self._last = [], ""
+
+    def execute(self, sql, params=()):
+        self._last = " ".join(sql.split())
+        self.calls.append((self._last, params))
+
+    def fetchone(self):
+        return None if self._last.startswith("SELECT id, category") else (1000,)
+
+    def fetchall(self):
+        return MORENO_PLACES if "moreno_valley_ca" in self.calls[-1][1] else []
+
+
+def test_write_matches_the_dry_run_and_queues_without_touching_venues():
+    cur = WriteCur()
+    report = hs.write(cur, TODAY)
+    counts = {t: (r["publish"], r["queue"], r["reject"]) for t, r in report.items()}
+    assert counts == {"glasgow": (14, 0, 0), "moreno_valley_ca": (14, 6, 0), "brookings_sd": (3, 0, 1), "broomfield_co": (3, 0, 0)}
+    roles = [p for s, p in cur.calls if s.startswith("INSERT INTO place_roles")]
+    assert sorted(p[0] for p in roles) == [4, 6, 26, 56] and {p[6] for p in roles} == {"queued"}
+    assert not any(s.startswith("UPDATE places") for s, _ in cur.calls)          # no venue row changed
+    inserts = [p for s, p in cur.calls if s.startswith("INSERT INTO places")]
+    assert len(inserts) == 14 + 3 + 3 + 14 + 2                                    # published + RCCD/SDA queued
+    assert sum("queued" in p for p in inserts) == 2
+
+
+def test_role_target_never_guesses():
+    row = next(r for _, r in hs.parse_all(TODAY) if r.role)
+    with pytest.raises(ValueError, match="0 places"):
+        hs.role_target(row, [])
+    num_place = next(p for p in MORENO_PLACES if p[4].split()[0] == row.entry.street_address.split()[0])
+    with pytest.raises(ValueError, match="2 places"):
+        hs.role_target(row, [num_place, (99, "x", "x", "park", num_place[4])])
