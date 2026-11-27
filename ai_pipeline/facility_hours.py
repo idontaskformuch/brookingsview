@@ -20,6 +20,12 @@ synthetic strings invented to make the parser look good -- 10 of 12 parse
 cleanly, 2 are genuinely ambiguous ("10am onward" has no close time; a
 parenthetical caveat about some counters keeping separate hours) and are
 correctly flagged rather than guessed at.
+
+CONVENTION (owner 2026-11-27): a weekly schedule states the whole week. A day the schedule does not name is CLOSED, the way the source
+means it ("Mon-Fri 8am-6pm, Sat 9am-1pm" = closed Sunday). hours_structured therefore always has all seven keys and null = closed,
+whether the source wrote "closed" or left the day out; the site shows such a day as "Closed". Not a guess about a value: it is how
+posted hours are read. A text with a caveat about the schedule itself (by appointment, call ahead, seasonal, hours vary) is not a
+plain weekly schedule; see the parser's flagging rules.
 """
 from __future__ import annotations
 
@@ -221,7 +227,8 @@ def _parse_week(text: str, raw: str) -> dict:
         raise _Unparseable(f"no day/time groups recognized: {raw!r}")
     # Days never mentioned at all default to closed -- the standard, near-universal convention for posted hours (an office
     # listing Mon-Fri hours and saying nothing about the weekend means closed weekends, not "unknown"). This is an
-    # interpretation of a real-world convention, not a guess about a VALUE.
+    # interpretation of a real-world convention, not a guess about a VALUE. Owner 2026-11-27: kept on purpose (module docstring,
+    # CONVENTION); the site renders such a day "Closed".
     return days
 
 

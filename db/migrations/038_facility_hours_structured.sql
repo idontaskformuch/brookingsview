@@ -15,7 +15,10 @@
 --
 -- hours_structured shape: {"monday": {"open":"09:00","close":"21:00"} | null, ...
 -- all 7 weekday keys always present, one row = one facility's whole week,
--- 24h local "HH:MM" strings, null value = closed that day. A single JSONB
+-- 24h local "HH:MM" strings, null value = closed that day. Convention (owner
+-- 2026-11-27): a weekly schedule states the whole week, so a day the source's
+-- schedule does not name is closed and is stored as null, the same as a day the
+-- source calls closed (ai_pipeline/facility_hours.py module docstring). A single JSONB
 -- column (not 7 separate columns, not a child table) because the unit that
 -- actually gets read and written is always "this facility's whole week at
 -- once," never a single day in isolation -- same "bounded structured
