@@ -41,8 +41,7 @@ jobs:
       - run: pip install -r requirements.txt
       - uses: actions/setup-node@v4
         with:
-          # Pinned (owner 2026-11-14): Astro 7 needs node >=22.23.4; same version as deploy.yml.
-          node-version: '24.18.0'
+          node-version-file: site/.nvmrc  # 24.18.0; one pin for tests, deploy and scrape (Astro 7 needs node >=22.23.4)
       - name: Install site deps
         working-directory: site
         run: npm ci

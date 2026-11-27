@@ -31,7 +31,7 @@ jobs:
       # (@astrojs/compiler-rs) from site/node_modules. Without this every one of its tests failed with MODULE_NOT_FOUND.
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.18.0'  # same pin as the four *deploy.yml
+          node-version-file: site/.nvmrc  # 24.18.0; one pin for tests, deploy and scrape (Astro 7 needs node >=22.23.4)
           cache: npm
           cache-dependency-path: site/package-lock.json
       - run: npm ci
@@ -54,7 +54,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.18.0'
+          node-version-file: site/.nvmrc  # 24.18.0; one pin for tests, deploy and scrape (Astro 7 needs node >=22.23.4)
       - run: npm ci
       - run: npm run check
       - run: npm test
@@ -68,7 +68,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.18.0'
+          node-version-file: site/.nvmrc  # 24.18.0; one pin for tests, deploy and scrape (Astro 7 needs node >=22.23.4)
       - run: npm ci
       # astro.config.mjs throws without a town (audit Fas 2); type-checking is the same for every town.
       - run: npm run check

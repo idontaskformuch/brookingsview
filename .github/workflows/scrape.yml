@@ -116,6 +116,8 @@ jobs:
       # för att vänta på nästa 6-timmars scrape-cron.
       - uses: actions/setup-node@v4
         if: steps.changed.outputs.changed == 'true'
+        with:
+          node-version-file: site/.nvmrc
       - name: Install site deps
         if: steps.changed.outputs.changed == 'true'
         working-directory: site

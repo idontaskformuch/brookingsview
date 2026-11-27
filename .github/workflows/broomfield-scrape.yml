@@ -64,6 +64,8 @@ jobs:
         run: python -m scripts.ci_changed after broomfield_co --preset data
       - uses: actions/setup-node@v4
         if: steps.changed.outputs.changed == 'true'
+        with:
+          node-version-file: site/.nvmrc
       - name: Install site deps
         if: steps.changed.outputs.changed == 'true'
         working-directory: site
