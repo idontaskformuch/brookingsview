@@ -1,0 +1,63 @@
+---
+/** One /help/ entry (lib/help-view.ts HelpCard): name, area + district, a week strip with the open days (the browser marks today,
+ *  lib/client/help-page.ts; the build never does), the hours, next dated sessions, who can come (the source's own words), address with
+ *  map link, phone, and the source + "Checked" date at the bottom. Everything is from the row; a missing field draws nothing. */
+import Card from '../ui/Card.astro';
+import Icon from '../ui/Icon.astro';
+import type { HelpCard } from '../../lib/help-view';
+import type { Category } from '../../lib/ui/ui-helpers';
+
+interface Props { card: HelpCard; cat?: Category }
+const { card: c, cat } = Astro.props;
+const WEEK = [1, 2, 3, 4, 5, 6, 0];
+const LETTER = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const DAY_NAME = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const meta = [c.area !== c.district ? c.area : null, c.district].filter(Boolean).join(' · ');
+const tel = c.phone ? `tel:${c.phone.replace(/[^\d+]/g, '')}` : null;
+---
+<li class="help-item" data-help-card data-key={c.key} data-area={c.area ?? ''} data-district={c.district ?? ''} data-postcode={c.postcode ?? ''}
+  data-lat={c.lat ?? ''} data-lon={c.lon ?? ''} data-open-days={c.openDays.join(',')}>
+  <Card cat={cat} neutral={!cat}>
+    <h3 class="help-name">{c.name}</h3>
+    {(meta || c.place) && <p class="help-meta">{[c.place, meta].filter(Boolean).join(' · ')}</p>}
+    {c.openDays.length > 0 && (
+      <ol class="help-week" aria-label={`Open ${c.openDays.map((d) => DAY_NAME[d]).join(', ')}`}>
+        {WEEK.map((d) => <li class:list={['help-day', { 'is-open': c.openDays.includes(d) }]} data-weekday={d} aria-hidden="true">{LETTER[d]}</li>)}
+      </ol>
+    )}
+    {c.weekly.length > 0 && (
+      <ul class="help-hours">
+        {c.weekly.map((w) => <li data-weekdays={w.weekdays.join(',')}><span class="help-days">{w.days}</span>{w.time && <span class="help-time">{w.time}</span>}</li>)}
+      </ul>
+    )}
+    {c.next.length > 0 && (
+      <p class="help-next"><Icon name="calendar" size={16} /><span>Next: {c.next.map((n) => n.label).join(', ')}</span></p>
+    )}
+    {c.scheduleText && <p class="help-next"><Icon name="clock" size={16} /><span>{c.scheduleText}</span></p>}
+    {c.closedNext && <p class="help-closed"><Icon name="closed" size={16} /><span>Closed {c.closedNext}</span></p>}
+    {c.requirements && <p class="help-req"><Icon name="info" size={16} /><span>{c.requirements}</span></p>}
+    {c.address && (
+      <p class="help-addr"><Icon name="pin" size={16} /><span>{c.address}{c.mapHref && <> · <a href={c.mapHref} rel="noopener">Map</a></>}</span></p>
+    )}
+    {tel && <p class="help-addr"><a href={tel}>{c.phone}</a></p>}
+    <p class="help-src">{c.checked}{c.checked && ' · '}<a href={c.sourceHref} rel="noopener">{c.sourceHost}</a></p>
+  </Card>
+</li>
+<style>
+  .help-item { display: flex; list-style: none; }
+  .help-item[hidden] { display: none; }
+  .help-name { margin: 0; font-family: var(--font-display, var(--font-serif)); font-size: 1.125rem; line-height: 1.25; }
+  .help-meta, .help-src { margin: 0; color: var(--ink-soft); font-size: var(--ui-meta); font-variant-numeric: tabular-nums; }
+  .help-src { margin-top: auto; padding-top: var(--ui-1); }
+  .help-week { display: flex; gap: 4px; margin: var(--ui-1) 0 0; padding: 0; list-style: none; }
+  .help-day { width: 1.5rem; height: 1.5rem; display: grid; place-items: center; border-radius: 50%; font-size: 0.8125rem; color: var(--ink-soft);
+    background: var(--ui-surface-2); font-variant-numeric: tabular-nums; }
+  .help-day.is-open { background: var(--c); color: var(--ui-surface-1, #fff); font-weight: 600; }
+  .help-day.is-today { outline: 2px solid var(--ink); outline-offset: 1px; }
+  .help-hours { margin: 0; padding: 0; list-style: none; font-variant-numeric: tabular-nums; }
+  .help-hours li { display: flex; gap: var(--ui-2); }
+  .help-hours li.is-today { font-weight: 600; }
+  .help-days { min-width: 4.5rem; }
+  .help-next, .help-closed, .help-req, .help-addr { display: flex; gap: var(--ui-1); align-items: flex-start; margin: 0; font-size: 0.9375rem; font-variant-numeric: tabular-nums; }
+  .help-next :global(.ui-icon), .help-closed :global(.ui-icon), .help-req :global(.ui-icon), .help-addr :global(.ui-icon) { flex: none; margin-top: 2px; color: var(--ink-soft); }
+</style>

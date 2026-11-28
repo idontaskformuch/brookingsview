@@ -224,6 +224,12 @@ export interface SiteConfig {
   /** Mirrors configs/<town_id>.json's features.new_in_town.enabled. See
    *  hasClosureWatch above for the sync requirement. */
   hasNewInTown?: boolean;
+  /** /help/ (spec .claude/specs/help-resources.md Phase 3): food banks/pantries, free meals, warm spaces. `enabled` false = the page is a
+   *  redirect stub and is in no menu or sitemap (owner 2026-11-28: off in every town until the owner says yes). Even when on, a
+   *  town under help-visibility HELP_MIN_ENTRIES visible entries gets the stub (owner decision 1). `foodTerm` is the town's own word
+   *  in the title and H1 ("Food banks" / "Food pantries"). `postcodeSearch` = the postcode box (postcodes.io, in the browser only,
+   *  nothing stored). Only the Python side's min_entries (configs/shared/source_watch.json) is configured apart from this. */
+  help?: { enabled: boolean; foodTerm: string; postcodeSearch: boolean };
   /** Show the Met Office warning banner (fed by GET /api/weather-warnings, no rebuild). UK towns only. */
   hasMetOfficeWarnings?: boolean;
   /** Mirrors configs/<town_id>.json's features.housing_market.enabled. See
@@ -449,6 +455,7 @@ const NO_RENDER_WINDOW: RenderWindow = { homeSales: null, meetings: null, events
 const CITIES: Record<string, SiteConfig> = {
   brookings_sd: {
     ...TOWN_REGISTRY.brookings_sd,
+    help: { enabled: false, foodTerm: 'Food pantries', postcodeSearch: false },
     // Owner 2026-11-05: the AI content track (essays, recipes, reviews, columns) is retired here too: no /s/ pages (404), sections redirect to /.
     contentTrackRetired: true,
     disabledSections: ['reviews', 'recipes', 'editorials', 'columns'],
@@ -561,6 +568,7 @@ const CITIES: Record<string, SiteConfig> = {
 
   moreno_valley_ca: {
     ...TOWN_REGISTRY.moreno_valley_ca,
+    help: { enabled: false, foodTerm: 'Food pantries', postcodeSearch: false },
     // Owner 2026-11-05: the AI content track (essays, recipes, reviews, columns) is retired here too: no /s/ pages (404), sections redirect to /.
     contentTrackRetired: true,
     disabledSections: ['reviews', 'recipes', 'editorials', 'columns'],
@@ -735,6 +743,7 @@ const CITIES: Record<string, SiteConfig> = {
 
   broomfield_co: {
     ...TOWN_REGISTRY.broomfield_co,
+    help: { enabled: false, foodTerm: 'Food pantries', postcodeSearch: false },
     safetyNotices: true,
     // Owner 2026-11-04 (Broomfield AdSense audit #2, #4, #5): AI essays/recipes/reviews retired; only the current week page stays
     // indexable. (The 25-own-words facility rule from the same audit is every town's now: lib/noindex.ts THIN_FACILITY_MIN_OWN_WORDS.)
@@ -848,6 +857,7 @@ const CITIES: Record<string, SiteConfig> = {
   // yet listed in the US towns' network disclosure. Phase 3 enables sources one by one.
   glasgow: {
     ...TOWN_REGISTRY.glasgow,
+    help: { enabled: false, foodTerm: 'Food banks', postcodeSearch: true },
     // /today/ written into the HTML like Broomfield's (owner 2026-11-25), same rule; no indexFrom: the blocks were watched on Broomfield.
     todayPage: { minBlocks: 3, requireOpenTonightData: true },
     eveningLayer: { mode: 'threshold', maxMiles: 15, includeTicketmasterSports: true, openLate: true, register: true, indexApproved: true, cards: { regions: {

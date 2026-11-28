@@ -6,8 +6,8 @@ import { ALL_CONFIGS } from '../site-config';
 /** standards.md: "Städer får inte ha kodvägar i layouten". Layout code (the ui library, the standard-layout components and
  *  their pure rules) may not branch on which town or country it is; differences live in site.config / country profiles. */
 const SRC = join(__dirname, '..', '..');
-const LAYOUT_DIRS = ['components/ui', 'components/tonight', 'components/meetings', 'components/evening', 'components/events', 'components/rail'];
-const LAYOUT_FILES = ['components/SectionNav.astro', 'components/HolidayPage.astro', 'components/HolidayRows.astro', 'components/HolidayRow.astro', 'lib/holiday-view.ts', 'lib/tonight-cards.ts', 'lib/tonight-cards-client.ts', 'lib/ui/ui-helpers.ts', 'lib/ui/ui-html.ts', 'lib/ui/icons.ts', 'lib/event-day-view.ts', 'lib/event-row-facts.ts', 'lib/weather-model.ts', 'lib/weather-html.ts', 'lib/sun-times.ts', 'lib/traffic-hero.ts',
+const LAYOUT_DIRS = ['components/ui', 'components/tonight', 'components/meetings', 'components/evening', 'components/events', 'components/rail', 'components/help'];
+const LAYOUT_FILES = ['components/SectionNav.astro', 'components/HolidayPage.astro', 'components/HolidayRows.astro', 'components/HolidayRow.astro', 'lib/holiday-view.ts', 'lib/tonight-cards.ts', 'lib/tonight-cards-client.ts', 'lib/ui/ui-helpers.ts', 'lib/ui/ui-html.ts', 'lib/ui/icons.ts', 'lib/event-day-view.ts', 'lib/event-row-facts.ts', 'lib/weather-model.ts', 'lib/weather-html.ts', 'lib/sun-times.ts', 'lib/traffic-hero.ts', 'lib/help-view.ts', 'lib/help-geo.ts', 'lib/help-visibility.ts', 'lib/client/help-page.ts',
   // Fas 1a (2026-11-18): the front page and the town's photo.
   'pages/index.astro', 'components/FrontPageLead.astro', 'components/CityPhoto.astro', 'lib/city-face.ts',
   // Designsystem Fas 1 (2026-11-20): the one event row / card / day group.

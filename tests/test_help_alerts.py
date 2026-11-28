@@ -182,6 +182,34 @@ def test_visible_entries_before_and_after():
     assert w.visible_entries(places, [again], TODAY + timedelta(days=60), 45) == (0, 14)   # old rows, bumped by the check
 
 
+def warm_roles_as_published():
+    """moval.org/warm/'s four roles (place ids 1..4, as warm_rows) as load_town_places returns them, with ONE change from 1c: they
+    are published (verification_status verified, warm_space in the place's services). Live they are still queued."""
+    from tests.test_help_freshness import WARM
+    parsed = hs.parse(WARM, {WARM.url: page(WARM)}, TODAY)
+    return [{"place_id": i, "role": "warm_space", "services": ["warm_space"], "source_kind": "official",
+             "verification_status": "verified", "verified_date": TODAY - timedelta(days=7), "valid_from": x.entry.valid_from,
+             "valid_to": x.entry.valid_to} for i, x in enumerate(parsed, 1)]
+
+
+def test_visible_entries_counts_published_roles_like_the_page():
+    # Owner 2026-11-27: every visible entry counts, warm_space roles too, with the page's own predicate (help_places.count_visible).
+    from db import help_places as hp
+    rows = places_as_written(PANTRIES) + warm_roles_as_published()
+    assert w.visible_entries(rows, [], TODAY, 45) == (18, 18) == (hp.count_visible(rows, TODAY, 45),) * 2
+    queued = [{**r, "verification_status": "queued"} if "role" in r else r for r in rows]   # as live: the roles are queued
+    assert w.visible_entries(queued, [], TODAY, 45) == (14, 14)
+
+
+def test_a_role_the_run_hides_leaves_the_count():
+    from tests.test_help_freshness import WARM, warm_rows
+    rows, resolve = warm_rows(status="verified")
+    p = plan(WARM, GONE_404(WARM), stored(WARM), rows, resolve_role=resolve)
+    assert {a[0] for a in p.actions} == {"status"}, ops(p)
+    town = places_as_written(PANTRIES) + warm_roles_as_published()
+    assert w.visible_entries(town, [p], TODAY, 45) == (18, 14)
+
+
 def test_a_town_falling_under_min_entries_is_a_finding():
     places = places_as_written(PANTRIES)
     p = plan(PANTRIES, GONE_404(PANTRIES), stored(PANTRIES), pantry_rows())

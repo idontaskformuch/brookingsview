@@ -219,6 +219,20 @@ def role_active(services, role_row: dict | None, today: date, max_age_days: int 
     return _fresh(role_row, today, max_age_days) and _in_season(role_row, today)
 
 
+def help_entry_visible(row: dict, today: date, max_age_days: int = MAX_AGE_DAYS) -> bool:
+    """One /help/ entry: a help place (is_visible) or a role on a place (a row with 'role'; role_active on the row's own 'services',
+    the host place's services). THE predicate of the page and of the min_entries alarm (owner 2026-11-27). The page's TypeScript
+    mirror (site/src/lib/help-visibility.ts) must give the same answers on tests/fixtures/help_visibility_*.json."""
+    if row.get("role") is not None:
+        return role_active(row.get("services"), row, today, max_age_days)
+    return is_visible(row, today, max_age_days)
+
+
+def count_visible(rows, today: date, max_age_days: int = MAX_AGE_DAYS) -> int:
+    """How many entries /help/ shows: every visible help place AND every active role (owner 2026-11-27: all of them count)."""
+    return sum(1 for r in rows if help_entry_visible(r, today, max_age_days))
+
+
 def page_has_enough(visible_count: int, min_entries: int = MIN_ENTRIES) -> bool:
     return visible_count >= min_entries
 

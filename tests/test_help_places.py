@@ -236,6 +236,36 @@ def test_role_on_an_existing_place_uses_the_roles_own_dates():
     assert not hp.role_active(["warm_space"], None, TODAY)                       # no dates row: never shown
 
 
+# --- the ONE count (Phase 3, owner 2026-11-27): page and min_entries alarm; roles count too ------------------------------------
+VISIBILITY_CASES = ROOT / "tests" / "fixtures" / "help_visibility_2026-11-28.json"
+
+
+def _visibility_cases():
+    import json
+    data = json.loads(VISIBILITY_CASES.read_text(encoding="utf-8"))
+    as_date = lambda v: date.fromisoformat(v) if isinstance(v, str) else v   # noqa: E731
+    for case in data["cases"]:
+        rows = []
+        for name in case["rows"]:
+            r = {**data["rows"][name], **case["changed"].get(name, {})}
+            rows.append({k: (as_date(v) if k in ("verified_date", "valid_from", "valid_to") else v) for k, v in r.items()})
+        yield pytest.param(rows, date.fromisoformat(data["today"]), data["max_age_days"], case["visible"], id=case["name"])
+
+
+@pytest.mark.parametrize("rows,today,max_age,expected", list(_visibility_cases()))
+def test_count_visible_follows_the_shared_cases(rows, today, max_age, expected):
+    assert [r["key"] for r in rows if hp.help_entry_visible(r, today, max_age)] == expected
+    assert hp.count_visible(rows, today, max_age) == len(expected)
+
+
+def test_a_role_row_is_never_judged_as_a_place():
+    # Real role row place_roles id 1 (Cottonwood), published; it has no category, so is_visible alone would say False.
+    role = dict(key="role:26:warm_space", place_id=26, role="warm_space", services=["warm_space"], source_kind="official",
+                verification_status="verified", verified_date=date(2026, 11, 27), valid_from=None, valid_to=None)
+    assert not hp.is_visible(role, date(2026, 11, 28))
+    assert hp.help_entry_visible(role, date(2026, 11, 28)) and hp.count_visible([role], date(2026, 11, 28)) == 1
+
+
 def test_min_entries_omits_the_page():
     assert hp.MIN_ENTRIES == 6
     assert not hp.page_has_enough(5)

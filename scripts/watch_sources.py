@@ -455,36 +455,48 @@ def load_help_rows(cur, src, today) -> tuple[list[dict], PrevCheck, list]:
 
 
 def load_town_places(cur, town: str) -> list[dict]:
-    """Every help place of the town, whatever its source, with what help_places.is_visible reads. Read-only."""
+    """Every /help/ entry of the town, whatever its source, with what help_places.help_entry_visible reads: the help places AND
+    the roles (place_roles + the host place's services). Read-only."""
     from db import help_places as hp
     cols = ("slug", "category", "source_kind", "verification_status", "verified_date", "valid_from", "valid_to")
     cur.execute(f"SELECT {', '.join(cols)} FROM places WHERE town_id = %s AND category = ANY(%s)", (town, list(hp.HELP_CATEGORIES)))
-    return [dict(zip(cols, r)) for r in cur.fetchall()]
+    out = [dict(zip(cols, r)) for r in cur.fetchall()]
+    rcols = ("place_id", "role", "services", "source_kind", "verification_status", "verified_date", "valid_from", "valid_to")
+    cur.execute("SELECT pr.place_id, pr.role, p.services, pr.source_kind, pr.verification_status, pr.verified_date, pr.valid_from, "
+                "pr.valid_to FROM place_roles pr JOIN places p ON p.id = pr.place_id WHERE p.town_id = %s", (town,))
+    return out + [dict(zip(rcols, r)) for r in cur.fetchall()]
+
+
+def _entry_key(row: dict) -> tuple:
+    return ("role", row["place_id"], row["role"]) if row.get("role") is not None else ("place", row["slug"])
 
 
 def visible_entries(places: list[dict], plans: list, today, max_age_days: int) -> tuple[int, int]:
-    """(shown before, shown after) the plans, counted with help_places.is_visible on the town's help places. The plans' actions are
-    played on a copy: bump (verified today, stale -> verified), status, write (status, season, a new place). Roles (warm_space on
-    an existing venue) are not counted here; Phase 3's page decides what counts."""
+    """(shown before, shown after) the plans, counted with help_places.count_visible -- the page's own count (owner 2026-11-27:
+    help places AND roles). The plans' actions are played on a copy: bump (verified today, stale -> verified), status, write
+    (status, season; a new place). A role write keeps the place's services: the job never publishes a role."""
     from db import help_places as hp
-    rows = {p["slug"]: dict(p) for p in places}
-    count = lambda: sum(1 for r in rows.values() if hp.is_visible(r, today, max_age_days))   # noqa: E731
+    rows = {_entry_key(p): dict(p) for p in places}
+    count = lambda: hp.count_visible(rows.values(), today, max_age_days)   # noqa: E731
     before = count()
     for plan_ in plans:
         for a in plan_.actions:
             key = a[1] if a[1] is not None else (row_key(a[2]) if a[0] == "write" else None)
-            if key is None or key[0] != "place":
+            if key is None:
                 continue
-            if a[0] == "write":
+            if a[0] == "write" and key[0] == "place":
                 e = a[2].entry
-                rows[e.slug] = {**rows.get(e.slug, {}), "slug": e.slug, "category": e.category, "source_kind": e.source_kind,
-                                "verification_status": a[3], "verified_date": today, "valid_from": e.valid_from, "valid_to": e.valid_to}
-            elif key[1] in rows and a[0] == "bump":
-                r = rows[key[1]]
+                rows[key] = {**rows.get(key, {}), "slug": e.slug, "category": e.category, "source_kind": e.source_kind,
+                             "verification_status": a[3], "verified_date": today, "valid_from": e.valid_from, "valid_to": e.valid_to}
+            elif key in rows and a[0] == "write":
+                rows[key].update(verification_status=a[3], verified_date=today, valid_from=a[2].entry.valid_from,
+                                 valid_to=a[2].entry.valid_to)
+            elif key in rows and a[0] == "bump":
+                r = rows[key]
                 r["verified_date"] = today
                 r["verification_status"] = bumped_status(r["verification_status"])
-            elif key[1] in rows and a[0] == "status":
-                rows[key[1]]["verification_status"] = a[2]
+            elif key in rows and a[0] == "status":
+                rows[key]["verification_status"] = a[2]
     return before, count()
 
 

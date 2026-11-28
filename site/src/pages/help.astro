@@ -1,0 +1,107 @@
+---
+/** /help/ -- "Where can I get free food (and, in season, a warm place) in {Town}, when is it open, and do I need anything?"
+ *  (spec .claude/specs/help-resources.md Phase 3). Sections: Food, Winter help, Help with bills & rent, each left out when empty; a
+ *  link to free things for families. Shown entries = lib/help-visibility.ts helpVisible, the mirror of db/help_places.count_visible
+ *  that the min_entries alarm counts with (owner 2026-11-27). Gated on siteConfig.help.enabled (false everywhere, owner 2026-11-28)
+ *  AND at least HELP_MIN_ENTRIES visible entries; otherwise a redirect stub (astro.config.mjs keeps /help/ out of the sitemap).
+ *  Postcode sort and "By area" are lib/client/help-page.ts; no per-area pages (spec). */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import AboutThisPage from '../components/ui/AboutThisPage.astro';
+import SectionHeader from '../components/ui/SectionHeader.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import HelpCard from '../components/help/HelpCard.astro';
+import { siteConfig } from '../lib/site-config';
+import { getHelpEntries } from '../lib/db';
+import { countVisible, helpPageHasEnough, HELP_MAX_AGE_DAYS } from '../lib/help-visibility';
+import { helpSections, helpAreas, helpItemListJsonLd, areaDistribution } from '../lib/help-view';
+import { todayDate } from '../lib/today-page';
+import { buildBreadcrumbJsonLd } from '../lib/article-jsonld';
+import type { Category } from '../lib/ui/ui-helpers';
+
+const help = siteConfig.help;
+// HELP_PREVIEW=1 builds the page while the flag is off, noindex (local preview for the owner only; CI never sets it).
+const preview = process.env.HELP_PREVIEW === '1';
+if (!help || (!help.enabled && !preview)) return Astro.redirect('/', 302);
+
+const today = todayDate(new Date(), siteConfig.timezone).iso;
+const data = await getHelpEntries();
+const visible = countVisible(data.entries, today);
+if (!helpPageHasEnough(visible) && !preview) return Astro.redirect('/', 302);
+
+const country = siteConfig.country;
+const sections = helpSections(data, today, country);
+const cards = sections.flatMap((s) => s.cards);
+const areas = helpAreas(cards);
+console.log(`[help] ${siteConfig.townId}: ${visible} visible entries; areas ${JSON.stringify(areaDistribution(cards))}`);
+
+const town = siteConfig.cityName;
+const foodTerm = help.foodTerm;
+const h1 = `${foodTerm} & free meals in ${town}`;
+const title = `${h1} — hours & addresses`;
+const canonicalUrl = new URL('/help/', Astro.site ?? siteConfig.siteUrl).href;
+const trail = [{ label: 'Home', href: '/' }, { label: 'Food & help', href: canonicalUrl }];
+const CAT: Record<string, Category | undefined> = { food: 'food', winter: undefined, bills: 'civic' };
+const hosts = [...new Map(cards.map((c) => [c.sourceHost, c.sourceHref])).entries()].map(([name, href]) => ({ name, href }));
+const checkedDates = cards.map((c) => c.checked).filter(Boolean);
+const digest = [`${cards.length} places`, areas.length >= 2 ? `${areas.length} areas` : null].filter(Boolean).join(' · ');
+---
+<BaseLayout title={title} noindex={preview && !help.enabled}
+  description={`Where to get free food in ${town}: ${foodTerm.toLowerCase()} and free meals with opening days, times, what to bring and addresses, from each organisation's own page.`}>
+  <Breadcrumbs trail={trail} />
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(buildBreadcrumbJsonLd(trail, canonicalUrl))} />
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(helpItemListJsonLd(sections, town))} />
+  <article class="help-page">
+    <h1>{h1}</h1>
+    <p class="help-digest"><span>{digest}</span><span data-help-today hidden></span></p>
+    <div class="help-tools">
+      {help.postcodeSearch && (
+        <form class="help-postcode" data-help-postcode hidden>
+          <label for="help-pc">Your postcode</label>
+          <input id="help-pc" name="postcode" autocomplete="postal-code" inputmode="text" maxlength="8" placeholder="G51 1QH" />
+          <button type="submit">Nearest first</button>
+          <span class="help-pc-status" data-help-postcode-status aria-live="polite"></span>
+        </form>
+      )}
+      {areas.length >= 2 && <button type="button" class="help-group" data-help-group aria-pressed="false" hidden>By area</button>}
+    </div>
+    {sections.map((s) => (
+      <section class="help-section" id={s.id}>
+        <SectionHeader title={s.title} />
+        <ul class="help-list" data-help-list>
+          {s.cards.map((c) => <HelpCard card={c} cat={CAT[s.id]} />)}
+        </ul>
+        <button type="button" class="help-more" data-help-more hidden></button>
+      </section>
+    ))}
+    <section class="help-section" id="families">
+      <SectionHeader title="Free for families" />
+      <p><a href="/events/free/">Free things to do in {town}</a></p>
+    </section>
+  </article>
+  <AboutThisPage slot="about" sources={hosts} updated={checkedDates.length ? checkedDates.sort().at(-1)?.replace('Checked ', '') : undefined}>
+    <p>Places in {town} that give out free food or free meals, with the days and times their own pages give. Each place is checked
+    against its own page every week; one that has not been confirmed for {HELP_MAX_AGE_DAYS} days, or whose page changed in a way we could not read,
+    is taken off this page until it is checked again. Call or check the source before you go: times change, especially around holidays.</p>
+  </AboutThisPage>
+</BaseLayout>
+
+<script>
+  import { init } from '../lib/client/help-page';
+  init();
+</script>
+
+<style>
+  .help-digest { display: flex; flex-wrap: wrap; gap: var(--ui-2); margin: 0 0 var(--ui-3); color: var(--ink-soft); font-size: var(--ui-meta); font-variant-numeric: tabular-nums; }
+  .help-digest [data-help-today] { color: var(--accent); font-weight: 600; }
+  .help-tools { display: flex; flex-wrap: wrap; gap: var(--ui-2); align-items: center; margin-bottom: var(--ui-3); }
+  .help-postcode { display: flex; flex-wrap: wrap; gap: var(--ui-1); align-items: center; font-family: var(--font-ui); }
+  .help-postcode label { font-size: var(--ui-meta); color: var(--ink-soft); }
+  .help-postcode input { width: 7.5rem; padding: 0.4rem 0.6rem; font: inherit; text-transform: uppercase; border: 1px solid var(--rule); border-radius: var(--ui-radius); background: var(--ui-surface-1); color: inherit; }
+  .help-postcode button, .help-group, .help-more { padding: 0.4rem 0.9rem; font: inherit; font-family: var(--font-ui); border: 0; border-radius: 999px; background: var(--ui-surface-2); color: var(--ink); cursor: pointer; }
+  .help-group[aria-pressed='true'] { background: var(--accent); color: #fff; }
+  .help-pc-status { font-size: var(--ui-meta); color: var(--ink-soft); }
+  .help-section { margin: var(--ui-4) 0; }
+  .help-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: var(--ui-3); margin: var(--ui-2) 0; padding: 0; }
+  .help-list :global(.help-group-head) { grid-column: 1 / -1; list-style: none; margin-top: var(--ui-2); font-family: var(--font-ui); font-weight: 600; font-size: 0.9375rem; color: var(--ink-soft); }
+  .help-list :global(.help-distance) { font-size: var(--ui-meta); color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+</style>

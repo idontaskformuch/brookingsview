@@ -2740,6 +2740,72 @@ export const VENUE_CATEGORIES: ReadonlySet<string> = new Set(['bar_brewery', 'mu
  *  db/help_places.py HELP_CATEGORIES and astro.config.mjs (tests/test_help_places.py fails if they disagree). */
 export const HELP_CATEGORIES: ReadonlySet<string> = new Set(['food_pantry', 'meal_program', 'warm_space', 'assistance_program', 'free_clinic']);
 
+/** One /help/ entry as stored: a help place, or a role (warm_space) on a place we already have (then `role` is set, the address
+ *  and name are the host place's, and the times are the role's own schedule_text verbatim). Visibility is decided by
+ *  lib/help-visibility.ts helpVisible on these same fields; this reader filters nothing but the town. */
+export interface HelpEntryRow {
+  key: string;
+  slug: string;
+  name: string;
+  category: string;
+  role: string | null;
+  services: string[] | null;
+  source_kind: string | null;
+  verification_status: string | null;
+  verified_date: string | null;
+  valid_from: string | null;
+  valid_to: string | null;
+  address: string | null;
+  location_note: string | null;
+  postal_code: string | null;
+  area_name: string | null;
+  lat: number | null;
+  lon: number | null;
+  phone: string | null;
+  website: string | null;
+  source_url: string;
+  requirements_note: string | null;
+  schedule_text: string | null;
+  audience_tags: string[] | null;
+}
+
+export interface HelpHoursRow { place_id: number; day_of_week: number; opens: string | null; closes: string | null; valid_from: string | null; valid_to: string | null; time_unknown: boolean }
+export interface HelpClosedRow { place_id: number; date: string }
+
+/** Every /help/ entry of the town (help places + roles), with hours and closed days of the help places. Help places' hours are read
+ *  here only (getAllPlaceHoursForTown leaves them out); a time_unknown row is an open day with no time given (migration 079). */
+export async function getHelpEntries(): Promise<{ entries: (HelpEntryRow & { place_id: number })[]; hours: HelpHoursRow[]; closed: HelpClosedRow[] }> {
+  const cats = [...HELP_CATEGORIES];
+  const entries = (await sql`
+    SELECT 'place:' || p.slug AS key, p.id AS place_id, p.slug, p.name, p.category, NULL::text AS role, p.services, p.source_kind,
+           p.verification_status, p.verified_date::text, p.valid_from::text, p.valid_to::text, p.street_address AS address,
+           p.location_note, p.postal_code, p.area_name, p.lat, p.lon, p.phone, p.website, p.source_url, p.requirements_note,
+           NULL::text AS schedule_text, p.audience_tags
+      FROM places p
+     WHERE p.town_id = ${TOWN_ID} AND p.category = ANY(${cats}::text[])
+    UNION ALL
+    SELECT 'role:' || pr.place_id || ':' || pr.role, p.id, p.slug, p.name, p.category, pr.role, p.services, pr.source_kind,
+           pr.verification_status, pr.verified_date::text, pr.valid_from::text, pr.valid_to::text, coalesce(p.street_address, p.address),
+           p.location_note, p.postal_code, p.area_name, p.lat, p.lon, p.phone, p.website, pr.source_url, pr.requirements_note,
+           pr.schedule_text, p.audience_tags
+      FROM place_roles pr JOIN places p ON p.id = pr.place_id
+     WHERE p.town_id = ${TOWN_ID}
+  `) as (HelpEntryRow & { place_id: number })[];
+  const hours = (await sql`
+    SELECT ph.place_id, ph.day_of_week, ph.opens::text, ph.closes::text, ph.valid_from::text, ph.valid_to::text, ph.time_unknown
+      FROM place_hours ph JOIN places p ON p.id = ph.place_id
+     WHERE p.town_id = ${TOWN_ID} AND p.category = ANY(${cats}::text[])
+     ORDER BY ph.place_id, ph.valid_from NULLS FIRST, ph.day_of_week, ph.opens
+  `) as HelpHoursRow[];
+  const closed = (await sql`
+    SELECT e.place_id, e.date::text
+      FROM place_hours_exceptions e JOIN places p ON p.id = e.place_id
+     WHERE p.town_id = ${TOWN_ID} AND p.category = ANY(${cats}::text[]) AND e.opens IS NULL AND e.date >= CURRENT_DATE
+     ORDER BY e.date
+  `) as HelpClosedRow[];
+  return { entries, hours, closed };
+}
+
 export function isPublicPlace(f: { category: string }): boolean {
   return !VENUE_CATEGORIES.has(f.category);
 }

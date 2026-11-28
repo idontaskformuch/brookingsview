@@ -1,0 +1,23 @@
+{
+  "_note": "ONE set of cases for the /help/ count (owner 2026-11-27: the page and the min_entries alarm use the same count; ALL visible entries count, warm_space roles too). tests/test_help_places.py runs them through db/help_places.count_visible, site/src/lib/help-visibility.test.ts through the page's helpVisible: both must give these exact keys, so they cannot drift apart. Rows are live rows read 2026-11-28 (read-only): moreno_valley_ca places 309 al-rahma-food-bank, 322 sda-moreno-valley, place_roles id 1 (Cottonwood Golf Center, place_id 26), glasgow place 308 social-bite-sauchiehall-street. A case that changes a field names it in 'changed' (CLAUDE.md rule 15).",
+  "today": "2026-11-28",
+  "max_age_days": 45,
+  "rows": {
+    "al_rahma": {"key": "place:al-rahma-food-bank", "slug": "al-rahma-food-bank", "category": "food_pantry", "source_kind": "official", "verification_status": "verified", "verified_date": "2026-11-27", "valid_from": null, "valid_to": null},
+    "sda": {"key": "place:sda-moreno-valley", "slug": "sda-moreno-valley", "category": "food_pantry", "source_kind": "official", "verification_status": "queued", "verified_date": "2026-11-27", "valid_from": null, "valid_to": null},
+    "cottonwood_role": {"key": "role:26:warm_space", "place_id": 26, "role": "warm_space", "services": null, "source_kind": "official", "verification_status": "queued", "verified_date": "2026-11-27", "valid_from": null, "valid_to": null},
+    "social_bite": {"key": "place:social-bite-sauchiehall-street", "slug": "social-bite-sauchiehall-street", "category": "meal_program", "source_kind": "operator", "verification_status": "verified", "verified_date": "2026-11-27", "valid_from": null, "valid_to": null}
+  },
+  "cases": [
+    {"name": "as live 2026-11-28: the queued place and the queued role are not shown", "rows": ["al_rahma", "sda", "cottonwood_role"], "changed": {}, "visible": ["place:al-rahma-food-bank"]},
+    {"name": "a published role counts as an entry of its own", "rows": ["al_rahma", "cottonwood_role"], "changed": {"cottonwood_role": {"verification_status": "verified", "services": ["warm_space"]}}, "visible": ["place:al-rahma-food-bank", "role:26:warm_space"]},
+    {"name": "a verified role whose place does not list it in services is not shown", "rows": ["cottonwood_role"], "changed": {"cottonwood_role": {"verification_status": "verified"}}, "visible": []},
+    {"name": "a role past its valid_to is not shown", "rows": ["cottonwood_role"], "changed": {"cottonwood_role": {"verification_status": "verified", "services": ["warm_space"], "valid_to": "2026-11-27"}}, "visible": []},
+    {"name": "a role before its valid_from is not shown", "rows": ["cottonwood_role"], "changed": {"cottonwood_role": {"verification_status": "verified", "services": ["warm_space"], "valid_from": "2026-11-29"}}, "visible": []},
+    {"name": "45 days old is shown, 46 is not", "rows": ["al_rahma", "social_bite"], "changed": {"al_rahma": {"verified_date": "2026-10-14"}, "social_bite": {"verified_date": "2026-10-13"}}, "visible": ["place:al-rahma-food-bank"]},
+    {"name": "a disabled category is not shown", "rows": ["al_rahma"], "changed": {"al_rahma": {"category": "assistance_program"}}, "visible": []},
+    {"name": "a source_kind other row is not shown", "rows": ["social_bite"], "changed": {"social_bite": {"source_kind": "other"}}, "visible": []},
+    {"name": "changed and gone are not shown", "rows": ["al_rahma", "social_bite"], "changed": {"al_rahma": {"verification_status": "changed"}, "social_bite": {"verification_status": "gone"}}, "visible": []},
+    {"name": "no verified_date is not shown", "rows": ["al_rahma"], "changed": {"al_rahma": {"verified_date": null}}, "visible": []}
+  ]
+}
