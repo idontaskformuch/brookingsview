@@ -12,10 +12,10 @@ const { card: c, cat } = Astro.props;
 const WEEK = [1, 2, 3, 4, 5, 6, 0];
 const LETTER = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const DAY_NAME = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const meta = [c.area !== c.district ? c.area : null, c.district].filter(Boolean).join(' · ');
+const meta = c.areaLabel ?? c.district ?? '';
 const tel = c.phone ? `tel:${c.phone.replace(/[^\d+]/g, '')}` : null;
 ---
-<li class="help-item" data-help-card data-key={c.key} data-area={c.area ?? ''} data-district={c.district ?? ''} data-postcode={c.postcode ?? ''}
+<li class="help-item" data-help-card data-key={c.key} data-area={c.area ?? ''} data-area-label={c.areaLabel ?? ''} data-district={c.district ?? ''} data-postcode={c.postcode ?? ''}
   data-lat={c.lat ?? ''} data-lon={c.lon ?? ''} data-open-days={c.openDays.join(',')}>
   <Card cat={cat} neutral={!cat}>
     <h3 class="help-name">{c.name}</h3>

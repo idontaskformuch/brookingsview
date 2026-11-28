@@ -15,8 +15,10 @@ export type HelpSectionId = 'food' | 'winter' | 'bills';
 export interface HelpCard {
   key: string;
   name: string;
-  /** area_name, else the postal district: what the "By area" grouping uses. */
+  /** The postal district: what the "By area" grouping uses (owner 2026-11-28: always the district). */
   area: string | null;
+  /** The group's heading: "G40 · Bridgeton" when the row has an area_name, else the district alone. */
+  areaLabel: string | null;
   district: string | null;
   postcode: string | null;
   /** The building the help is in, when the source names one ("Ibrox Parish Church"). */
@@ -78,7 +80,7 @@ function card(e: HelpEntryRow & { place_id: number }, hours: HelpHoursRow[], clo
   const address = e.address ? [e.address, e.postal_code].filter(Boolean).join(', ') : null;
   const closedNext = closed.find((c) => c.place_id === e.place_id && c.date >= today)?.date ?? null;
   return {
-    key: e.key, name: e.name, area: e.area_name ?? district, district, postcode: e.postal_code, place: e.location_note, address,
+    key: e.key, name: e.name, area: district, areaLabel: district && e.area_name ? `${district} · ${e.area_name}` : district, district, postcode: e.postal_code, place: e.location_note, address,
     mapHref: facilityMapLink(e.lat, e.lon, address), phone: e.phone, lat: e.lat, lon: e.lon,
     weekly, openDays: [...new Set(weekly.flatMap((w) => w.weekdays))].sort(), next,
     scheduleText: e.role ? e.schedule_text : null,
@@ -99,9 +101,19 @@ export function helpSections(input: HelpInput, today: string, country: 'us' | 'g
   })).filter((s) => s.cards.length > 0);
 }
 
-/** The distinct areas of the cards, sorted; the "By area" toggle is only offered when there are at least two. */
-export function helpAreas(cards: HelpCard[]): string[] {
-  return [...new Set(cards.map((c) => c.area).filter((a): a is string => !!a))].sort((a, b) => a.localeCompare(b));
+/** Districts in postcode order: letters, then the number ("G2" < "G40" < "G51"); a ZIP sorts as a number. */
+export const districtCompare = (a: string, b: string): number => a.localeCompare(b, 'en', { numeric: true });
+
+/** The distinct districts of the cards with their label, in postcode order; the "By area" toggle is offered at two or more. A
+ *  district whose cards disagree on the label (one has an area_name, one has not) takes the first label with an area name. */
+export function helpAreas(cards: HelpCard[]): { key: string; label: string }[] {
+  const out = new Map<string, string>();
+  for (const c of cards) {
+    if (!c.area) continue;
+    const label = c.areaLabel ?? c.area;
+    if (!out.has(c.area) || out.get(c.area) === c.area) out.set(c.area, label);
+  }
+  return [...out].sort((a, b) => districtCompare(a[0], b[0])).map(([key, label]) => ({ key, label }));
 }
 
 /** Area distribution for the build log (spec: evaluate area pages later; no area pages now). */

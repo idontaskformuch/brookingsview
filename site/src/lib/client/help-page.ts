@@ -3,7 +3,8 @@
  *   - today: the town-local weekday (<html data-timezone>) marks the day in each card's week strip and its hours line, and writes
  *     "N open today" into [data-help-today] (hidden when none: no empty-state text).
  *   - collapse: a list longer than COLLAPSE_AT shows the first ones and a "Show all N" button.
- *   - by area: [data-help-group] regroups each list under area headings (area_name, else the postal district); press again = by name.
+ *   - by area: [data-help-group] regroups each list under postal-district headings ("G40 · Bridgeton" when the row has an area name);
+ *     press again = back to the current order.
  *   - postcode ([data-help-postcode] form, towns with help.postcodeSearch): ONE bulk lookup at postcodes.io (open data) of the
  *     visitor's postcode and the cards' postcodes, then nearest first with the distance on each card. When the lookup fails: the
  *     visitor's outcode first, then the same postcode area (help-view outcodeOrder). */
@@ -50,7 +51,7 @@ function render(list: HTMLElement, order: HTMLElement[], byArea: boolean): void 
   let ordered = order;
   if (byArea) {
     const area = (c: HTMLElement) => c.dataset.area || '￿';
-    ordered = [...order].sort((a, b) => area(a).localeCompare(area(b)));
+    ordered = [...order].sort((a, b) => area(a).localeCompare(area(b), 'en', { numeric: true }));
   }
   let last: string | undefined;
   for (const c of ordered) {
@@ -58,7 +59,7 @@ function render(list: HTMLElement, order: HTMLElement[], byArea: boolean): void 
       last = c.dataset.area;
       const h = document.createElement('li');
       h.className = 'help-group-head';
-      h.textContent = last || 'Other areas';
+      h.textContent = c.dataset.areaLabel || last || 'Other areas';
       list.append(h);
     }
     list.append(c);

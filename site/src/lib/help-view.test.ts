@@ -76,9 +76,15 @@ describe('postcode helpers', () => {
     expect(postalDistrict('92553')).toBe('92553');
     expect(postalDistrict(null)).toBeNull();
   });
-  it('areas: area_name, else the district; only listed when there are at least two', () => {
+  it('areas (owner 2026-11-28): always the postal district, labelled with area_name when the row has one ("G40 · Bridgeton")', () => {
     const cards = helpSections(glasgow, '2026-11-28', 'gb')[0].cards;
-    expect(helpAreas(cards)).toEqual(['Bridgeton', 'G2', 'G51']);
+    expect(helpAreas(cards)).toEqual([{ key: 'G2', label: 'G2' }, { key: 'G40', label: 'G40 · Bridgeton' }, { key: 'G51', label: 'G51' }]);
+    expect(cards.map((c) => [c.area, c.areaLabel])).toEqual([['G40', 'G40 · Bridgeton'], ['G51', 'G51'], ['G2', 'G2']]);
+  });
+  it('districts sort as G2 < G40 < G51 (number order, not text order)', () => {
+    const PENILEE = row({ place_id: 296, slug: 'glasgow-sw-foodbank-penilee', name: 'Glasgow SW Foodbank – Penilee', source_kind: 'operator', postal_code: 'G52 2QE' });
+    const cards = helpSections({ ...glasgow, entries: [...glasgow.entries, PENILEE] }, '2026-11-28', 'gb')[0].cards;
+    expect(helpAreas(cards).map((a) => a.key)).toEqual(['G2', 'G40', 'G51', 'G52']);
   });
   it('sorts by distance from a point, places without coordinates last', () => {
     const pts = [{ key: 'a', lat: 55.85, lon: -4.31 }, { key: 'b', lat: null, lon: null }, { key: 'c', lat: 55.865, lon: -4.256 }];
