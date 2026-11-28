@@ -32,6 +32,15 @@ import { siteConfig } from '../../../lib/site-config';
   <h3>Choices stored in your browser</h3>
   <p>Your browser's local storage may hold preferences such as light or dark mode. These stay on your device and are not
   sent to us.</p>
+  {siteConfig.help?.enabled && siteConfig.help.postcodeSearch && (
+    <>
+      <h3>Postcode search on the food help page</h3>
+      <p>If you type a postcode into the box on <a href="/help/">/help/</a> and press the button, your browser sends that postcode
+      to <a href="https://postcodes.io/" rel="noopener">postcodes.io</a>, a free open-data postcode service, to work out how far each
+      place is from you. As with any web request, postcodes.io also sees your browser's IP address. Nothing is sent unless you press
+      the button. The postcode is not sent to us, and it is not stored on this site or in your browser.</p>
+    </>
+  )}
 
   <h2>Analytics and advertising</h2>
   <h3>Analytics</h3>

@@ -46,7 +46,7 @@ const checkedDates = cards.map((c) => c.checked).filter(Boolean);
 const digest = [`${cards.length} places`, areas.length >= 2 ? `${areas.length} areas` : null].filter(Boolean).join(' · ');
 ---
 <BaseLayout title={title} noindex={preview && !help.enabled}
-  description={`Where to get free food in ${town}: ${foodTerm.toLowerCase()} and free meals with opening days, times, what to bring and addresses, from each organisation's own page.`}>
+  description={`Where to get free food in ${town}: ${foodTerm.toLowerCase()} and free meals with opening days, times, what to bring and addresses, from each place's own page.`}>
   <Breadcrumbs trail={trail} />
   <script type="application/ld+json" is:inline set:html={JSON.stringify(buildBreadcrumbJsonLd(trail, canonicalUrl))} />
   <script type="application/ld+json" is:inline set:html={JSON.stringify(helpItemListJsonLd(sections, town))} />

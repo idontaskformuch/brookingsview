@@ -423,9 +423,9 @@ const TOWN_GATED_PAGES = [
   // pipeline behind it isn't built yet -- see configs/*.json's new_in_town
   // "_notes") -- a pure stub everywhere until that ships.
   { path: '/new-in-town/', activeFor: [] },
-  // /help/ (spec help-resources Phase 3): siteConfig.help.enabled is false in every town (owner 2026-11-28: on only after the owner's
-  // yes). Turning a town on = its help.enabled AND this list; the page is a stub under HELP_MIN_ENTRIES (Brookings, Broomfield).
-  { path: '/help/', activeFor: [] },
+  // /help/ (spec help-resources Phase 3): mirrors siteConfig.help.enabled (owner 2026-11-28: on in Moreno Valley and Glasgow).
+  // Turning a town on = its help.enabled AND this list; the page is a stub under HELP_MIN_ENTRIES (Brookings 3, Broomfield 3).
+  { path: '/help/', activeFor: ['moreno_valley_ca', 'glasgow'] },
   // What's On: hasWhatsOn is true for all three towns as of the Phase 7
   // venue-curation follow-up (Moreno Valley/Broomfield needed their own
   // venue curation before enabling -- see site-config.ts's own ticketmaster

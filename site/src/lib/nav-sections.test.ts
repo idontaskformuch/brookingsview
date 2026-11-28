@@ -86,6 +86,27 @@ describe('real town configs', () => {
     // Broomfield's Worker Pulse is quiet (2026-10-23, SiteConfig.quietSections): out of the nav until it has content
     expect(hrefs('workplace').sort()).toEqual(['moreno_valley_ca']);
   });
+  it('/help/ is in the All sheet exactly where help.enabled (owner 2026-11-28: Moreno Valley + Glasgow), never a tab', () => {
+    const inSheet = ALL_CONFIGS.filter((c) => resolveNav(c.nav, c).groups.some((g) => g.items.some((i) => i.id === 'help'))).map((c) => c.townId);
+    expect(inSheet.sort()).toEqual(ALL_CONFIGS.filter((c) => c.help?.enabled).map((c) => c.townId).sort());
+    expect(inSheet.sort()).toEqual(['glasgow', 'moreno_valley_ca']);
+    for (const c of ALL_CONFIGS) expect(c.nav?.tabs ?? []).not.toContain('help');
+    const off = { ...MORENO, help: { enabled: false, foodTerm: 'Food pantries', postcodeSearch: false } };
+    expect(enabledSections(off).some((s) => s.href === '/help/')).toBe(false);
+    expect(enabledSections({ ...off, help: { ...off.help, enabled: true } }).some((s) => s.href === '/help/')).toBe(true);
+  });
+  it("astro.config.mjs's sitemap list for /help/ mirrors help.enabled", async () => {
+    const { readFileSync } = await import('node:fs');
+    const cfg = readFileSync(new URL('../../astro.config.mjs', import.meta.url), 'utf8');
+    const m = /\{ path: '\/help\/', activeFor: \[([^\]]*)\] \}/.exec(cfg);
+    expect(m).not.toBeNull();
+    const listed = [...m![1].matchAll(/'(\w+)'/g)].map((x) => x[1]).sort();
+    expect(listed).toEqual(ALL_CONFIGS.filter((c) => c.help?.enabled).map((c) => c.townId).sort());
+  });
+  it("the Worker 302s /help/ exactly where help is off (verify_stub_redirects: a stub must never be served as 200)", async () => {
+    const { resolveStaticGateRedirect } = await import('../../server/_shared');
+    for (const c of ALL_CONFIGS) expect(resolveStaticGateRedirect('/help/', c.townId) !== null, c.townId).toBe(!c.help?.enabled);
+  });
   it('Brookings in site-config resolves', async () => {
     const { siteConfig } = await import('./site-config');
     if (siteConfig.nav) expect(() => resolveNav(siteConfig.nav!, siteConfig)).not.toThrow();

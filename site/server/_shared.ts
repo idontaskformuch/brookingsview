@@ -282,6 +282,8 @@ const STATIC_GATE_REDIRECTS: Record<string, Record<string, StaticGateRedirect>> 
     '/home-sales/archive/': { to: '/', status: 302 },
     '/workplace-watch/': { to: '/', status: 302 },
     '/new-in-town/': { to: '/', status: 302 },
+    // /help/ (help-resources Phase 3): siteConfig.help off here (under min_entries 6); help.astro redirects. Mirror: nav-sections.test.ts.
+    '/help/': { to: '/', status: 302 },
     '/month/': { to: '/', status: 302 },
     '/safety/': { to: '/', status: 302 },
     // Fas 5 source 2 (2026-11-20): /projects/ only where siteConfig.capitalProjects is set (Broomfield); projects/index.astro redirects.
@@ -318,6 +320,8 @@ const STATIC_GATE_REDIRECTS: Record<string, Record<string, StaticGateRedirect>> 
     '/home-sales/archive/': { to: '/', status: 302 },
     '/closures/': { to: '/', status: 302 },
     '/new-in-town/': { to: '/', status: 302 },
+    // /help/ (help-resources Phase 3): siteConfig.help off here (under min_entries 6); help.astro redirects. Mirror: nav-sections.test.ts.
+    '/help/': { to: '/', status: 302 },
     '/month/': { to: '/', status: 302 },
     '/game-day/': { to: '/', status: 302 },
     '/trash-recycling/': { to: '/', status: 302 },

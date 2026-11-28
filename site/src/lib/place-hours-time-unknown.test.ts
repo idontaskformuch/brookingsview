@@ -18,11 +18,15 @@ function readers(src: string): string[] {
 }
 
 describe('place_hours.time_unknown: every site reader leaves the rows out', () => {
-  for (const [file, expected] of [['./db.ts', 3], ['../../astro.config.mjs', 1]] as const) {
-    it(`${file}: ${expected} reader(s), each with NOT ph.time_unknown`, () => {
-      const found = readers(read(file));
+  // db.ts getHelpEntries (/help/, 2026-11-28) is the one reader that keeps the rows: it selects ph.time_unknown and lib/help-view.ts
+  // shows such a day as the weekday alone, never "Closed". It reads only help categories, which no other reader touches.
+  for (const [file, expected, help] of [['./db.ts', 4, 1], ['../../astro.config.mjs', 1, 0]] as const) {
+    it(`${file}: ${expected} reader(s), all but ${help} /help/ reader with NOT ph.time_unknown`, () => {
+      const src = read(file);
+      const found = readers(src);
       expect(found.length, 'a new place_hours reader: decide how it treats time_unknown and count it here').toBe(expected);
-      for (const sql of found) expect(sql).toMatch(/NOT ph\.time_unknown/);
+      expect(found.filter((sql) => !/NOT ph\.time_unknown/.test(sql)).length).toBe(help);
+      if (help) expect(src).toMatch(/ph\.time_unknown\s+FROM place_hours ph JOIN places p ON p\.id = ph\.place_id\s+WHERE p\.town_id = \$\{TOWN_ID\} AND p\.category = ANY\(\$\{cats\}/);
     });
   }
 });

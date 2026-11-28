@@ -568,7 +568,8 @@ const CITIES: Record<string, SiteConfig> = {
 
   moreno_valley_ca: {
     ...TOWN_REGISTRY.moreno_valley_ca,
-    help: { enabled: false, foodTerm: 'Food pantries', postcodeSearch: false },
+    // Owner 2026-11-28: /help/ on (14 visible entries, over min_entries 6).
+    help: { enabled: true, foodTerm: 'Food pantries', postcodeSearch: false },
     // Owner 2026-11-05: the AI content track (essays, recipes, reviews, columns) is retired here too: no /s/ pages (404), sections redirect to /.
     contentTrackRetired: true,
     disabledSections: ['reviews', 'recipes', 'editorials', 'columns'],
@@ -581,7 +582,7 @@ const CITIES: Record<string, SiteConfig> = {
       desktop: ['traffic', 'cityhall', 'whatson', 'sports', 'facilities', 'weather', 'safety', 'closures', 'thisweek', 'holidays', 'jobs', 'homesales', 'workplace', 'month', 'play'],
       groups: {
         Now: ['today', 'tonight', 'events', 'whatson', 'thisweek', 'weather', 'safety'],
-        City: ['cityhall', 'traffic', 'closures', 'facilities', 'holidays'],
+        City: ['cityhall', 'traffic', 'closures', 'facilities', 'help', 'holidays'],
         'Work & Home': ['workplace', 'homesales', 'jobs'],
         More: ['sports', 'play', 'month'],
       },
@@ -857,7 +858,8 @@ const CITIES: Record<string, SiteConfig> = {
   // yet listed in the US towns' network disclosure. Phase 3 enables sources one by one.
   glasgow: {
     ...TOWN_REGISTRY.glasgow,
-    help: { enabled: false, foodTerm: 'Food banks', postcodeSearch: true },
+    // Owner 2026-11-28: /help/ on (14 visible entries, over min_entries 6).
+    help: { enabled: true, foodTerm: 'Food banks', postcodeSearch: true },
     // /today/ written into the HTML like Broomfield's (owner 2026-11-25), same rule; no indexFrom: the blocks were watched on Broomfield.
     todayPage: { minBlocks: 3, requireOpenTonightData: true },
     eveningLayer: { mode: 'threshold', maxMiles: 15, includeTicketmasterSports: true, openLate: true, register: true, indexApproved: true, cards: { regions: {
@@ -873,7 +875,7 @@ const CITIES: Record<string, SiteConfig> = {
       desktop: ['whatson', 'cityhall', 'facilities', 'weather', 'thisweek', 'holidays'],
       groups: {
         Now: ['today', 'tonight', 'thisweek', 'events', 'whatson', 'weather'],
-        City: ['cityhall', 'facilities', 'holidays'],
+        City: ['cityhall', 'facilities', 'help', 'holidays'],
       },
     },
     disabledSections: ['traffic', 'jobs', 'advertising', 'reviews', 'recipes', 'editorials', 'columns'],

@@ -97,3 +97,15 @@ describe('ItemList JSON-LD', () => {
       address: { '@type': 'PostalAddress', streetAddress: '26 Queen Mary Street', postalCode: 'G40 3BB', addressLocality: 'Glasgow' } } });
   });
 });
+
+describe('privacy page names postcodes.io where the postcode box exists (owner 2026-11-28)', () => {
+  it('the UK privacy body has the postcodes.io section, gated on help.postcodeSearch', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { ALL_CONFIGS } = await import('./site-config');
+    const body = readFileSync(new URL('../components/legal/gb/PrivacyBody.astro', import.meta.url), 'utf8');
+    expect(ALL_CONFIGS.filter((c) => c.help?.postcodeSearch).every((c) => c.country === 'gb')).toBe(true);
+    expect(body).toMatch(/siteConfig\.help\?\.enabled && siteConfig\.help\.postcodeSearch &&/);
+    expect(body).toContain('https://postcodes.io/');
+    expect(body).toMatch(/not stored/);
+  });
+});

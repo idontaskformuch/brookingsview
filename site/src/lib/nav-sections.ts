@@ -13,7 +13,7 @@ import { townHasHolidayPages } from '../config/holiday-pages/registry';
 import { isVoteOver, todayIn } from './election';
 import { isSectionBuilt } from './sections';
 
-export type NavGate = Pick<SiteConfig, 'townId' | 'hasWhatsOn' | 'hasClosureWatch' | 'hasNewInTown' | 'hasWorkplaceWatch' | 'disabledSections' | 'quietSections' | 'navLabels' | 'eveningLayer' | 'safetyNotices' | 'trafficSource'>
+export type NavGate = Pick<SiteConfig, 'townId' | 'hasWhatsOn' | 'hasClosureWatch' | 'hasNewInTown' | 'hasWorkplaceWatch' | 'disabledSections' | 'quietSections' | 'navLabels' | 'eveningLayer' | 'safetyNotices' | 'trafficSource' | 'help'>
   & Partial<Pick<SiteConfig, 'timezone'>> & { /** YYYY-MM-DD; tests pin it, the build uses the town's today. */ today?: string };
 
 /** Election 2026 (/vote) is in the nav until Election Day is over in the town (owner B4, 2026-11-11). */
@@ -54,6 +54,8 @@ export const SECTIONS: NavSection[] = [
   { id: 'cityhall', href: '/city-hall/', label: 'City Hall', footerLabel: 'City hall', enabled: () => true },
   { id: 'closures', href: '/closures/', label: 'Closure Watch', enabled: (c) => !!c.hasClosureWatch },
   { id: 'newintown', href: '/new-in-town/', label: 'New in Town', enabled: (c) => !!c.hasNewInTown },
+  // /help/ (spec help-resources Phase 3): the All sheet only, never a tab; same flag as the page (siteConfig.help.enabled).
+  { id: 'help', href: '/help/', label: 'Food & help', enabled: (c) => !!c.help?.enabled },
   { id: 'facilities', href: '/facilities/', label: 'Facilities', enabled: (c) => isSectionBuilt('facilities', c) },
   { id: 'farm', href: '/farm-report/', label: 'Farm Report', footerLabel: 'Farm report', enabled: BROOKINGS },
   { id: 'homesales', href: '/home-sales/', label: 'Home sales', enabled: MORENO },
