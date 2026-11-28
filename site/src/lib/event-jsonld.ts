@@ -15,7 +15,7 @@ import { otherTownOf } from './place-locality';
 import { factsDescription } from './story-description';
 import type { CountryId } from './country-profile';
 import {
-  buildVenueIndex, resolveVenue, hasResolvedAddress, isVirtualVenue, toZonedISOString,
+  buildVenueIndex, resolveVenue, hasResolvedAddress, isVirtualVenue, toZonedISOString, isPublicPlace,
   type Facility,
 } from './db';
 
@@ -132,6 +132,15 @@ export function buildEventJsonLd(
     // reasonably organized by the place hosting it); a virtual-only event
     // with no resolved physical venue falls back to the site itself rather
     // than guess.
-    organizer: { '@type': 'Organization', name: resolvedVenue?.name ?? site.siteName },
+    organizer: organizerOf(resolvedVenue, site.siteName, canonicalUrl),
   };
+}
+
+/** The organizer with its url (Search Console 2026-11-28: "Missing field 'url' (in 'organizer')"): the venue's own website when the
+ *  row has one, else our page about the venue (public places have one), else nothing; the site itself when it is the organizer. */
+export function organizerOf(venue: Facility | null, siteName: string, canonicalUrl: string): Record<string, unknown> {
+  const origin = new URL(canonicalUrl).origin;
+  if (!venue) return { '@type': 'Organization', name: siteName, url: `${origin}/` };
+  const url = venue.website || (isPublicPlace(venue) ? `${origin}/facilities/${venue.slug}/` : null);
+  return { '@type': 'Organization', name: venue.name, ...(url ? { url } : {}) };
 }

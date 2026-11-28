@@ -107,6 +107,24 @@ describe('buildEventJsonLd -- resolvable physical event', () => {
   });
 });
 
+// Search Console 2026-11-28 (Broomfield, Moreno Valley): "Missing field 'url' (in 'organizer')". The url is the organizer's own website
+// when the row has one, else our page about the venue, else (the site organizes) the site itself. Never a guessed address.
+describe('buildEventJsonLd -- organizer.url', () => {
+  const story = baseStory({ venue_raw: 'Main Library,25480 Alessandro Blvd, Moreno Valley, CA 92553, USA' });
+  const org = (r: Record<string, unknown> | null) => r!.organizer as Record<string, unknown>;
+  it("is the venue's own website (live row moreno_valley_ca/main-library; changed field: website)", () => {
+    const withSite = { ...MAIN_LIBRARY, website: 'https://www.moval.org/mv-library/location-main.html' };
+    expect(org(buildEventJsonLd(story, [withSite], SITE, CANONICAL_URL, HERO_URL)).url).toBe('https://www.moval.org/mv-library/location-main.html');
+  });
+  it('is our facility page when the venue has no website (the fixture row has website null)', () => {
+    expect(org(buildEventJsonLd(story, [MAIN_LIBRARY], SITE, CANONICAL_URL, HERO_URL)).url).toBe('https://morenovalleyview.com/facilities/main-library/');
+  });
+  it('is the site itself when the site is the organizer (virtual event, no venue)', () => {
+    const online = baseStory({ title: 'Online Storytime via Zoom', body: 'Join us for this online storytime via Zoom -- link sent after registration.', venue_raw: null });
+    expect(org(buildEventJsonLd(online, [MAIN_LIBRARY], SITE, CANONICAL_URL, HERO_URL))).toEqual({ '@type': 'Organization', name: SITE.siteName, url: 'https://morenovalleyview.com/' });
+  });
+});
+
 describe('buildEventJsonLd -- unresolved venue', () => {
   it('emits no Event markup at all for a venue with no registry match', () => {
     const story = baseStory({
