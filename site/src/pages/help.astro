@@ -13,7 +13,7 @@ import HelpCard from '../components/help/HelpCard.astro';
 import { siteConfig } from '../lib/site-config';
 import { getHelpEntries } from '../lib/db';
 import { countVisible, helpPageHasEnough, HELP_MAX_AGE_DAYS } from '../lib/help-visibility';
-import { helpSections, helpAreas, helpItemListJsonLd, areaDistribution } from '../lib/help-view';
+import { helpSections, helpAreas, helpItemListJsonLd, areaDistribution, coordinateSources } from '../lib/help-view';
 import { todayDate } from '../lib/today-page';
 import { buildBreadcrumbJsonLd } from '../lib/article-jsonld';
 import type { Category } from '../lib/ui/ui-helpers';
@@ -43,6 +43,7 @@ const trail = [{ label: 'Home', href: '/' }, { label: 'Food & help', href: canon
 const CAT: Record<string, Category | undefined> = { food: 'food', winter: undefined, bills: 'civic' };
 const hosts = [...new Map(cards.map((c) => [c.sourceHost, c.sourceHref])).entries()].map(([name, href]) => ({ name, href }));
 const checkedDates = cards.map((c) => c.checked).filter(Boolean);
+const coords = coordinateSources(cards);
 const digest = [`${cards.length} places`, areas.length >= 2 ? `${areas.length} areas` : null].filter(Boolean).join(' · ');
 ---
 <BaseLayout title={title} noindex={preview && !help.enabled}
@@ -82,6 +83,7 @@ const digest = [`${cards.length} places`, areas.length >= 2 ? `${areas.length} a
     <p>Places in {town} that give out free food or free meals, with the days and times their own pages give. Each place is checked
     against its own page every week; one that has not been confirmed for {HELP_MAX_AGE_DAYS} days, or whose page changed in a way we could not read,
     is taken off this page until it is checked again. Call or check the source before you go: times change, especially around holidays.</p>
+    {coords.length > 0 && <p>Map positions: {coords.map((s, i) => <>{i > 0 && '; '}<a href={s.href} rel="noopener">{s.name}</a> ({s.note})</>)}.</p>}
   </AboutThisPage>
 </BaseLayout>
 

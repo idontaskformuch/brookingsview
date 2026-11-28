@@ -1,0 +1,19 @@
+[
+ {
+  "lat": "33.9283150",
+  "lon": "-117.2349490",
+  "display_name": "13300, Indian Street, Moreno Valley, Riverside County, California, 92553, United States",
+  "addresstype": "place",
+  "address": {
+   "house_number": "13300",
+   "road": "Indian Street",
+   "city": "Moreno Valley",
+   "county": "Riverside County",
+   "state": "California",
+   "ISO3166-2-lvl4": "US-CA",
+   "postcode": "92553",
+   "country": "United States",
+   "country_code": "us"
+  }
+ }
+]

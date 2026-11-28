@@ -123,6 +123,18 @@ export function areaDistribution(cards: HelpCard[]): Record<string, number> {
   return out;
 }
 
+/** Where the cards' coordinates come from (scrapers/help_geocode.py), for the About section's attribution: postcodes.io for a UK
+ *  postcode (OS / Royal Mail / ONS open data), OpenStreetMap geocoding for a US address; only the sources the shown cards use. */
+export function coordinateSources(cards: HelpCard[]): { name: string; href: string; note: string }[] {
+  const located = cards.filter((c) => c.lat != null && c.lon != null);
+  const uk = located.some((c) => c.postcode && postalDistrict(c.postcode) !== c.postcode.trim());
+  const us = located.some((c) => !(c.postcode && postalDistrict(c.postcode) !== c.postcode.trim()));
+  return [
+    ...(uk ? [{ name: 'postcodes.io', href: 'https://postcodes.io/', note: 'Contains OS data © Crown copyright and database right; Royal Mail data © Royal Mail copyright and database right; source: Office for National Statistics' }] : []),
+    ...(us ? [{ name: 'OpenStreetMap', href: 'https://www.openstreetmap.org/copyright', note: '© OpenStreetMap contributors' }] : []),
+  ];
+}
+
 /** ItemList of the shown places (spec SEO: "ItemList of places where valid"; no FAQ schema). */
 export function helpItemListJsonLd(sections: HelpSection[], locality: string) {
   const cards = sections.flatMap((s) => s.cards);

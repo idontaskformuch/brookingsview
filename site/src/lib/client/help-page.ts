@@ -5,8 +5,8 @@
  *   - collapse: a list longer than COLLAPSE_AT shows the first ones and a "Show all N" button.
  *   - by area: [data-help-group] regroups each list under postal-district headings ("G40 · Bridgeton" when the row has an area name);
  *     press again = back to the current order.
- *   - postcode ([data-help-postcode] form, towns with help.postcodeSearch): ONE bulk lookup at postcodes.io (open data) of the
- *     visitor's postcode and the cards' postcodes, then nearest first with the distance on each card. When the lookup fails: the
+ *   - postcode ([data-help-postcode] form, towns with help.postcodeSearch): ONE lookup at postcodes.io (open data) of the visitor's
+ *     postcode only; the cards carry their own lat/lon (data-lat/data-lon, scrapers/help_geocode.py). Nearest first, with the distance. When the lookup fails: the
  *     visitor's outcode first, then the same postcode area (help-view outcodeOrder). */
 import { distanceKm, outcodeOrder, sortByDistance } from '../help-geo';
 
@@ -68,13 +68,19 @@ function render(list: HTMLElement, order: HTMLElement[], byArea: boolean): void 
   collapse(list);
 }
 
-async function lookup(postcodes: string[]): Promise<Map<string, { lat: number; lon: number }>> {
-  const res = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ postcodes }) });
-  if (!res.ok) throw new Error(`postcodes.io ${res.status}`);
-  const body = await res.json() as { result: { query: string; result: { latitude: number; longitude: number } | null }[] };
-  const out = new Map<string, { lat: number; lon: number }>();
-  for (const r of body.result ?? []) if (r.result) out.set(r.query.toUpperCase(), { lat: r.result.latitude, lon: r.result.longitude });
-  return out;
+type FetchFn = (url: string, init?: RequestInit) => Promise<Response>;
+/** The visitor's postcode -> lat/lon, ONE request to postcodes.io (owner 2026-11-28: the cards carry their own coordinates); null on any
+ *  failure (the page then falls back to the outcode order). */
+export async function locateVisitor(postcode: string, fetchFn: FetchFn = (u, i) => fetch(u, i)): Promise<{ lat: number; lon: number } | null> {
+  const pc = postcode.trim().toUpperCase().replace(/\s+/g, ' ');
+  try {
+    const res = await fetchFn(`${API}/${encodeURIComponent(pc)}`);
+    if (!res.ok) return null;
+    const r = ((await res.json()) as { result?: { latitude?: number; longitude?: number } | null }).result;
+    return r && r.latitude != null && r.longitude != null ? { lat: r.latitude, lon: r.longitude } : null;
+  } catch {
+    return null;
+  }
 }
 
 const fmtDistance = (km: number) => `${(km / 1.609).toFixed(km < 16 ? 1 : 0)} mi`;
@@ -111,16 +117,13 @@ export function init(doc: Document = document): void {
     const input = form.querySelector<HTMLInputElement>('input')!;
     const pc = input.value.trim().toUpperCase();
     if (!pc) return;
-    const all = lists.flatMap((l) => byName.get(l) ?? []);
-    const wanted = [pc, ...new Set(all.map((c) => (c.dataset.postcode || '').toUpperCase()).filter(Boolean))].slice(0, 100);
-    let points: Map<string, { lat: number; lon: number }> | null = null;
-    try { points = await lookup(wanted); } catch { points = null; }
-    const from = points?.get(pc);
+    const from = await locateVisitor(pc);
     current = new Map(lists.map((l) => {
       const cards = byName.get(l) ?? [];
       cards.forEach((c) => c.querySelector('[data-help-distance]')?.remove());
-      if (from && points) {
-        const pts = cards.map((c) => ({ c, ...(points!.get((c.dataset.postcode || '').toUpperCase()) ?? { lat: null, lon: null }) }));
+      if (from) {
+        const num = (v?: string) => (v ? Number(v) : null);
+        const pts = cards.map((c) => ({ c, lat: num(c.dataset.lat), lon: num(c.dataset.lon) }));
         const sorted = sortByDistance(pts, from);
         for (const p of sorted) {
           if (p.lat == null || p.lon == null) continue;

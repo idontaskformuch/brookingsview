@@ -115,3 +115,15 @@ describe('privacy page names postcodes.io where the postcode box exists (owner 2
     expect(body).toMatch(/not stored/);
   });
 });
+
+describe('coordinate sources in About (attribution where the cards use them)', () => {
+  it('UK postcode coordinates -> postcodes.io (OS/ONS); US coordinates -> OpenStreetMap; none -> nothing', async () => {
+    const { coordinateSources } = await import('./help-view');
+    // live 2026-11-28 after scrapers/help_geocode: glasgow 295 = 55.849929,-4.300626; moreno 314 = 33.928315,-117.234949
+    const g = helpSections({ ...glasgow, entries: [{ ...IBROX, lat: 55.849929, lon: -4.300626 }] }, '2026-11-28', 'gb')[0].cards;
+    const m = helpSections({ ...moreno, entries: [{ ...SALVATION, lat: 33.928315, lon: -117.234949 }] }, '2026-11-28', 'us')[0].cards;
+    expect(coordinateSources(g).map((s) => s.name)).toEqual(['postcodes.io']);
+    expect(coordinateSources(m).map((s) => s.name)).toEqual(['OpenStreetMap']);
+    expect(coordinateSources(helpSections(moreno, '2026-11-28', 'us')[0].cards)).toEqual([]);
+  });
+});

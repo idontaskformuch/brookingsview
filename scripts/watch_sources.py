@@ -605,6 +605,9 @@ def run_help(watch: dict, fetcher_for, cur, today, write: bool = False) -> tuple
         if write:
             apply_help_plan(cur, p, {r["key"]: r for r in rows}, today)
         plans.append(p)
+    if write:   # lat/lon for help places that have none (owner 2026-11-28): postcodes.io / Nominatim, never overwritten
+        from scrapers import help_geocode
+        help_geocode.fill(cur, fetcher_for, watch["town"])
     return plans, before
 
 

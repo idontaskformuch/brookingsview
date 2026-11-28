@@ -886,6 +886,9 @@ def main(argv: list[str]) -> int:
     try:
         with conn.cursor() as cur:
             report = write(cur, args.today)
+            from scrapers import help_geocode   # lat/lon for the new rows (owner 2026-11-28); fills only NULL coordinates
+            geo = help_geocode.fill(cur, help_geocode._fetcher_for)
+            print(f"coordinates: {len(geo.found)} found, {len(geo.missed)} left empty")
         conn.commit()
     finally:
         conn.close()
